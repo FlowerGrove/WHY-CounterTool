@@ -7,11 +7,24 @@
     <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
-        /* 全局重置 */
-        * { margin:0; padding:0; box-sizing:border-box; }
-        html,body { width:100%; height:100%; overflow:hidden; background:#e8e8e8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #e8e8e8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
 
-        /* ===== 画布 ===== */
         canvas {
             display: block;
             position: fixed;
@@ -19,55 +32,389 @@
             left: 0;
             width: 100%;
             height: 100%;
-            cursor: crosshair;           /* 改为十字准星 */
+            cursor: crosshair;
             will-change: transform;
             image-rendering: auto;
         }
         canvas:active {
-            cursor: crosshair;           /* 点击时保持十字 */
+            cursor: crosshair;
         }
         canvas.grabbing {
-            cursor: crosshair;           /* 拖拽时保持十字 */
+            cursor: crosshair;
         }
 
-        /* 其他样式保持不变（与之前一致） */
-        .drop-hint { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:10; text-align:center; opacity:0.40; transition:opacity 0.5s ease; }
-        .drop-hint.hidden { opacity:0; }
-        .drop-hint__icon { display:block; font-size:64px; line-height:1; margin-bottom:12px; color:#888; }
-        .drop-hint__text { font-size:15px; color:#555; letter-spacing:0.04em; font-weight:450; }
-        .drop-hint__sub { font-size:12px; color:#999; margin-top:6px; letter-spacing:0.03em; }
-        .top-panel { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.92); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 16px; border-radius:30px; box-shadow:0 6px 24px rgba(0,0,0,0.10); font-size:12px; color:#444; flex-wrap:nowrap; max-width:96vw; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-        .top-panel::-webkit-scrollbar { display:none; }
-        .control-group { display:flex; align-items:center; gap:4px; flex-shrink:0; }
-        .control-group label { font-size:11px; white-space:nowrap; color:#666; margin-right:2px; }
-        .size-slider { width:48px; margin:0 2px; accent-color:#1a73e8; height:4px; cursor:pointer; }
-        .size-value { font-size:10px; min-width:18px; text-align:center; color:#333; font-weight:600; }
-        .color-picker-wrapper { display:flex; align-items:center; gap:3px; flex-shrink:0; }
-        .color-picker { width:22px; height:22px; border:none; border-radius:50%; cursor:pointer; padding:0; background:transparent; box-shadow:0 0 0 2px rgba(0,0,0,0.10); -webkit-appearance:none; appearance:none; }
-        .color-picker::-webkit-color-swatch-wrapper { padding:0; }
-        .color-picker::-webkit-color-swatch { border:none; border-radius:50%; }
-        .color-picker::-moz-color-swatch { border:none; border-radius:50%; }
-        .number-input-group { display:flex; align-items:center; gap:4px; flex-shrink:0; }
-        .number-input { width:44px; height:26px; border:1px solid #ccc; border-radius:13px; text-align:center; font-size:13px; font-weight:600; color:#333; outline:none; padding:0 4px; background:rgba(255,255,255,0.9); transition:border-color 0.2s, box-shadow 0.2s; }
-        .number-input:focus { border-color:#1a73e8; box-shadow:0 0 0 3px rgba(26,115,232,0.15); }
-        .number-input.error { border-color:#d93025; box-shadow:0 0 0 3px rgba(217,48,37,0.15); }
-        .number-input::-webkit-inner-spin-button, .number-input::-webkit-outer-spin-button { opacity:0.5; height:18px; }
-        .btn-icon { background:transparent; border:none; border-radius:50%; width:34px; height:34px; cursor:pointer; font-size:16px; color:#555; transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; }
-        .btn-icon:hover { background:rgba(0,0,0,0.06); color:#111; }
-        .btn-icon:active { transform:scale(0.92); }
-        .btn-icon:disabled { opacity:0.30; pointer-events:none; }
-        .btn-icon.danger:hover { background:rgba(217,48,37,0.10); color:#d93025; }
-        .btn-icon .tooltip { position:absolute; bottom:-26px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.80); color:#fff; font-size:10px; padding:2px 8px; border-radius:4px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity 0.2s; font-weight:400; letter-spacing:0.02em; }
-        .btn-icon:hover .tooltip { opacity:1; }
-        .divider { width:1px; height:24px; background:rgba(0,0,0,0.10); flex-shrink:0; margin:0 2px; }
-        .bottom-bar { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:6px 16px; border-radius:30px; box-shadow:0 4px 16px rgba(0,0,0,0.08); }
-        .page-count { font-size:11px; color:#888; letter-spacing:0.03em; opacity:0; transition:opacity 0.4s ease; white-space:nowrap; }
-        .page-count.visible { opacity:0.7; }
-        .bottom-bar .btn-icon { width:32px; height:32px; font-size:14px; }
-        #fileInput { display:none; }
-        @media (max-width:640px) { .top-panel { top:10px; padding:6px 12px; gap:5px; border-radius:22px; } .top-panel .control-group label { font-size:10px; } .top-panel .size-slider { width:36px; } .top-panel .number-input { width:38px; height:24px; font-size:12px; } .top-panel .btn-icon { width:30px; height:30px; font-size:14px; } .top-panel .color-picker { width:20px; height:20px; } .top-panel .divider { height:20px; } .bottom-bar { bottom:12px; padding:4px 12px; gap:6px; } .bottom-bar .btn-icon { width:28px; height:28px; font-size:12px; } .bottom-bar .page-count { font-size:10px; } .drop-hint__icon { font-size:44px; } .drop-hint__text { font-size:13px; } .drop-hint__sub { font-size:11px; } .btn-icon .tooltip { display:none; } }
-        @media (max-width:420px) { .top-panel { padding:4px 8px; gap:3px; border-radius:18px; top:8px; } .top-panel .control-group label { font-size:9px; } .top-panel .size-slider { width:28px; } .top-panel .number-input { width:32px; height:20px; font-size:10px; border-radius:10px; } .top-panel .btn-icon { width:26px; height:26px; font-size:12px; } .top-panel .color-picker { width:18px; height:18px; } .top-panel .divider { height:16px; margin:0 1px; } .bottom-bar { padding:3px 8px; gap:4px; bottom:8px; border-radius:20px; } .bottom-bar .btn-icon { width:24px; height:24px; font-size:11px; } .bottom-bar .page-count { font-size:9px; } }
-        @media (orientation:landscape) and (max-height:500px) { .top-panel { top:6px; padding:4px 10px; gap:4px; border-radius:16px; } .top-panel .btn-icon { width:24px; height:24px; font-size:11px; } .top-panel .number-input { width:30px; height:18px; font-size:10px; } .top-panel .size-slider { width:24px; } .bottom-bar { bottom:6px; padding:2px 8px; } }
+        .drop-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+            text-align: center;
+            opacity: 0.40;
+            transition: opacity 0.5s ease;
+        }
+        .drop-hint.hidden {
+            opacity: 0;
+        }
+        .drop-hint__icon {
+            display: block;
+            font-size: 64px;
+            line-height: 1;
+            margin-bottom: 12px;
+            color: #888;
+        }
+        .drop-hint__text {
+            font-size: 15px;
+            color: #555;
+            letter-spacing: 0.04em;
+            font-weight: 450;
+        }
+        .drop-hint__sub {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+            letter-spacing: 0.03em;
+        }
+
+        .top-panel {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 8px 16px;
+            border-radius: 30px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10);
+            font-size: 12px;
+            color: #444;
+            flex-wrap: nowrap;
+            max-width: 96vw;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .top-panel::-webkit-scrollbar {
+            display: none;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .control-group label {
+            font-size: 11px;
+            white-space: nowrap;
+            color: #666;
+            margin-right: 2px;
+        }
+        .size-slider {
+            width: 48px;
+            margin: 0 2px;
+            accent-color: #1a73e8;
+            height: 4px;
+            cursor: pointer;
+        }
+        .size-value {
+            font-size: 10px;
+            min-width: 18px;
+            text-align: center;
+            color: #333;
+            font-weight: 600;
+        }
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            flex-shrink: 0;
+        }
+        .color-picker {
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 0;
+            background: transparent;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.10);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .color-picker::-moz-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .number-input-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .number-input {
+            width: 44px;
+            height: 26px;
+            border: 1px solid #ccc;
+            border-radius: 13px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            outline: none;
+            padding: 0 4px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .number-input:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+        }
+        .number-input.error {
+            border-color: #d93025;
+            box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15);
+        }
+        .number-input::-webkit-inner-spin-button,
+        .number-input::-webkit-outer-spin-button {
+            opacity: 0.5;
+            height: 18px;
+        }
+        .btn-icon {
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #555;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .btn-icon:hover {
+            background: rgba(0, 0, 0, 0.06);
+            color: #111;
+        }
+        .btn-icon:active {
+            transform: scale(0.92);
+        }
+        .btn-icon:disabled {
+            opacity: 0.30;
+            pointer-events: none;
+        }
+        .btn-icon.danger:hover {
+            background: rgba(217, 48, 37, 0.10);
+            color: #d93025;
+        }
+        .btn-icon .tooltip {
+            position: absolute;
+            bottom: -26px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.80);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+        .btn-icon:hover .tooltip {
+            opacity: 1;
+        }
+        .divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.10);
+            flex-shrink: 0;
+            margin: 0 2px;
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+        .page-count {
+            font-size: 11px;
+            color: #888;
+            letter-spacing: 0.03em;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            white-space: nowrap;
+        }
+        .page-count.visible {
+            opacity: 0.7;
+        }
+        .bottom-bar .btn-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+        #fileInput {
+            display: none;
+        }
+
+        @media (max-width:640px) {
+            .top-panel {
+                top: 10px;
+                padding: 6px 12px;
+                gap: 5px;
+                border-radius: 22px;
+            }
+            .top-panel .control-group label {
+                font-size: 10px;
+            }
+            .top-panel .size-slider {
+                width: 36px;
+            }
+            .top-panel .number-input {
+                width: 38px;
+                height: 24px;
+                font-size: 12px;
+            }
+            .top-panel .btn-icon {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+            .top-panel .color-picker {
+                width: 20px;
+                height: 20px;
+            }
+            .top-panel .divider {
+                height: 20px;
+            }
+            .bottom-bar {
+                bottom: 12px;
+                padding: 4px 12px;
+                gap: 6px;
+            }
+            .bottom-bar .btn-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+            .bottom-bar .page-count {
+                font-size: 10px;
+            }
+            .drop-hint__icon {
+                font-size: 44px;
+            }
+            .drop-hint__text {
+                font-size: 13px;
+            }
+            .drop-hint__sub {
+                font-size: 11px;
+            }
+            .btn-icon .tooltip {
+                display: none;
+            }
+        }
+        @media (max-width:420px) {
+            .top-panel {
+                padding: 4px 8px;
+                gap: 3px;
+                border-radius: 18px;
+                top: 8px;
+            }
+            .top-panel .control-group label {
+                font-size: 9px;
+            }
+            .top-panel .size-slider {
+                width: 28px;
+            }
+            .top-panel .number-input {
+                width: 32px;
+                height: 20px;
+                font-size: 10px;
+                border-radius: 10px;
+            }
+            .top-panel .btn-icon {
+                width: 26px;
+                height: 26px;
+                font-size: 12px;
+            }
+            .top-panel .color-picker {
+                width: 18px;
+                height: 18px;
+            }
+            .top-panel .divider {
+                height: 16px;
+                margin: 0 1px;
+            }
+            .bottom-bar {
+                padding: 3px 8px;
+                gap: 4px;
+                bottom: 8px;
+                border-radius: 20px;
+            }
+            .bottom-bar .btn-icon {
+                width: 24px;
+                height: 24px;
+                font-size: 11px;
+            }
+            .bottom-bar .page-count {
+                font-size: 9px;
+            }
+        }
+        @media (orientation:landscape) and (max-height:500px) {
+            .top-panel {
+                top: 6px;
+                padding: 4px 10px;
+                gap: 4px;
+                border-radius: 16px;
+            }
+            .top-panel .btn-icon {
+                width: 24px;
+                height: 24px;
+                font-size: 11px;
+            }
+            .top-panel .number-input {
+                width: 30px;
+                height: 18px;
+                font-size: 10px;
+            }
+            .top-panel .size-slider {
+                width: 24px;
+            }
+            .bottom-bar {
+                bottom: 6px;
+                padding: 2px 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -162,9 +509,10 @@
         const MOBILE_FONT_SIZE = 11;
         const DESKTOP_RADIUS = 12;
         const DESKTOP_FONT_SIZE = 8;
-        const PDF_RENDER_SCALE = isMobile ? 2.5 : 2;
 
-        // 基础线宽（虚拟坐标），桌面2.0，移动2.5
+        // ★★★ 极致画质：桌面渲染缩放 5.5，移动端 4.5 ★★★
+        const PDF_RENDER_SCALE = isMobile ? 4.5 : 5.5;
+
         const DESKTOP_LINE_WIDTH = 2.0;
         const MOBILE_LINE_WIDTH = 2.5;
 
@@ -186,7 +534,9 @@
         const clearBtn = document.getElementById('clearBtn');
 
         // ============ 视图状态 ============
-        let panX = 0, panY = 0, zoom = 1;
+        let panX = 0,
+            panY = 0,
+            zoom = 1;
 
         // ============ 文档与页面 ============
         let documents = [];
@@ -211,7 +561,9 @@
         const usedNumbers = new Set();
 
         function isNumberUsed(num) { return usedNumbers.has(num); }
+
         function reserveNumber(num) { usedNumbers.add(num); }
+
         function releaseNumber(num) { usedNumbers.delete(num); }
 
         function updateNumberInputState() {
@@ -268,7 +620,9 @@
             history.length = 0;
             nextMarkerNumber = 1;
             nextDocId = 1;
-            panX = 0; panY = 0; zoom = 1;
+            panX = 0;
+            panY = 0;
+            zoom = 1;
             syncNumberInput();
             updateUI();
             requestRender();
@@ -277,15 +631,18 @@
 
         // ============ 拖拽/触摸 ============
         let isDragging = false;
-        let dragStartX = 0, dragStartY = 0;
-        let dragPanStartX = 0, dragPanStartY = 0;
+        let dragStartX = 0,
+            dragStartY = 0;
+        let dragPanStartX = 0,
+            dragPanStartY = 0;
         let mouseDownPos = null;
         let mouseDownButton = -1;
 
         // ============ Canvas尺寸 ============
         function updateCanvasSize() {
             const dpr = window.devicePixelRatio || 1;
-            const w = window.innerWidth, h = window.innerHeight;
+            const w = window.innerWidth,
+                h = window.innerHeight;
             canvas.width = Math.floor(w * dpr);
             canvas.height = Math.floor(h * dpr);
             canvas.style.width = w + 'px';
@@ -299,6 +656,7 @@
         function screenToVirtual(sx, sy) {
             return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
         }
+
         function virtualToScreen(vx, vy) {
             return { x: vx * zoom + panX, y: vy * zoom + panY };
         }
@@ -317,7 +675,7 @@
             for (const m of markers) {
                 const dx = vx - m.vx;
                 const dy = vy - m.vy;
-                if (Math.sqrt(dx*dx + dy*dy) < MARKER_MIN_DIST) return true;
+                if (Math.sqrt(dx * dx + dy * dy) < MARKER_MIN_DIST) return true;
             }
             return false;
         }
@@ -346,7 +704,8 @@
 
             reserveNumber(desiredNumber);
             const marker = {
-                vx, vy,
+                vx,
+                vy,
                 number: desiredNumber,
                 color: currentColor,
                 docId: page.docId,
@@ -371,13 +730,14 @@
                 r: parseInt(result[1], 16) / 255,
                 g: parseInt(result[2], 16) / 255,
                 b: parseInt(result[3], 16) / 255,
-            } : { r:0, g:0, b:0 };
+            } : { r: 0, g: 0, b: 0 };
         }
 
         // ============ 渲染 ============
         function render() {
             const dpr = window.devicePixelRatio || 1;
-            const w = canvas.width, h = canvas.height;
+            const w = canvas.width,
+                h = canvas.height;
 
             ctx.clearRect(0, 0, w, h);
             ctx.fillStyle = '#f5f5f5';
@@ -387,10 +747,12 @@
             ctx.imageSmoothingEnabled = true;
             if (isMobile) ctx.imageSmoothingQuality = 'high';
 
-            // 绘制页面
             for (const page of pages) {
                 if (!page.offscreenCanvas) continue;
-                const dx = page.vx, dy = page.vy, dw = page.origWidth, dh = page.origHeight;
+                const dx = page.vx,
+                    dy = page.vy,
+                    dw = page.origWidth,
+                    dh = page.origHeight;
                 const sp = virtualToScreen(dx, dy);
                 if (sp.x + dw * zoom < -150 || sp.x > window.innerWidth + 150 ||
                     sp.y + dh * zoom < -150 || sp.y > window.innerHeight + 150) continue;
@@ -494,13 +856,16 @@
             for (let i = 1; i <= numPages; i++) {
                 const page = await pdfDoc.getPage(i);
                 const viewport = page.getViewport({ scale: 1 });
-                const origWidth = viewport.width, origHeight = viewport.height;
-                const vy = (i === 1) ? startY : newEntries[i-2].vy + newEntries[i-2].origHeight + PAGE_GAP;
+                const origWidth = viewport.width,
+                    origHeight = viewport.height;
+                const vy = (i === 1) ? startY : newEntries[i - 2].vy + newEntries[i - 2].origHeight + PAGE_GAP;
                 const vx = 0;
                 const pageData = {
                     offscreenCanvas: null,
-                    origWidth, origHeight,
-                    vx, vy,
+                    origWidth,
+                    origHeight,
+                    vx,
+                    vy,
                     docId,
                     pageIndex: i,
                     pageObj: page,
@@ -514,17 +879,19 @@
 
             if (pages.length === newEntries.length && pages.length > 0) {
                 const first = pages[0];
-                const vw = window.innerWidth, vh = window.innerHeight;
+                const vw = window.innerWidth,
+                    vh = window.innerHeight;
                 zoom = Math.min(vw / first.origWidth * 0.85, vh / first.origHeight * 0.85, 1.5);
                 zoom = Math.max(0.05, Math.min(MAX_ZOOM, zoom));
-                panX = vw / 2 - (first.vx + first.origWidth/2) * zoom;
-                panY = vh / 2 - (first.vy + first.origHeight/2) * zoom;
+                panX = vw / 2 - (first.vx + first.origWidth / 2) * zoom;
+                panY = vh / 2 - (first.vy + first.origHeight / 2) * zoom;
             }
 
             requestRender();
             await renderPagesHighQuality(newEntries);
         }
 
+        // ============ 高画质渲染 + 尺寸标注 (单位mm) ============
         async function renderPagesHighQuality(entries) {
             const scale = PDF_RENDER_SCALE;
             for (const entry of entries) {
@@ -544,11 +911,84 @@
                         enableWebGL: false,
                         renderInteractiveForms: false,
                     }).promise;
+
+                    // ===== 在左下角绘制尺寸标注 (单位 mm) =====
+                    const origW = entry.origWidth;  // pt
+                    const origH = entry.origHeight; // pt
+                    // 转换 pt → mm (1pt = 25.4/72 mm)
+                    const mmW = origW * 25.4 / 72;
+                    const mmH = origH * 25.4 / 72;
+                    const dimText = `${mmW.toFixed(1)} × ${mmH.toFixed(1)}`;
+
+                    // 自适应字体大小（离屏canvas尺寸的 1.3%，限制在 10~32px）
+                    let fontSize = Math.min(offscreen.width, offscreen.height) * 0.013;
+                    fontSize = Math.max(10, Math.min(32, fontSize));
+
+                    offCtx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                    const metrics = offCtx.measureText(dimText);
+                    const textWidth = metrics.width;
+                    const textHeight = fontSize * 1.25;
+
+                    const padding = Math.max(6, fontSize * 0.45);
+                    const margin = Math.max(10, fontSize * 0.55);
+                    const boxX = margin;
+                    const boxY = offscreen.height - margin - textHeight - padding * 2;
+                    const boxW = textWidth + padding * 2;
+                    const boxH = textHeight + padding * 2;
+
+                    // 背景阴影
+                    offCtx.shadowColor = 'rgba(0,0,0,0.10)';
+                    offCtx.shadowBlur = 6;
+                    offCtx.shadowOffsetX = 0;
+                    offCtx.shadowOffsetY = 2;
+
+                    // 圆角矩形背景
+                    const radius = Math.min(4, fontSize * 0.25);
+                    offCtx.beginPath();
+                    offCtx.moveTo(boxX + radius, boxY);
+                    offCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, radius);
+                    offCtx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, radius);
+                    offCtx.arcTo(boxX, boxY + boxH, boxX, boxY, radius);
+                    offCtx.arcTo(boxX, boxY, boxX + boxW, boxY, radius);
+                    offCtx.closePath();
+                    offCtx.fillStyle = 'rgba(255,255,255,0.88)';
+                    offCtx.fill();
+
+                    // 边框（极淡）
+                    offCtx.shadowColor = 'transparent';
+                    offCtx.shadowBlur = 0;
+                    offCtx.strokeStyle = 'rgba(0,0,0,0.06)';
+                    offCtx.lineWidth = 0.6;
+                    offCtx.stroke();
+
+                    // 主文字 (尺寸)
+                    offCtx.fillStyle = '#444444';
+                    offCtx.textAlign = 'left';
+                    offCtx.textBaseline = 'bottom';
+                    offCtx.shadowColor = 'transparent';
+                    offCtx.shadowBlur = 0;
+                    offCtx.fillText(dimText, boxX + padding, boxY + textHeight + padding);
+
+                    // ---- 单位 "mm" ----
+                    const unitText = 'mm';
+                    const unitSize = fontSize * 0.55;
+                    offCtx.font = `${unitSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                    const unitMetrics = offCtx.measureText(unitText);
+                    const unitX = boxX + padding + textWidth + 4;
+                    const unitY = boxY + textHeight + padding - (fontSize - unitSize) * 0.4;
+                    offCtx.fillStyle = '#999999';
+                    offCtx.textAlign = 'left';
+                    offCtx.textBaseline = 'bottom';
+                    offCtx.fillText(unitText, unitX, unitY);
+
+                    // ---- 完成 ----
                     entry.offscreenCanvas = offscreen;
                     entry.pageObj = null;
                     updateUI();
                     requestRender();
-                } catch (e) { console.warn('渲染失败', e); }
+                } catch (e) {
+                    console.warn('渲染失败', e);
+                }
             }
             updateUI();
             requestRender();
@@ -595,14 +1035,14 @@
                             x: pdfX,
                             y: pdfY,
                             size: radius,
-                            color: PDFLib.rgb(1,1,1),
+                            color: PDFLib.rgb(1, 1, 1),
                             borderColor: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
                             borderWidth: 2,
                         });
 
                         const baselineY = pdfY - VISUAL_CENTER_OFFSET * fontSize;
                         copiedPage.drawText(text, {
-                            x: pdfX - textWidth/2,
+                            x: pdfX - textWidth / 2,
                             y: baselineY,
                             size: fontSize,
                             color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
@@ -617,7 +1057,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `标注_${new Date().toISOString().slice(0,10)}.pdf`;
+            a.download = `标注_${new Date().toISOString().slice(0, 10)}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -666,7 +1106,7 @@
                 const upPos = getEventPos(e);
                 const dx = upPos.x - mouseDownPos.x;
                 const dy = upPos.y - mouseDownPos.y;
-                if (Math.sqrt(dx*dx + dy*dy) < 3) {
+                if (Math.sqrt(dx * dx + dy * dy) < 3) {
                     const v = screenToVirtual(upPos.x, upPos.y);
                     addMarker(v.x, v.y);
                 }
@@ -682,7 +1122,8 @@
 
         // 触摸
         let touchStartPos = null;
-        let touchStartPanX = 0, touchStartPanY = 0;
+        let touchStartPanX = 0,
+            touchStartPanY = 0;
         let isTouchDragging = false;
         let lastTouchDist = 0;
         let isPinching = false;
@@ -697,7 +1138,8 @@
                 isTouchDragging = true;
                 isPinching = false;
             } else if (e.touches.length === 2) {
-                const t1 = e.touches[0], t2 = e.touches[1];
+                const t1 = e.touches[0],
+                    t2 = e.touches[1];
                 lastTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
                 isPinching = true;
                 isTouchDragging = false;
@@ -719,7 +1161,8 @@
                 panY = touchStartPanY + dy;
                 requestRender();
             } else if (e.touches.length === 2 && isPinching) {
-                const t1 = e.touches[0], t2 = e.touches[1];
+                const t1 = e.touches[0],
+                    t2 = e.touches[1];
                 const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
                 const scale = dist / lastTouchDist;
                 lastTouchDist = dist;
@@ -775,10 +1218,14 @@
             requestRender();
         }, { passive: false });
 
-        window.addEventListener('resize', () => { updateCanvasSize(); requestRender(); });
+        window.addEventListener('resize', () => { updateCanvasSize();
+            requestRender(); });
 
-        document.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; });
-        document.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); });
+        document.addEventListener('dragover', (e) => { e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy'; });
+        document.addEventListener('dragenter', (e) => { e.preventDefault();
+            e.stopPropagation(); });
         document.addEventListener('drop', async (e) => {
             e.preventDefault();
             e.stopPropagation();
