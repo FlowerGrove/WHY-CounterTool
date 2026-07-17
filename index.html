@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>无限画布 · PDF标注器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <style>
+        /* 全局重置 */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html,body { width:100%; height:100%; overflow:hidden; background:#e8e8e8; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
+
+        /* ===== 画布 ===== */
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;           /* 改为十字准星 */
+            will-change: transform;
+            image-rendering: auto;
+        }
+        canvas:active {
+            cursor: crosshair;           /* 点击时保持十字 */
+        }
+        canvas.grabbing {
+            cursor: crosshair;           /* 拖拽时保持十字 */
+        }
+
+        /* 其他样式保持不变（与之前一致） */
+        .drop-hint { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:10; text-align:center; opacity:0.40; transition:opacity 0.5s ease; }
+        .drop-hint.hidden { opacity:0; }
+        .drop-hint__icon { display:block; font-size:64px; line-height:1; margin-bottom:12px; color:#888; }
+        .drop-hint__text { font-size:15px; color:#555; letter-spacing:0.04em; font-weight:450; }
+        .drop-hint__sub { font-size:12px; color:#999; margin-top:6px; letter-spacing:0.03em; }
+        .top-panel { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.92); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 16px; border-radius:30px; box-shadow:0 6px 24px rgba(0,0,0,0.10); font-size:12px; color:#444; flex-wrap:nowrap; max-width:96vw; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+        .top-panel::-webkit-scrollbar { display:none; }
+        .control-group { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+        .control-group label { font-size:11px; white-space:nowrap; color:#666; margin-right:2px; }
+        .size-slider { width:48px; margin:0 2px; accent-color:#1a73e8; height:4px; cursor:pointer; }
+        .size-value { font-size:10px; min-width:18px; text-align:center; color:#333; font-weight:600; }
+        .color-picker-wrapper { display:flex; align-items:center; gap:3px; flex-shrink:0; }
+        .color-picker { width:22px; height:22px; border:none; border-radius:50%; cursor:pointer; padding:0; background:transparent; box-shadow:0 0 0 2px rgba(0,0,0,0.10); -webkit-appearance:none; appearance:none; }
+        .color-picker::-webkit-color-swatch-wrapper { padding:0; }
+        .color-picker::-webkit-color-swatch { border:none; border-radius:50%; }
+        .color-picker::-moz-color-swatch { border:none; border-radius:50%; }
+        .number-input-group { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+        .number-input { width:44px; height:26px; border:1px solid #ccc; border-radius:13px; text-align:center; font-size:13px; font-weight:600; color:#333; outline:none; padding:0 4px; background:rgba(255,255,255,0.9); transition:border-color 0.2s, box-shadow 0.2s; }
+        .number-input:focus { border-color:#1a73e8; box-shadow:0 0 0 3px rgba(26,115,232,0.15); }
+        .number-input.error { border-color:#d93025; box-shadow:0 0 0 3px rgba(217,48,37,0.15); }
+        .number-input::-webkit-inner-spin-button, .number-input::-webkit-outer-spin-button { opacity:0.5; height:18px; }
+        .btn-icon { background:transparent; border:none; border-radius:50%; width:34px; height:34px; cursor:pointer; font-size:16px; color:#555; transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; }
+        .btn-icon:hover { background:rgba(0,0,0,0.06); color:#111; }
+        .btn-icon:active { transform:scale(0.92); }
+        .btn-icon:disabled { opacity:0.30; pointer-events:none; }
+        .btn-icon.danger:hover { background:rgba(217,48,37,0.10); color:#d93025; }
+        .btn-icon .tooltip { position:absolute; bottom:-26px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.80); color:#fff; font-size:10px; padding:2px 8px; border-radius:4px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity 0.2s; font-weight:400; letter-spacing:0.02em; }
+        .btn-icon:hover .tooltip { opacity:1; }
+        .divider { width:1px; height:24px; background:rgba(0,0,0,0.10); flex-shrink:0; margin:0 2px; }
+        .bottom-bar { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); padding:6px 16px; border-radius:30px; box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+        .page-count { font-size:11px; color:#888; letter-spacing:0.03em; opacity:0; transition:opacity 0.4s ease; white-space:nowrap; }
+        .page-count.visible { opacity:0.7; }
+        .bottom-bar .btn-icon { width:32px; height:32px; font-size:14px; }
+        #fileInput { display:none; }
+        @media (max-width:640px) { .top-panel { top:10px; padding:6px 12px; gap:5px; border-radius:22px; } .top-panel .control-group label { font-size:10px; } .top-panel .size-slider { width:36px; } .top-panel .number-input { width:38px; height:24px; font-size:12px; } .top-panel .btn-icon { width:30px; height:30px; font-size:14px; } .top-panel .color-picker { width:20px; height:20px; } .top-panel .divider { height:20px; } .bottom-bar { bottom:12px; padding:4px 12px; gap:6px; } .bottom-bar .btn-icon { width:28px; height:28px; font-size:12px; } .bottom-bar .page-count { font-size:10px; } .drop-hint__icon { font-size:44px; } .drop-hint__text { font-size:13px; } .drop-hint__sub { font-size:11px; } .btn-icon .tooltip { display:none; } }
+        @media (max-width:420px) { .top-panel { padding:4px 8px; gap:3px; border-radius:18px; top:8px; } .top-panel .control-group label { font-size:9px; } .top-panel .size-slider { width:28px; } .top-panel .number-input { width:32px; height:20px; font-size:10px; border-radius:10px; } .top-panel .btn-icon { width:26px; height:26px; font-size:12px; } .top-panel .color-picker { width:18px; height:18px; } .top-panel .divider { height:16px; margin:0 1px; } .bottom-bar { padding:3px 8px; gap:4px; bottom:8px; border-radius:20px; } .bottom-bar .btn-icon { width:24px; height:24px; font-size:11px; } .bottom-bar .page-count { font-size:9px; } }
+        @media (orientation:landscape) and (max-height:500px) { .top-panel { top:6px; padding:4px 10px; gap:4px; border-radius:16px; } .top-panel .btn-icon { width:24px; height:24px; font-size:11px; } .top-panel .number-input { width:30px; height:18px; font-size:10px; } .top-panel .size-slider { width:24px; } .bottom-bar { bottom:6px; padding:2px 8px; } }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="drop-hint" id="dropHint">
+        <span class="drop-hint__icon"><i class="fa-solid fa-file-pdf"></i></span>
+        <span class="drop-hint__text">拖放 PDF 文件到此处</span>
+        <span class="drop-hint__sub">或点击右下角 <i class="fa-solid fa-folder-open"></i> 导入</span>
+    </div>
+
+    <!-- 顶部工具栏 -->
+    <div class="top-panel" id="topPanel">
+        <div class="number-input-group">
+            <label for="numberInput"><i class="fa-solid fa-hashtag" style="font-size:11px; color:#888;"></i></label>
+            <input type="number" id="numberInput" class="number-input" value="1" min="1" max="999" step="1" />
+        </div>
+        <div class="divider"></div>
+        <div class="control-group">
+            <label for="radiusSlider"><i class="fa-regular fa-circle" style="font-size:11px; color:#888;"></i></label>
+            <input type="range" id="radiusSlider" class="size-slider" min="6" max="30" value="12" step="0.5" />
+            <span class="size-value" id="radiusValue">12</span>
+        </div>
+        <div class="control-group">
+            <label for="fontSizeSlider"><i class="fa-solid fa-font" style="font-size:11px; color:#888;"></i></label>
+            <input type="range" id="fontSizeSlider" class="size-slider" min="5" max="24" value="8" step="0.5" />
+            <span class="size-value" id="fontSizeValue">8</span>
+        </div>
+        <div class="divider"></div>
+        <div class="color-picker-wrapper">
+            <input type="color" id="colorPicker" class="color-picker" value="#e53935" title="标记颜色" />
+        </div>
+        <div class="divider"></div>
+        <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
+        <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
+        <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div class="bottom-bar">
+        <span class="page-count" id="pageCount"></span>
+        <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
+    </div>
+
+    <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple />
+
+    <script type="module">
+        // ============ 外部库加载 ============
+        const PDFJS_VERSION = '3.11.174';
+        const PDFJS_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
+        const PDFJS_WORKER_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
+        const PDFLIB_CDN = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+
+        async function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`加载失败: ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadPdfJs() {
+            if (window.pdfjsLib) return window.pdfjsLib;
+            await loadScript(PDFJS_CDN);
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
+            return window.pdfjsLib;
+        }
+
+        async function loadPdfLib() {
+            if (window.PDFLib) return window.PDFLib;
+            await loadScript(PDFLIB_CDN);
+            return window.PDFLib;
+        }
+
+        // ============ 常量 ============
+        const PAGE_GAP = 28;
+        const DOC_GAP = 56;
+        const MIN_ZOOM = 0.02;
+        const MAX_ZOOM = 30;
+        const ZOOM_SENSITIVITY = 0.001;
+        const WHEEL_PAN_SPEED = 1.0;
+        const MARKER_MIN_DIST = 28;
+        const MAX_MARKER_NUMBER = 999;
+
+        // ============ 移动端检测 ============
+        const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||
+            ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+        const MOBILE_RADIUS = 16;
+        const MOBILE_FONT_SIZE = 11;
+        const DESKTOP_RADIUS = 12;
+        const DESKTOP_FONT_SIZE = 8;
+        const PDF_RENDER_SCALE = isMobile ? 2.5 : 2;
+
+        // 基础线宽（虚拟坐标），桌面2.0，移动2.5
+        const DESKTOP_LINE_WIDTH = 2.0;
+        const MOBILE_LINE_WIDTH = 2.5;
+
+        // ============ DOM元素 ============
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+        const dropHint = document.getElementById('dropHint');
+        const pageCountEl = document.getElementById('pageCount');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const fileInput = document.getElementById('fileInput');
+        const colorPicker = document.getElementById('colorPicker');
+        const radiusSlider = document.getElementById('radiusSlider');
+        const fontSizeSlider = document.getElementById('fontSizeSlider');
+        const radiusValueEl = document.getElementById('radiusValue');
+        const fontSizeValueEl = document.getElementById('fontSizeValue');
+        const numberInput = document.getElementById('numberInput');
+        const undoBtn = document.getElementById('undoBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // ============ 视图状态 ============
+        let panX = 0, panY = 0, zoom = 1;
+
+        // ============ 文档与页面 ============
+        let documents = [];
+        let pages = [];
+        let nextDocId = 1;
+
+        // ============ 标记数据 ============
+        let markers = [];
+        let currentColor = colorPicker.value;
+
+        let markerRadius = isMobile ? MOBILE_RADIUS : DESKTOP_RADIUS;
+        let markerFontSize = isMobile ? MOBILE_FONT_SIZE : DESKTOP_FONT_SIZE;
+        const markerLineWidth = isMobile ? MOBILE_LINE_WIDTH : DESKTOP_LINE_WIDTH;
+
+        radiusSlider.value = markerRadius;
+        fontSizeSlider.value = markerFontSize;
+        radiusValueEl.textContent = markerRadius;
+        fontSizeValueEl.textContent = markerFontSize;
+
+        // ============ 编号管理 ============
+        let nextMarkerNumber = 1;
+        const usedNumbers = new Set();
+
+        function isNumberUsed(num) { return usedNumbers.has(num); }
+        function reserveNumber(num) { usedNumbers.add(num); }
+        function releaseNumber(num) { usedNumbers.delete(num); }
+
+        function updateNumberInputState() {
+            const val = parseInt(numberInput.value, 10);
+            if (isNaN(val) || val < 1 || val > MAX_MARKER_NUMBER) {
+                numberInput.classList.add('error');
+            } else if (isNumberUsed(val)) {
+                numberInput.classList.add('error');
+            } else {
+                numberInput.classList.remove('error');
+            }
+        }
+
+        function syncNumberInput() {
+            numberInput.value = nextMarkerNumber;
+            numberInput.classList.remove('error');
+        }
+
+        // ============ 撤销历史 ============
+        const history = [];
+
+        function undo() {
+            if (history.length === 0) return;
+            const last = history.pop();
+            if (last.type === 'add') {
+                const marker = last.marker;
+                const idx = markers.indexOf(marker);
+                if (idx !== -1) {
+                    markers.splice(idx, 1);
+                    releaseNumber(marker.number);
+                    if (marker.number < nextMarkerNumber) {
+                        nextMarkerNumber = marker.number;
+                    }
+                    syncNumberInput();
+                    requestRender();
+                    updateUI();
+                    updateUndoButtonState();
+                }
+            }
+        }
+
+        function updateUndoButtonState() {
+            undoBtn.disabled = history.length === 0;
+        }
+
+        // ============ 清空 ============
+        function clearAll() {
+            if (pages.length === 0 && markers.length === 0) return;
+            if (!confirm('确定要清空所有数据吗？此操作不可撤销。')) return;
+            documents = [];
+            pages = [];
+            markers = [];
+            usedNumbers.clear();
+            history.length = 0;
+            nextMarkerNumber = 1;
+            nextDocId = 1;
+            panX = 0; panY = 0; zoom = 1;
+            syncNumberInput();
+            updateUI();
+            requestRender();
+            updateUndoButtonState();
+        }
+
+        // ============ 拖拽/触摸 ============
+        let isDragging = false;
+        let dragStartX = 0, dragStartY = 0;
+        let dragPanStartX = 0, dragPanStartY = 0;
+        let mouseDownPos = null;
+        let mouseDownButton = -1;
+
+        // ============ Canvas尺寸 ============
+        function updateCanvasSize() {
+            const dpr = window.devicePixelRatio || 1;
+            const w = window.innerWidth, h = window.innerHeight;
+            canvas.width = Math.floor(w * dpr);
+            canvas.height = Math.floor(h * dpr);
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            if (isMobile) {
+                ctx.imageSmoothingQuality = 'high';
+            }
+        }
+
+        // ============ 坐标转换 ============
+        function screenToVirtual(sx, sy) {
+            return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
+        }
+        function virtualToScreen(vx, vy) {
+            return { x: vx * zoom + panX, y: vy * zoom + panY };
+        }
+
+        function findPageAtVirtual(vx, vy) {
+            for (const page of pages) {
+                if (vx >= page.vx && vx <= page.vx + page.origWidth &&
+                    vy >= page.vy && vy <= page.vy + page.origHeight) {
+                    return page;
+                }
+            }
+            return null;
+        }
+
+        function isMarkerTooClose(vx, vy) {
+            for (const m of markers) {
+                const dx = vx - m.vx;
+                const dy = vy - m.vy;
+                if (Math.sqrt(dx*dx + dy*dy) < MARKER_MIN_DIST) return true;
+            }
+            return false;
+        }
+
+        function addMarker(vx, vy) {
+            const desiredNumber = parseInt(numberInput.value, 10);
+            if (isNaN(desiredNumber) || desiredNumber < 1 || desiredNumber > MAX_MARKER_NUMBER) {
+                alert(`编号必须在 1 到 ${MAX_MARKER_NUMBER} 之间`);
+                numberInput.focus();
+                return false;
+            }
+            if (isNumberUsed(desiredNumber)) {
+                alert(`编号 ${desiredNumber} 已被使用，请更换编号`);
+                numberInput.focus();
+                return false;
+            }
+            const page = findPageAtVirtual(vx, vy);
+            if (!page) {
+                alert('请在PDF页面范围内点击');
+                return false;
+            }
+            if (isMarkerTooClose(vx, vy)) {
+                alert('标记过于靠近，请选择其他位置');
+                return false;
+            }
+
+            reserveNumber(desiredNumber);
+            const marker = {
+                vx, vy,
+                number: desiredNumber,
+                color: currentColor,
+                docId: page.docId,
+                pageIndex: page.pageIndex,
+            };
+            markers.push(marker);
+            history.push({ type: 'add', marker });
+            updateUndoButtonState();
+
+            let nextNum = desiredNumber + 1;
+            while (nextNum <= MAX_MARKER_NUMBER && isNumberUsed(nextNum)) nextNum++;
+            nextMarkerNumber = nextNum > MAX_MARKER_NUMBER ? MAX_MARKER_NUMBER + 1 : nextNum;
+            syncNumberInput();
+            requestRender();
+            updateUI();
+            return true;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16) / 255,
+                g: parseInt(result[2], 16) / 255,
+                b: parseInt(result[3], 16) / 255,
+            } : { r:0, g:0, b:0 };
+        }
+
+        // ============ 渲染 ============
+        function render() {
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.width, h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, panX * dpr, panY * dpr);
+            ctx.imageSmoothingEnabled = true;
+            if (isMobile) ctx.imageSmoothingQuality = 'high';
+
+            // 绘制页面
+            for (const page of pages) {
+                if (!page.offscreenCanvas) continue;
+                const dx = page.vx, dy = page.vy, dw = page.origWidth, dh = page.origHeight;
+                const sp = virtualToScreen(dx, dy);
+                if (sp.x + dw * zoom < -150 || sp.x > window.innerWidth + 150 ||
+                    sp.y + dh * zoom < -150 || sp.y > window.innerHeight + 150) continue;
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.08)';
+                ctx.shadowBlur = 4 / zoom;
+                ctx.shadowOffsetX = 0.5 / zoom;
+                ctx.shadowOffsetY = 1.5 / zoom;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(dx, dy, dw, dh);
+                ctx.restore();
+
+                ctx.drawImage(page.offscreenCanvas, dx, dy, dw, dh);
+                ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+                ctx.lineWidth = 0.4 / zoom;
+                ctx.strokeRect(dx, dy, dw, dh);
+            }
+
+            // 绘制标记
+            const radius = markerRadius;
+            const fontSize = markerFontSize;
+            const lineWidth = markerLineWidth;
+
+            for (const m of markers) {
+                const { vx, vy, number, color } = m;
+
+                ctx.beginPath();
+                ctx.arc(vx, vy, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+
+                ctx.fillStyle = color;
+                ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(255,255,255,0.6)';
+                ctx.shadowBlur = 2 / zoom;
+                ctx.fillText(number.toString(), vx, vy);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+
+        function requestRender() {
+            requestAnimationFrame(render);
+        }
+
+        // ============ UI更新 ============
+        function updateUI() {
+            if (pages.length === 0) {
+                dropHint.classList.remove('hidden');
+                pageCountEl.classList.remove('visible');
+            } else {
+                dropHint.classList.add('hidden');
+                const total = pages.length;
+                const rendered = pages.filter(p => p.offscreenCanvas).length;
+                if (rendered < total) {
+                    pageCountEl.textContent = `渲染中… ${rendered}/${total} 页`;
+                    pageCountEl.classList.add('visible');
+                } else if (total > 1) {
+                    pageCountEl.textContent = `共 ${total} 页 · 标记 ${markers.length}`;
+                    pageCountEl.classList.add('visible');
+                } else {
+                    pageCountEl.textContent = `1 页 · 标记 ${markers.length}`;
+                    pageCountEl.classList.add('visible');
+                }
+            }
+            updateUndoButtonState();
+        }
+
+        // ============ 导入PDF ============
+        async function importPdfFile(file) {
+            if (!file || file.type !== 'application/pdf') return;
+            const pdfjsLib = window.pdfjsLib;
+            if (!pdfjsLib) return;
+
+            let arrayBuffer;
+            try { arrayBuffer = await file.arrayBuffer(); } catch (e) { return; }
+
+            let pdfDoc;
+            try { pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise; } catch (e) { return; }
+
+            const docId = nextDocId++;
+            const numPages = pdfDoc.numPages;
+            const docEntry = { id: docId, arrayBuffer, pages: [] };
+            documents.push(docEntry);
+
+            const newEntries = [];
+            let startY = 0;
+            if (pages.length > 0) {
+                const last = pages[pages.length - 1];
+                startY = last.vy + last.origHeight + DOC_GAP;
+            }
+
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 1 });
+                const origWidth = viewport.width, origHeight = viewport.height;
+                const vy = (i === 1) ? startY : newEntries[i-2].vy + newEntries[i-2].origHeight + PAGE_GAP;
+                const vx = 0;
+                const pageData = {
+                    offscreenCanvas: null,
+                    origWidth, origHeight,
+                    vx, vy,
+                    docId,
+                    pageIndex: i,
+                    pageObj: page,
+                };
+                newEntries.push(pageData);
+                docEntry.pages.push(pageData);
+            }
+
+            pages.push(...newEntries);
+            updateUI();
+
+            if (pages.length === newEntries.length && pages.length > 0) {
+                const first = pages[0];
+                const vw = window.innerWidth, vh = window.innerHeight;
+                zoom = Math.min(vw / first.origWidth * 0.85, vh / first.origHeight * 0.85, 1.5);
+                zoom = Math.max(0.05, Math.min(MAX_ZOOM, zoom));
+                panX = vw / 2 - (first.vx + first.origWidth/2) * zoom;
+                panY = vh / 2 - (first.vy + first.origHeight/2) * zoom;
+            }
+
+            requestRender();
+            await renderPagesHighQuality(newEntries);
+        }
+
+        async function renderPagesHighQuality(entries) {
+            const scale = PDF_RENDER_SCALE;
+            for (const entry of entries) {
+                try {
+                    const page = entry.pageObj;
+                    const viewport = page.getViewport({ scale });
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = Math.floor(viewport.width);
+                    offscreen.height = Math.floor(viewport.height);
+                    const offCtx = offscreen.getContext('2d', { alpha: false });
+                    offCtx.fillStyle = '#ffffff';
+                    offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+                    await page.render({
+                        canvasContext: offCtx,
+                        viewport,
+                        intent: 'display',
+                        enableWebGL: false,
+                        renderInteractiveForms: false,
+                    }).promise;
+                    entry.offscreenCanvas = offscreen;
+                    entry.pageObj = null;
+                    updateUI();
+                    requestRender();
+                } catch (e) { console.warn('渲染失败', e); }
+            }
+            updateUI();
+            requestRender();
+        }
+
+        // ============ 导出 ============
+        async function exportMarkedPDF() {
+            if (documents.length === 0) { alert('没有导入任何PDF'); return; }
+            const PDFLib = await loadPdfLib();
+            const mergedDoc = await PDFLib.PDFDocument.create();
+            const font = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+            const VISUAL_CENTER_OFFSET = 0.38;
+            const radius = markerRadius;
+            const fontSize = markerFontSize;
+
+            for (const doc of documents) {
+                const srcDoc = await PDFLib.PDFDocument.load(doc.arrayBuffer);
+                const pageCount = srcDoc.getPageCount();
+
+                for (let i = 0; i < pageCount; i++) {
+                    const pageIndex = i + 1;
+                    const pageMarkers = markers.filter(m => m.docId === doc.id && m.pageIndex === pageIndex);
+                    const [copiedPage] = await mergedDoc.copyPages(srcDoc, [i]);
+                    mergedDoc.addPage(copiedPage);
+                    if (pageMarkers.length === 0) continue;
+
+                    const { width, height } = copiedPage.getSize();
+
+                    for (const m of pageMarkers) {
+                        const pageData = doc.pages.find(p => p.pageIndex === pageIndex);
+                        if (!pageData) continue;
+
+                        const localX = m.vx - pageData.vx;
+                        const localY = m.vy - pageData.vy;
+                        const pdfX = localX;
+                        const pdfY = height - localY;
+
+                        const rgb = hexToRgb(m.color);
+                        const text = m.number.toString();
+                        const textWidth = font.widthOfTextAtSize(text, fontSize);
+
+                        copiedPage.drawCircle({
+                            x: pdfX,
+                            y: pdfY,
+                            size: radius,
+                            color: PDFLib.rgb(1,1,1),
+                            borderColor: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                            borderWidth: 2,
+                        });
+
+                        const baselineY = pdfY - VISUAL_CENTER_OFFSET * fontSize;
+                        copiedPage.drawText(text, {
+                            x: pdfX - textWidth/2,
+                            y: baselineY,
+                            size: fontSize,
+                            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                            font: font,
+                        });
+                    }
+                }
+            }
+
+            const pdfBytes = await mergedDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `标注_${new Date().toISOString().slice(0,10)}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ============ 事件绑定 ============
+        function getEventPos(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDownPos = getEventPos(e);
+            mouseDownButton = e.button;
+            if (e.button === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+                isDragging = true;
+                dragStartX = mouseDownPos.x;
+                dragStartY = mouseDownPos.y;
+                dragPanStartX = panX;
+                dragPanStartY = panY;
+                canvas.classList.add('grabbing');
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                const pos = { x: e.clientX, y: e.clientY };
+                panX = dragPanStartX + (pos.x - dragStartX);
+                panY = dragPanStartY + (pos.y - dragStartY);
+                requestRender();
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 1 && isDragging) {
+                isDragging = false;
+                canvas.classList.remove('grabbing');
+                requestRender();
+                return;
+            }
+            if (mouseDownButton === 0 && mouseDownPos && !isDragging) {
+                const upPos = getEventPos(e);
+                const dx = upPos.x - mouseDownPos.x;
+                const dy = upPos.y - mouseDownPos.y;
+                if (Math.sqrt(dx*dx + dy*dy) < 3) {
+                    const v = screenToVirtual(upPos.x, upPos.y);
+                    addMarker(v.x, v.y);
+                }
+            }
+            mouseDownPos = null;
+            mouseDownButton = -1;
+            isDragging = false;
+            canvas.classList.remove('grabbing');
+        });
+
+        canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+        canvas.addEventListener('contextmenu', (e) => { if (isDragging) e.preventDefault(); });
+
+        // 触摸
+        let touchStartPos = null;
+        let touchStartPanX = 0, touchStartPanY = 0;
+        let isTouchDragging = false;
+        let lastTouchDist = 0;
+        let isPinching = false;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                touchStartPos = { x: touch.clientX, y: touch.clientY };
+                touchStartPanX = panX;
+                touchStartPanY = panY;
+                isTouchDragging = true;
+                isPinching = false;
+            } else if (e.touches.length === 2) {
+                const t1 = e.touches[0], t2 = e.touches[1];
+                lastTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                isPinching = true;
+                isTouchDragging = false;
+                const cx = (t1.clientX + t2.clientX) / 2;
+                const cy = (t1.clientY + t2.clientY) / 2;
+                touchStartPos = { x: cx, y: cy };
+                touchStartPanX = panX;
+                touchStartPanY = panY;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && isTouchDragging && !isPinching) {
+                const touch = e.touches[0];
+                const dx = touch.clientX - touchStartPos.x;
+                const dy = touch.clientY - touchStartPos.y;
+                panX = touchStartPanX + dx;
+                panY = touchStartPanY + dy;
+                requestRender();
+            } else if (e.touches.length === 2 && isPinching) {
+                const t1 = e.touches[0], t2 = e.touches[1];
+                const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                const scale = dist / lastTouchDist;
+                lastTouchDist = dist;
+                const cx = (t1.clientX + t2.clientX) / 2;
+                const cy = (t1.clientY + t2.clientY) / 2;
+                const vb = screenToVirtual(cx, cy);
+                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scale));
+                panX = cx - vb.x * newZoom;
+                panY = cy - vb.y * newZoom;
+                zoom = newZoom;
+                requestRender();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 0) {
+                if (isTouchDragging && touchStartPos) {
+                    const dx = Math.abs(panX - touchStartPanX);
+                    const dy = Math.abs(panY - touchStartPanY);
+                    if (dx < 3 && dy < 3) {
+                        const v = screenToVirtual(touchStartPos.x, touchStartPos.y);
+                        addMarker(v.x, v.y);
+                    }
+                }
+                isTouchDragging = false;
+                isPinching = false;
+                touchStartPos = null;
+            } else if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                touchStartPos = { x: touch.clientX, y: touch.clientY };
+                touchStartPanX = panX;
+                touchStartPanY = panY;
+                isTouchDragging = true;
+                isPinching = false;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const pos = getEventPos(e);
+            if (e.ctrlKey || e.metaKey) {
+                const vb = screenToVirtual(pos.x, pos.y);
+                const delta = -e.deltaY * ZOOM_SENSITIVITY;
+                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * Math.exp(delta)));
+                panX = pos.x - vb.x * newZoom;
+                panY = pos.y - vb.y * newZoom;
+                zoom = newZoom;
+            } else {
+                panX -= e.deltaX * WHEEL_PAN_SPEED;
+                panY -= e.deltaY * WHEEL_PAN_SPEED;
+            }
+            requestRender();
+        }, { passive: false });
+
+        window.addEventListener('resize', () => { updateCanvasSize(); requestRender(); });
+
+        document.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; });
+        document.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); });
+        document.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const files = e.dataTransfer?.files;
+            if (!files) return;
+            for (const file of files) {
+                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                    await importPdfFile(file);
+                }
+            }
+        });
+
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async () => {
+            const files = fileInput.files;
+            if (files && files.length > 0) {
+                for (const file of files) {
+                    await importPdfFile(file);
+                }
+                fileInput.value = '';
+            }
+        });
+
+        exportBtn.addEventListener('click', exportMarkedPDF);
+        undoBtn.addEventListener('click', undo);
+        clearBtn.addEventListener('click', clearAll);
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        colorPicker.addEventListener('input', (e) => { currentColor = e.target.value; });
+        radiusSlider.addEventListener('input', (e) => {
+            markerRadius = parseFloat(e.target.value);
+            radiusValueEl.textContent = markerRadius;
+            requestRender();
+        });
+        fontSizeSlider.addEventListener('input', (e) => {
+            markerFontSize = parseFloat(e.target.value);
+            fontSizeValueEl.textContent = markerFontSize;
+            requestRender();
+        });
+
+        numberInput.addEventListener('input', updateNumberInputState);
+        numberInput.addEventListener('blur', () => {
+            let val = parseInt(numberInput.value, 10);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > MAX_MARKER_NUMBER) val = MAX_MARKER_NUMBER;
+            numberInput.value = val;
+            nextMarkerNumber = val;
+            updateNumberInputState();
+        });
+        numberInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') numberInput.blur();
+        });
+
+        radiusValueEl.textContent = markerRadius;
+        fontSizeValueEl.textContent = markerFontSize;
+        syncNumberInput();
+        updateUndoButtonState();
+
+        async function init() {
+            try { await loadPdfJs(); } catch (e) {
+                dropHint.querySelector('.drop-hint__text').textContent = 'PDF库加载失败，请刷新';
+            }
+            updateCanvasSize();
+            updateUI();
+            requestRender();
+        }
+        init();
+
+        window.__canvasAPI = {
+            get pages() { return pages; },
+            get markers() { return markers; },
+            reset: clearAll,
+        };
+    </script>
+</body>
+</html>
