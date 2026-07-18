@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>个人PDF标注工具</title>
+    <title>个人标注工具</title>
     <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <style>
@@ -166,7 +166,7 @@
             flex-shrink: 0;
         }
         .number-input {
-            width: 44px;
+            width: 52px;
             height: 26px;
             border: 1px solid #ccc;
             border-radius: 13px;
@@ -178,6 +178,8 @@
             padding: 0 4px;
             background: rgba(255, 255, 255, 0.9);
             transition: border-color 0.2s, box-shadow 0.2s;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
         }
         .number-input:focus {
             border-color: #1a73e8;
@@ -287,7 +289,377 @@
             display: none;
         }
 
+        .type-dock {
+            position: fixed;
+            top: 50%;
+            left: 14px;
+            transform: translateY(-50%);
+            z-index: 22;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+            width: 88px;
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 18px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .type-dock::-webkit-scrollbar {
+            width: 3px;
+        }
+        .type-dock::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 2px;
+        }
+        .type-dock__title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #888;
+            text-align: center;
+            margin-bottom: 2px;
+            user-select: none;
+        }
+        .type-chips {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 5px;
+        }
+        .type-chip {
+            border: 1.5px solid transparent;
+            border-radius: 12px;
+            padding: 8px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.04);
+            color: #444;
+            white-space: nowrap;
+            transition: all 0.15s;
+            text-align: center;
+            line-height: 1.2;
+        }
+        .type-chip.active {
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            transform: scale(1.02);
+        }
+        .type-chip:hover:not(.active) {
+            filter: brightness(0.97);
+        }
+        .type-dock__footer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        .btn-add-type {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px dashed #aaa;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .btn-add-type:hover {
+            border-color: #1a73e8;
+            color: #1a73e8;
+        }
+        .type-dock .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stats-panel {
+            position: fixed;
+            top: 70px;
+            right: 16px;
+            z-index: 25;
+            width: 240px;
+            max-height: calc(100vh - 140px);
+            overflow: auto;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 16px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+            padding: 14px 14px 12px;
+            font-size: 12px;
+            color: #333;
+            display: none;
+        }
+        .stats-panel.visible {
+            display: block;
+        }
+        .stats-panel h3 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #222;
+        }
+        .stats-panel h3 span {
+            font-weight: 500;
+            color: #888;
+            font-size: 11px;
+        }
+        .stats-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            gap: 8px;
+        }
+        .stats-row:last-child {
+            border-bottom: none;
+        }
+        .stats-type {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+        }
+        .stats-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .stats-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .stats-count {
+            font-weight: 700;
+            color: #111;
+            font-variant-numeric: tabular-nums;
+        }
+        .stats-empty {
+            color: #999;
+            text-align: center;
+            padding: 18px 0 10px;
+        }
+        .stats-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .stats-actions button {
+            flex: 1;
+            border: none;
+            border-radius: 10px;
+            padding: 7px 0;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #1a73e8;
+            color: #fff;
+        }
+        .stats-actions button.secondary {
+            background: rgba(0, 0, 0, 0.06);
+            color: #444;
+        }
+        .stats-actions button:hover {
+            filter: brightness(1.05);
+        }
+        .stats-toggle {
+            position: fixed;
+            top: 70px;
+            right: 16px;
+            z-index: 24;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            cursor: pointer;
+            color: #444;
+            font-size: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .stats-toggle.visible {
+            display: inline-flex;
+        }
+        .stats-panel.visible ~ .stats-toggle,
+        .stats-toggle.active {
+            background: #1a73e8;
+            color: #fff;
+        }
+        body:has(.stats-panel.visible) .stats-toggle {
+            right: 250px;
+        }
+
+        .stats-file {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        .stats-file:first-child {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+        .stats-file__name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+            word-break: break-all;
+            line-height: 1.35;
+        }
+        .stats-file__total {
+            font-weight: 500;
+            color: #888;
+            font-size: 10px;
+            margin-left: 4px;
+        }
+
+        .settings-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            background: rgba(0, 0, 0, 0.28);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .settings-backdrop.visible {
+            display: flex;
+        }
+        .settings-modal {
+            width: min(360px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+            padding: 18px 18px 14px;
+            color: #333;
+            font-size: 13px;
+        }
+        .settings-modal h3 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .settings-modal h3 button {
+            border: none;
+            background: transparent;
+            font-size: 18px;
+            color: #888;
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+        }
+        .settings-modal h3 button:hover {
+            background: rgba(0, 0, 0, 0.06);
+            color: #333;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .settings-row:last-of-type {
+            border-bottom: none;
+        }
+        .settings-row label {
+            color: #444;
+            line-height: 1.35;
+        }
+        .settings-row label small {
+            display: block;
+            color: #999;
+            font-size: 11px;
+            margin-top: 2px;
+            font-weight: 400;
+        }
+        .settings-row select,
+        .settings-row input[type="number"] {
+            height: 30px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 0 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            outline: none;
+            background: #fff;
+            min-width: 72px;
+        }
+        .settings-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #1a73e8;
+        }
+        .settings-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .settings-actions button {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .settings-actions .btn-primary {
+            background: #1a73e8;
+            color: #fff;
+        }
+        .settings-actions .btn-secondary {
+            background: rgba(0, 0, 0, 0.06);
+            color: #444;
+        }
+
         @media (max-width:640px) {
+            .type-dock {
+                left: 8px;
+                width: 72px;
+                padding: 10px 6px;
+                border-radius: 14px;
+                max-height: calc(100vh - 100px);
+            }
+            .type-chip {
+                padding: 7px 4px;
+                font-size: 11px;
+                border-radius: 10px;
+            }
             .top-panel {
                 top: 10px;
                 padding: 6px 12px;
@@ -422,15 +794,27 @@
 
     <div class="drop-hint" id="dropHint">
         <span class="drop-hint__icon"><i class="fa-solid fa-file-pdf"></i></span>
-        <span class="drop-hint__text">拖放 PDF 文件到此处</span>
-        <span class="drop-hint__sub">或点击右下角 <i class="fa-solid fa-folder-open"></i> 导入</span>
+        <span class="drop-hint__text">拖放 PDF 图纸到此处</span>
+        <span class="drop-hint__sub">点击标记 PI / PT / PIT 等仪表，可统计导出 Excel</span>
     </div>
+
+    <!-- 左侧类型浮动栏 -->
+    <aside class="type-dock" id="typeDock">
+        <div class="type-dock__title">仪表</div>
+        <div class="type-chips" id="typeChips"></div>
+        <div class="type-dock__footer">
+            <div class="color-picker-wrapper">
+                <input type="color" id="colorPicker" class="color-picker" value="#1565c0" title="当前类型颜色" />
+            </div>
+            <button class="btn-add-type" id="addTypeBtn" title="添加自定义类型">+</button>
+        </div>
+    </aside>
 
     <!-- 顶部工具栏 -->
     <div class="top-panel" id="topPanel">
         <div class="number-input-group">
             <label for="numberInput"><i class="fa-solid fa-hashtag" style="font-size:11px; color:#888;"></i></label>
-            <input type="number" id="numberInput" class="number-input" value="1" min="1" max="999" step="1" />
+            <input type="text" id="numberInput" class="number-input" value="001" inputmode="numeric" maxlength="4" />
         </div>
         <div class="divider"></div>
         <div class="control-group">
@@ -444,18 +828,56 @@
             <span class="size-value" id="fontSizeValue">8</span>
         </div>
         <div class="divider"></div>
-        <div class="color-picker-wrapper">
-            <input type="color" id="colorPicker" class="color-picker" value="#e53935" title="标记颜色" />
-        </div>
-        <div class="divider"></div>
         <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
         <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
         <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
+        <button class="btn-icon" id="settingsBtn" title="设置"><i class="fa-solid fa-gear"></i><span class="tooltip">设置</span></button>
     </div>
+
+    <div class="settings-backdrop" id="settingsBackdrop">
+        <div class="settings-modal" role="dialog" aria-label="设置">
+            <h3>设置 <button type="button" id="settingsCloseBtn" title="关闭">×</button></h3>
+            <div class="settings-row">
+                <label>编号补零<small>如 001、002（仪表显示）</small></label>
+                <select id="settingPadDigits">
+                    <option value="2">2 位 (01)</option>
+                    <option value="3" selected>3 位 (001)</option>
+                    <option value="4">4 位 (0001)</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label>文档页脚信息<small>文件名 / 尺寸mm</small></label>
+                <input type="checkbox" id="settingShowCaption" checked />
+            </div>
+            <div class="settings-row">
+                <label>页脚显示文件名</label>
+                <input type="checkbox" id="settingCaptionName" checked />
+            </div>
+            <div class="settings-row">
+                <label>页脚显示尺寸</label>
+                <input type="checkbox" id="settingCaptionSize" checked />
+            </div>
+            <div class="settings-actions">
+                <button type="button" class="btn-secondary" id="settingsCancelBtn">取消</button>
+                <button type="button" class="btn-primary" id="settingsSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="stats-toggle" id="statsToggle" title="统计"><i class="fa-solid fa-chart-simple"></i></button>
+    <aside class="stats-panel" id="statsPanel">
+        <h3>类型统计 <span id="statsTotal">0</span></h3>
+        <div id="statsList"><div class="stats-empty">暂无标记</div></div>
+        <div class="stats-actions">
+            <button type="button" id="exportExcelBtn">导出 Excel</button>
+            <button type="button" class="secondary" id="exportPdfFromStatsBtn">导出 PDF</button>
+        </div>
+    </aside>
 
     <!-- 底部工具栏 -->
     <div class="bottom-bar">
         <span class="page-count" id="pageCount"></span>
+        <button class="btn-icon" id="exportExcelBottomBtn" title="导出统计 Excel"><i class="fa-solid fa-file-excel"></i><span class="tooltip">Excel</span></button>
         <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
     </div>
 
@@ -467,6 +889,7 @@
         const PDFJS_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
         const PDFJS_WORKER_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
         const PDFLIB_CDN = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+        const EXCELJS_CDN = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
 
         async function loadScript(src) {
             return new Promise((resolve, reject) => {
@@ -491,15 +914,62 @@
             return window.PDFLib;
         }
 
+        async function loadExcelJS() {
+            if (window.ExcelJS) return window.ExcelJS;
+            await loadScript(EXCELJS_CDN);
+            return window.ExcelJS;
+        }
+
         // ============ 常量 ============
-        const PAGE_GAP = 28;
-        const DOC_GAP = 56;
+        const PAGE_GAP = 16;
+        const PAGE_CAPTION_H = 22;
+        const DOC_GAP = 48;
         const MIN_ZOOM = 0.02;
         const MAX_ZOOM = 30;
         const ZOOM_SENSITIVITY = 0.001;
         const WHEEL_PAN_SPEED = 1.0;
         const MARKER_MIN_DIST = 28;
         const MAX_MARKER_NUMBER = 999;
+        const SETTINGS_KEY = 'elecPdfMarkerSettings_v1';
+
+        const defaultSettings = {
+            numberPadDigits: 3,
+            showPageCaption: true,
+            captionShowName: true,
+            captionShowSize: true,
+        };
+        let settings = loadSettings();
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (!raw) return { ...defaultSettings };
+                return { ...defaultSettings, ...JSON.parse(raw) };
+            } catch {
+                return { ...defaultSettings };
+            }
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            } catch { /* ignore */ }
+        }
+
+        function formatMarkerNumber(n) {
+            const digits = Math.min(4, Math.max(2, settings.numberPadDigits | 0));
+            return String(n).padStart(digits, '0');
+        }
+
+        function formatMarkerLabel(m) {
+            const abbr = m.typeAbbr || getTypeById(m.typeId).abbr;
+            return `${abbr}${formatMarkerNumber(m.number)}`;
+        }
+
+        function pageStackGap(prevDocId, nextDocId) {
+            const caption = PAGE_CAPTION_H;
+            return (prevDocId !== nextDocId ? DOC_GAP : PAGE_GAP) + caption;
+        }
 
         // ============ 移动端检测 ============
         const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||
@@ -532,6 +1002,115 @@
         const numberInput = document.getElementById('numberInput');
         const undoBtn = document.getElementById('undoBtn');
         const clearBtn = document.getElementById('clearBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsBackdrop = document.getElementById('settingsBackdrop');
+        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+        const settingsCancelBtn = document.getElementById('settingsCancelBtn');
+        const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+        const settingPadDigits = document.getElementById('settingPadDigits');
+        const settingShowCaption = document.getElementById('settingShowCaption');
+        const settingCaptionName = document.getElementById('settingCaptionName');
+        const settingCaptionSize = document.getElementById('settingCaptionSize');
+        const typeChipsEl = document.getElementById('typeChips');
+        const addTypeBtn = document.getElementById('addTypeBtn');
+        const statsPanel = document.getElementById('statsPanel');
+        const statsToggle = document.getElementById('statsToggle');
+        const statsList = document.getElementById('statsList');
+        const statsTotal = document.getElementById('statsTotal');
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
+        const exportExcelBottomBtn = document.getElementById('exportExcelBottomBtn');
+        const exportPdfFromStatsBtn = document.getElementById('exportPdfFromStatsBtn');
+
+        // ============ 标记类型（常用仪表位号）============
+        const DEFAULT_TYPES = [
+            { id: 'pi',  name: 'PI',  fullName: '压力指示',     color: '#1565c0', abbr: 'PI',  code: 'PI' },
+            { id: 'pt',  name: 'PT',  fullName: '压力变送',     color: '#0277bd', abbr: 'PT',  code: 'PT' },
+            { id: 'pit', name: 'PIT', fullName: '压力指示变送', color: '#0288d1', abbr: 'PIT', code: 'PIT' },
+            { id: 'ti',  name: 'TI',  fullName: '温度指示',     color: '#ef6c00', abbr: 'TI',  code: 'TI' },
+            { id: 'tt',  name: 'TT',  fullName: '温度变送',     color: '#f57c00', abbr: 'TT',  code: 'TT' },
+            { id: 'tit', name: 'TIT', fullName: '温度指示变送', color: '#fb8c00', abbr: 'TIT', code: 'TIT' },
+            { id: 'fi',  name: 'FI',  fullName: '流量指示',     color: '#2e7d32', abbr: 'FI',  code: 'FI' },
+            { id: 'ft',  name: 'FT',  fullName: '流量变送',     color: '#388e3c', abbr: 'FT',  code: 'FT' },
+            { id: 'fit', name: 'FIT', fullName: '流量指示变送', color: '#43a047', abbr: 'FIT', code: 'FIT' },
+            { id: 'li',  name: 'LI',  fullName: '液位指示',     color: '#6a1b9a', abbr: 'LI',  code: 'LI' },
+            { id: 'lt',  name: 'LT',  fullName: '液位变送',     color: '#7b1fa2', abbr: 'LT',  code: 'LT' },
+            { id: 'lit', name: 'LIT', fullName: '液位指示变送', color: '#8e24aa', abbr: 'LIT', code: 'LIT' },
+            { id: 'pdi', name: 'PDI', fullName: '差压指示',   color: '#00838f', abbr: 'PDI', code: 'PDI' },
+            { id: 'pdt', name: 'PDT', fullName: '差压变送',   color: '#00695c', abbr: 'PDT', code: 'PDT' },
+            { id: 'other', name: '其他', fullName: '其他仪表', color: '#e53935', abbr: 'X', code: 'X' },
+        ];
+        let markerTypes = DEFAULT_TYPES.map(t => ({ ...t }));
+        let currentTypeId = markerTypes[0].id;
+
+        function getTypeById(id) {
+            return markerTypes.find(t => t.id === id) || markerTypes[0];
+        }
+
+        function getCurrentType() {
+            return getTypeById(currentTypeId);
+        }
+
+        function renderTypeChips() {
+            typeChipsEl.innerHTML = '';
+            for (const t of markerTypes) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'type-chip' + (t.id === currentTypeId ? ' active' : '');
+                btn.textContent = t.name;
+                btn.style.borderColor = t.color;
+                if (t.id === currentTypeId) {
+                    btn.style.background = t.color;
+                    btn.style.color = '#fff';
+                } else {
+                    btn.style.color = t.color;
+                    btn.style.background = t.color + '18';
+                }
+                btn.title = t.fullName ? `${t.name} · ${t.fullName}` : `${t.name}（点击选择）`;
+                btn.addEventListener('click', () => selectType(t.id));
+                typeChipsEl.appendChild(btn);
+            }
+        }
+
+        function selectType(typeId) {
+            const t = getTypeById(typeId);
+            currentTypeId = t.id;
+            currentColor = t.color;
+            colorPicker.value = t.color;
+            nextMarkerNumber = findNextNumberForType(t.id);
+            syncNumberInput();
+            renderTypeChips();
+        }
+
+        function addCustomType() {
+            const name = prompt('输入新仪表类型代号（如：PSH、AI、HCV）', '');
+            if (!name) return;
+            const trimmed = name.trim().slice(0, 12);
+            if (!trimmed) return;
+            if (markerTypes.some(t => t.name === trimmed)) {
+                alert('该类型已存在');
+                return;
+            }
+            const colors = ['#00838f', '#ad1457', '#4527a0', '#558b2f', '#bf360c', '#37474f'];
+            const color = colors[markerTypes.length % colors.length];
+            const id = 'custom_' + Date.now();
+            const usedCodes = new Set(markerTypes.map(t => t.code));
+            let code = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'A';
+            if (usedCodes.has(code)) {
+                for (let i = 0; i < 26; i++) {
+                    const c = String.fromCharCode(65 + i);
+                    if (!usedCodes.has(c)) { code = c; break; }
+                }
+            }
+            markerTypes.push({
+                id,
+                name: trimmed,
+                fullName: trimmed,
+                color,
+                abbr: code,
+                code,
+            });
+            selectType(id);
+        }
 
         // ============ 视图状态 ============
         let panX = 0,
@@ -556,15 +1135,34 @@
         radiusValueEl.textContent = markerRadius;
         fontSizeValueEl.textContent = markerFontSize;
 
-        // ============ 编号管理 ============
+        // ============ 编号管理（按类型独立编号）============
         let nextMarkerNumber = 1;
-        const usedNumbers = new Set();
+        /** @type {Map<string, Set<number>>} */
+        const usedNumbersByType = new Map();
 
-        function isNumberUsed(num) { return usedNumbers.has(num); }
+        function getUsedSet(typeId) {
+            if (!usedNumbersByType.has(typeId)) usedNumbersByType.set(typeId, new Set());
+            return usedNumbersByType.get(typeId);
+        }
 
-        function reserveNumber(num) { usedNumbers.add(num); }
+        function isNumberUsed(num, typeId = currentTypeId) {
+            return getUsedSet(typeId).has(num);
+        }
 
-        function releaseNumber(num) { usedNumbers.delete(num); }
+        function reserveNumber(num, typeId = currentTypeId) {
+            getUsedSet(typeId).add(num);
+        }
+
+        function releaseNumber(num, typeId) {
+            getUsedSet(typeId).delete(num);
+        }
+
+        function findNextNumberForType(typeId) {
+            let n = 1;
+            const used = getUsedSet(typeId);
+            while (n <= MAX_MARKER_NUMBER && used.has(n)) n++;
+            return n > MAX_MARKER_NUMBER ? MAX_MARKER_NUMBER : n;
+        }
 
         function updateNumberInputState() {
             const val = parseInt(numberInput.value, 10);
@@ -578,8 +1176,9 @@
         }
 
         function syncNumberInput() {
-            numberInput.value = nextMarkerNumber;
+            numberInput.value = formatMarkerNumber(nextMarkerNumber);
             numberInput.classList.remove('error');
+            updateNumberInputState();
         }
 
         // ============ 撤销历史 ============
@@ -588,21 +1187,18 @@
         function undo() {
             if (history.length === 0) return;
             const last = history.pop();
-            if (last.type === 'add') {
+            if (last && last.type === 'add' && last.marker) {
                 const marker = last.marker;
                 const idx = markers.indexOf(marker);
-                if (idx !== -1) {
-                    markers.splice(idx, 1);
-                    releaseNumber(marker.number);
-                    if (marker.number < nextMarkerNumber) {
-                        nextMarkerNumber = marker.number;
-                    }
-                    syncNumberInput();
-                    requestRender();
-                    updateUI();
-                    updateUndoButtonState();
-                }
+                if (idx !== -1) markers.splice(idx, 1);
+                // 无论是否仍在数组中，都释放编号，避免历史与数据不同步后编号永久占用
+                releaseNumber(marker.number, marker.typeId);
+                nextMarkerNumber = findNextNumberForType(currentTypeId);
+                syncNumberInput();
+                requestRender();
+                updateUI();
             }
+            updateUndoButtonState();
         }
 
         function updateUndoButtonState() {
@@ -616,13 +1212,15 @@
             documents = [];
             pages = [];
             markers = [];
-            usedNumbers.clear();
+            usedNumbersByType.clear();
             history.length = 0;
-            nextMarkerNumber = 1;
+            nextMarkerNumber = findNextNumberForType(currentTypeId);
             nextDocId = 1;
             panX = 0;
             panY = 0;
             zoom = 1;
+            statsPanel.classList.remove('visible');
+            statsToggle.classList.remove('active');
             syncNumberInput();
             updateUI();
             requestRender();
@@ -688,7 +1286,7 @@
                 return false;
             }
             if (isNumberUsed(desiredNumber)) {
-                alert(`编号 ${desiredNumber} 已被使用，请更换编号`);
+                alert(`当前类型下编号 ${desiredNumber} 已被使用，请更换编号`);
                 numberInput.focus();
                 return false;
             }
@@ -702,12 +1300,18 @@
                 return false;
             }
 
-            reserveNumber(desiredNumber);
+            const type = getCurrentType();
+            reserveNumber(desiredNumber, type.id);
             const marker = {
                 vx,
                 vy,
                 number: desiredNumber,
                 color: currentColor,
+                typeId: type.id,
+                typeName: type.name,
+                typeFullName: type.fullName || type.name,
+                typeAbbr: type.abbr,
+                typeCode: type.code,
                 docId: page.docId,
                 pageIndex: page.pageIndex,
             };
@@ -715,9 +1319,7 @@
             history.push({ type: 'add', marker });
             updateUndoButtonState();
 
-            let nextNum = desiredNumber + 1;
-            while (nextNum <= MAX_MARKER_NUMBER && isNumberUsed(nextNum)) nextNum++;
-            nextMarkerNumber = nextNum > MAX_MARKER_NUMBER ? MAX_MARKER_NUMBER + 1 : nextNum;
+            nextMarkerNumber = findNextNumberForType(currentTypeId);
             syncNumberInput();
             requestRender();
             updateUI();
@@ -730,7 +1332,7 @@
                 r: parseInt(result[1], 16) / 255,
                 g: parseInt(result[2], 16) / 255,
                 b: parseInt(result[3], 16) / 255,
-            } : { r: 0, g: 0, b: 0 };
+            } : { r: 0.9, g: 0.22, b: 0.21 };
         }
 
         // ============ 渲染 ============
@@ -770,6 +1372,10 @@
                 ctx.strokeStyle = 'rgba(0,0,0,0.06)';
                 ctx.lineWidth = 0.4 / zoom;
                 ctx.strokeRect(dx, dy, dw, dh);
+
+                if (settings.showPageCaption) {
+                    drawPageCaption(page, dx, dy, dw, dh);
+                }
             }
 
             // 绘制标记
@@ -778,7 +1384,8 @@
             const lineWidth = markerLineWidth;
 
             for (const m of markers) {
-                const { vx, vy, number, color } = m;
+                const { vx, vy, color } = m;
+                const label = formatMarkerLabel(m);
 
                 ctx.beginPath();
                 ctx.arc(vx, vy, radius, 0, Math.PI * 2);
@@ -789,12 +1396,13 @@
                 ctx.stroke();
 
                 ctx.fillStyle = color;
-                ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                const useSize = label.length > 5 ? fontSize * 0.68 : (label.length > 4 ? fontSize * 0.78 : fontSize);
+                ctx.font = `bold ${useSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.shadowColor = 'rgba(255,255,255,0.6)';
                 ctx.shadowBlur = 2 / zoom;
-                ctx.fillText(number.toString(), vx, vy);
+                ctx.fillText(label, vx, vy);
                 ctx.shadowColor = 'transparent';
                 ctx.shadowBlur = 0;
             }
@@ -802,8 +1410,122 @@
             ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
 
+        function drawPageCaption(page, dx, dy, dw, dh) {
+            const mmW = (page.origWidth * 25.4 / 72).toFixed(1);
+            const mmH = (page.origHeight * 25.4 / 72).toFixed(1);
+            const parts = [];
+            if (settings.captionShowName) parts.push(getDocFileName(page.docId));
+            if (settings.captionShowSize) parts.push(`${mmW} × ${mmH} mm`);
+            if (parts.length === 0) return;
+
+            const text = parts.join('  ·  ');
+            const fontSize = Math.max(9, Math.min(13, dw * 0.028));
+            const padX = 6;
+            const padY = 3.5;
+            const cy = dy + dh + fontSize + padY + 2;
+
+            ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const textW = ctx.measureText(text).width;
+            const boxW = Math.min(dw, textW + padX * 2);
+            const boxH = fontSize + padY * 2;
+            const boxX = dx;
+            const boxY = cy - boxH / 2;
+
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+            ctx.lineWidth = 0.5 / Math.max(zoom, 0.01);
+            const r = 3;
+            ctx.beginPath();
+            ctx.moveTo(boxX + r, boxY);
+            ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
+            ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
+            ctx.arcTo(boxX, boxY + boxH, boxX, boxY, r);
+            ctx.arcTo(boxX, boxY, boxX + boxW, boxY, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#555555';
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(boxX + padX * 0.5, boxY, boxW - padX, boxH);
+            ctx.clip();
+            ctx.fillText(text, boxX + padX, cy);
+            ctx.restore();
+        }
+
         function requestRender() {
             requestAnimationFrame(render);
+        }
+
+        function getDocFileName(docId) {
+            const doc = documents.find(d => d.id === docId);
+            return doc?.fileName || `文档${docId}`;
+        }
+
+        function updateStatsPanel() {
+            statsTotal.textContent = `共 ${markers.length} 个`;
+            if (markers.length === 0) {
+                statsList.innerHTML = '<div class="stats-empty">暂无标记</div>';
+            } else {
+                const byDoc = new Map();
+                for (const m of markers) {
+                    if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
+                    byDoc.get(m.docId).push(m);
+                }
+                // 按导入顺序显示文件
+                const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
+                for (const id of byDoc.keys()) {
+                    if (!docOrder.includes(id)) docOrder.push(id);
+                }
+
+                let html = '';
+                for (const docId of docOrder) {
+                    const list = byDoc.get(docId);
+                    const counts = new Map();
+                    for (const m of list) {
+                        const key = m.typeId || 'other';
+                        counts.set(key, (counts.get(key) || 0) + 1);
+                    }
+                    const rows = markerTypes
+                        .map(t => ({ t, count: counts.get(t.id) || 0 }))
+                        .filter(x => x.count > 0);
+                    for (const [id, count] of counts) {
+                        if (!markerTypes.some(t => t.id === id)) {
+                            rows.push({ t: { id, name: id, color: '#888' }, count });
+                        }
+                    }
+                    html += `<div class="stats-file">
+                        <div class="stats-file__name">${escapeHtml(getDocFileName(docId))}<span class="stats-file__total">（${list.length}）</span></div>
+                        ${rows.map(({ t, count }) => `
+                            <div class="stats-row">
+                                <div class="stats-type">
+                                    <span class="stats-dot" style="background:${t.color}"></span>
+                                    <span class="stats-name">${escapeHtml(t.name)}</span>
+                                </div>
+                                <span class="stats-count">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                }
+                statsList.innerHTML = html;
+            }
+            const show = pages.length > 0 || markers.length > 0;
+            statsToggle.classList.toggle('visible', show);
+            if (!show) {
+                statsPanel.classList.remove('visible');
+                statsToggle.classList.remove('active');
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
         // ============ UI更新 ============
@@ -819,19 +1541,30 @@
                     pageCountEl.textContent = `渲染中… ${rendered}/${total} 页`;
                     pageCountEl.classList.add('visible');
                 } else if (total > 1) {
-                    pageCountEl.textContent = `共 ${total} 页 · 标记 ${markers.length}`;
+                    const docLabel = documents.length > 1
+                        ? `${documents.length} 个文件 · 共 ${total} 页 · 标记 ${markers.length}`
+                        : `共 ${total} 页 · 标记 ${markers.length}`;
+                    pageCountEl.textContent = docLabel;
                     pageCountEl.classList.add('visible');
                 } else {
-                    pageCountEl.textContent = `1 页 · 标记 ${markers.length}`;
+                    const name = documents[0]?.fileName ? ` · ${documents[0].fileName}` : '';
+                    pageCountEl.textContent = `1 页 · 标记 ${markers.length}${name}`;
                     pageCountEl.classList.add('visible');
                 }
             }
             updateUndoButtonState();
+            updateStatsPanel();
         }
 
         // ============ 导入PDF ============
+        function isPdfFile(file) {
+            if (!file) return false;
+            if (file.type === 'application/pdf') return true;
+            return /\.pdf$/i.test(file.name || '');
+        }
+
         async function importPdfFile(file) {
-            if (!file || file.type !== 'application/pdf') return;
+            if (!isPdfFile(file)) return;
             const pdfjsLib = window.pdfjsLib;
             if (!pdfjsLib) return;
 
@@ -843,14 +1576,15 @@
 
             const docId = nextDocId++;
             const numPages = pdfDoc.numPages;
-            const docEntry = { id: docId, arrayBuffer, pages: [] };
+            const fileName = (file.name && file.name.trim()) ? file.name.trim() : `未命名_${docId}.pdf`;
+            const docEntry = { id: docId, fileName, arrayBuffer, pages: [], pageCount: numPages };
             documents.push(docEntry);
 
             const newEntries = [];
             let startY = 0;
             if (pages.length > 0) {
                 const last = pages[pages.length - 1];
-                startY = last.vy + last.origHeight + DOC_GAP;
+                startY = last.vy + last.origHeight + pageStackGap(last.docId, docId);
             }
 
             for (let i = 1; i <= numPages; i++) {
@@ -858,7 +1592,9 @@
                 const viewport = page.getViewport({ scale: 1 });
                 const origWidth = viewport.width,
                     origHeight = viewport.height;
-                const vy = (i === 1) ? startY : newEntries[i - 2].vy + newEntries[i - 2].origHeight + PAGE_GAP;
+                const vy = (i === 1)
+                    ? startY
+                    : newEntries[i - 2].vy + newEntries[i - 2].origHeight + pageStackGap(docId, docId);
                 const vx = 0;
                 const pageData = {
                     offscreenCanvas: null,
@@ -912,76 +1648,7 @@
                         renderInteractiveForms: false,
                     }).promise;
 
-                    // ===== 在左下角绘制尺寸标注 (单位 mm) =====
-                    const origW = entry.origWidth;  // pt
-                    const origH = entry.origHeight; // pt
-                    // 转换 pt → mm (1pt = 25.4/72 mm)
-                    const mmW = origW * 25.4 / 72;
-                    const mmH = origH * 25.4 / 72;
-                    const dimText = `${mmW.toFixed(1)} × ${mmH.toFixed(1)}`;
-
-                    // 自适应字体大小（离屏canvas尺寸的 1.3%，限制在 10~32px）
-                    let fontSize = Math.min(offscreen.width, offscreen.height) * 0.013;
-                    fontSize = Math.max(10, Math.min(32, fontSize));
-
-                    offCtx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-                    const metrics = offCtx.measureText(dimText);
-                    const textWidth = metrics.width;
-                    const textHeight = fontSize * 1.25;
-
-                    const padding = Math.max(6, fontSize * 0.45);
-                    const margin = Math.max(10, fontSize * 0.55);
-                    const boxX = margin;
-                    const boxY = offscreen.height - margin - textHeight - padding * 2;
-                    const boxW = textWidth + padding * 2;
-                    const boxH = textHeight + padding * 2;
-
-                    // 背景阴影
-                    offCtx.shadowColor = 'rgba(0,0,0,0.10)';
-                    offCtx.shadowBlur = 6;
-                    offCtx.shadowOffsetX = 0;
-                    offCtx.shadowOffsetY = 2;
-
-                    // 圆角矩形背景
-                    const radius = Math.min(4, fontSize * 0.25);
-                    offCtx.beginPath();
-                    offCtx.moveTo(boxX + radius, boxY);
-                    offCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, radius);
-                    offCtx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, radius);
-                    offCtx.arcTo(boxX, boxY + boxH, boxX, boxY, radius);
-                    offCtx.arcTo(boxX, boxY, boxX + boxW, boxY, radius);
-                    offCtx.closePath();
-                    offCtx.fillStyle = 'rgba(255,255,255,0.88)';
-                    offCtx.fill();
-
-                    // 边框（极淡）
-                    offCtx.shadowColor = 'transparent';
-                    offCtx.shadowBlur = 0;
-                    offCtx.strokeStyle = 'rgba(0,0,0,0.06)';
-                    offCtx.lineWidth = 0.6;
-                    offCtx.stroke();
-
-                    // 主文字 (尺寸)
-                    offCtx.fillStyle = '#444444';
-                    offCtx.textAlign = 'left';
-                    offCtx.textBaseline = 'bottom';
-                    offCtx.shadowColor = 'transparent';
-                    offCtx.shadowBlur = 0;
-                    offCtx.fillText(dimText, boxX + padding, boxY + textHeight + padding);
-
-                    // ---- 单位 "mm" ----
-                    const unitText = 'mm';
-                    const unitSize = fontSize * 0.55;
-                    offCtx.font = `${unitSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-                    const unitMetrics = offCtx.measureText(unitText);
-                    const unitX = boxX + padding + textWidth + 4;
-                    const unitY = boxY + textHeight + padding - (fontSize - unitSize) * 0.4;
-                    offCtx.fillStyle = '#999999';
-                    offCtx.textAlign = 'left';
-                    offCtx.textBaseline = 'bottom';
-                    offCtx.fillText(unitText, unitX, unitY);
-
-                    // ---- 完成 ----
+                    // 文件名、尺寸改到页面下方页脚绘制，不再烙印在图纸角上
                     entry.offscreenCanvas = offscreen;
                     entry.pageObj = null;
                     updateUI();
@@ -1028,8 +1695,9 @@
                         const pdfY = height - localY;
 
                         const rgb = hexToRgb(m.color);
-                        const text = m.number.toString();
-                        const textWidth = font.widthOfTextAtSize(text, fontSize);
+                        const text = formatMarkerLabel(m);
+                        const drawSize = text.length > 5 ? fontSize * 0.68 : (text.length > 4 ? fontSize * 0.78 : fontSize);
+                        const textWidth = font.widthOfTextAtSize(text, drawSize);
 
                         copiedPage.drawCircle({
                             x: pdfX,
@@ -1040,11 +1708,11 @@
                             borderWidth: 2,
                         });
 
-                        const baselineY = pdfY - VISUAL_CENTER_OFFSET * fontSize;
+                        const baselineY = pdfY - VISUAL_CENTER_OFFSET * drawSize;
                         copiedPage.drawText(text, {
                             x: pdfX - textWidth / 2,
                             y: baselineY,
-                            size: fontSize,
+                            size: drawSize,
                             color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
                             font: font,
                         });
@@ -1057,9 +1725,273 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `标注_${new Date().toISOString().slice(0, 10)}.pdf`;
+            a.download = `电气标注_${new Date().toISOString().slice(0, 10)}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        // ============ 导出 Excel 统计 ============
+        function normalizeHexColor(hex) {
+            if (!hex || typeof hex !== 'string') return 'E53935';
+            const h = hex.replace('#', '').trim();
+            if (/^[0-9a-fA-F]{6}$/.test(h)) return h.toUpperCase();
+            if (/^[0-9a-fA-F]{3}$/.test(h)) {
+                return (h[0] + h[0] + h[1] + h[1] + h[2] + h[2]).toUpperCase();
+            }
+            return 'E53935';
+        }
+
+        function applyColorFill(cell, hex) {
+            const rgb = normalizeHexColor(hex);
+            cell.value = '';
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF' + rgb },
+            };
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+            };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        }
+
+        function styleHeaderRow(row) {
+            row.font = { bold: true, color: { argb: 'FF333333' } };
+            row.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF1F3F4' },
+            };
+            row.alignment = { vertical: 'middle' };
+        }
+
+        async function downloadExcelBuffer(buffer, filename) {
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportExcel() {
+            if (markers.length === 0) {
+                alert('还没有标记，请先在图纸上点击标注');
+                return;
+            }
+            try {
+                const ExcelJS = await loadExcelJS();
+                const wb = new ExcelJS.Workbook();
+                wb.creator = '电气PDF标注';
+                wb.created = new Date();
+
+                // ---- 按文件汇总 ----
+                const wsByFile = wb.addWorksheet('按文件汇总', {
+                    views: [{ state: 'frozen', ySplit: 1 }],
+                });
+                wsByFile.columns = [
+                    { header: '文件名', key: 'file', width: 36 },
+                    { header: '类型', key: 'type', width: 10 },
+                    { header: '说明', key: 'desc', width: 16 },
+                    { header: '数量', key: 'count', width: 8 },
+                    { header: '颜色', key: 'color', width: 10 },
+                ];
+                styleHeaderRow(wsByFile.getRow(1));
+
+                const byDoc = new Map();
+                for (const m of markers) {
+                    if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
+                    byDoc.get(m.docId).push(m);
+                }
+                const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
+                for (const id of byDoc.keys()) {
+                    if (!docOrder.includes(id)) docOrder.push(id);
+                }
+
+                for (const docId of docOrder) {
+                    const list = byDoc.get(docId);
+                    const fileName = getDocFileName(docId);
+                    const counts = new Map();
+                    for (const m of list) {
+                        const key = m.typeId || 'other';
+                        if (!counts.has(key)) {
+                            counts.set(key, {
+                                count: 0,
+                                name: m.typeName,
+                                fullName: m.typeFullName || '',
+                                color: m.color,
+                            });
+                        }
+                        const entry = counts.get(key);
+                        entry.count++;
+                        entry.color = m.color;
+                        if (m.typeFullName) entry.fullName = m.typeFullName;
+                    }
+
+                    const typeRows = [];
+                    for (const t of markerTypes) {
+                        const c = counts.get(t.id);
+                        if (c) typeRows.push({
+                            name: t.name,
+                            fullName: c.fullName || t.fullName || '',
+                            count: c.count,
+                            color: c.color || t.color,
+                        });
+                    }
+                    for (const [id, c] of counts) {
+                        if (!markerTypes.some(t => t.id === id)) {
+                            typeRows.push({
+                                name: c.name || id,
+                                fullName: c.fullName || '',
+                                count: c.count,
+                                color: c.color,
+                            });
+                        }
+                    }
+
+                    typeRows.forEach((row, idx) => {
+                        const r = wsByFile.addRow({
+                            file: idx === 0 ? fileName : '',
+                            type: row.name,
+                            desc: row.fullName,
+                            count: row.count,
+                            color: '',
+                        });
+                        applyColorFill(r.getCell(5), row.color);
+                    });
+
+                    const totalRow = wsByFile.addRow({
+                        file: '',
+                        type: '小计',
+                        desc: '',
+                        count: list.length,
+                        color: '',
+                    });
+                    totalRow.font = { bold: true };
+                    totalRow.getCell(2).font = { bold: true, color: { argb: 'FF555555' } };
+
+                    wsByFile.addRow({}); // 空行分隔文件
+                }
+
+                const grand = wsByFile.addRow({
+                    file: '全部合计',
+                    type: '',
+                    desc: '',
+                    count: markers.length,
+                    color: '',
+                });
+                grand.font = { bold: true };
+
+                // ---- 类型总汇（跨文件）----
+                const wsType = wb.addWorksheet('类型总汇', {
+                    views: [{ state: 'frozen', ySplit: 1 }],
+                });
+                wsType.columns = [
+                    { header: '类型', key: 'type', width: 10 },
+                    { header: '说明', key: 'desc', width: 16 },
+                    { header: '数量', key: 'count', width: 8 },
+                    { header: '颜色', key: 'color', width: 10 },
+                ];
+                styleHeaderRow(wsType.getRow(1));
+
+                const typeCounts = new Map();
+                for (const m of markers) {
+                    const key = m.typeId;
+                    if (!typeCounts.has(key)) {
+                        typeCounts.set(key, {
+                            count: 0,
+                            name: m.typeName,
+                            fullName: m.typeFullName || '',
+                            color: m.color,
+                        });
+                    }
+                    const entry = typeCounts.get(key);
+                    entry.count++;
+                    entry.color = m.color;
+                    if (m.typeFullName) entry.fullName = m.typeFullName;
+                }
+                for (const t of markerTypes) {
+                    const c = typeCounts.get(t.id);
+                    if (!c) continue;
+                    const r = wsType.addRow({
+                        type: t.name,
+                        desc: c.fullName || t.fullName || '',
+                        count: c.count,
+                        color: '',
+                    });
+                    applyColorFill(r.getCell(4), c.color || t.color);
+                }
+                for (const [id, c] of typeCounts) {
+                    if (markerTypes.some(t => t.id === id)) continue;
+                    const r = wsType.addRow({
+                        type: c.name || id,
+                        desc: c.fullName || '',
+                        count: c.count,
+                        color: '',
+                    });
+                    applyColorFill(r.getCell(4), c.color);
+                }
+                const typeTotal = wsType.addRow({ type: '合计', desc: '', count: markers.length, color: '' });
+                typeTotal.font = { bold: true };
+
+                // ---- 明细清单 ----
+                const wsDetail = wb.addWorksheet('明细清单', {
+                    views: [{ state: 'frozen', ySplit: 1 }],
+                });
+                wsDetail.columns = [
+                    { header: '序号', key: 'idx', width: 6 },
+                    { header: '文件名', key: 'file', width: 36 },
+                    { header: '类型', key: 'type', width: 10 },
+                    { header: '说明', key: 'desc', width: 16 },
+                    { header: '编号', key: 'num', width: 8 },
+                    { header: '标记标签', key: 'label', width: 12 },
+                    { header: '页码', key: 'page', width: 6 },
+                    { header: '颜色', key: 'color', width: 10 },
+                    { header: 'X(pt)', key: 'x', width: 10 },
+                    { header: 'Y(pt)', key: 'y', width: 10 },
+                ];
+                styleHeaderRow(wsDetail.getRow(1));
+
+                const sorted = [...markers].sort((a, b) => {
+                    const fa = getDocFileName(a.docId);
+                    const fb = getDocFileName(b.docId);
+                    if (fa !== fb) return fa.localeCompare(fb, 'zh');
+                    if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
+                    return a.number - b.number;
+                });
+
+                sorted.forEach((m, i) => {
+                    const t = getTypeById(m.typeId);
+                    const pageData = pages.find(p => p.docId === m.docId && p.pageIndex === m.pageIndex);
+                    const localX = pageData ? +(m.vx - pageData.vx).toFixed(1) : '';
+                    const localY = pageData ? +(m.vy - pageData.vy).toFixed(1) : '';
+                    const r = wsDetail.addRow({
+                        idx: i + 1,
+                        file: getDocFileName(m.docId),
+                        type: m.typeName || t.name,
+                        desc: m.typeFullName || t.fullName || '',
+                        num: m.number,
+                        label: formatMarkerLabel(m),
+                        page: m.pageIndex,
+                        color: '',
+                        x: localX,
+                        y: localY,
+                    });
+                    applyColorFill(r.getCell(8), m.color);
+                });
+
+                const buffer = await wb.xlsx.writeBuffer();
+                await downloadExcelBuffer(buffer, `电气标注统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            } catch (e) {
+                console.error(e);
+                alert('导出 Excel 失败，请检查网络后重试（需加载 ExcelJS）');
+            }
         }
 
         // ============ 事件绑定 ============
@@ -1232,7 +2164,7 @@
             const files = e.dataTransfer?.files;
             if (!files) return;
             for (const file of files) {
-                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                if (isPdfFile(file)) {
                     await importPdfFile(file);
                 }
             }
@@ -1252,15 +2184,42 @@
         exportBtn.addEventListener('click', exportMarkedPDF);
         undoBtn.addEventListener('click', undo);
         clearBtn.addEventListener('click', clearAll);
-
+        addTypeBtn.addEventListener('click', addCustomType);
+        exportExcelBtn.addEventListener('click', exportExcel);
+        exportExcelBottomBtn.addEventListener('click', exportExcel);
+        exportPdfFromStatsBtn.addEventListener('click', exportMarkedPDF);
+        statsToggle.addEventListener('click', () => {
+            const open = !statsPanel.classList.contains('visible');
+            statsPanel.classList.toggle('visible', open);
+            statsToggle.classList.toggle('active', open);
+        });
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            if (e.key === 'Escape' && statsPanel.classList.contains('visible')) {
+                statsPanel.classList.remove('visible');
+                statsToggle.classList.remove('active');
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+                const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) {
+                    return; // 输入框内保留系统撤销，不误撤标记
+                }
                 e.preventDefault();
                 undo();
             }
         });
 
-        colorPicker.addEventListener('input', (e) => { currentColor = e.target.value; });
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            const t = getCurrentType();
+            t.color = currentColor;
+            // 类型色变更时同步该类型已有标记，避免统计/画布/色板不一致
+            for (const m of markers) {
+                if (m.typeId === t.id) m.color = currentColor;
+            }
+            renderTypeChips();
+            updateStatsPanel();
+            requestRender();
+        });
         radiusSlider.addEventListener('input', (e) => {
             markerRadius = parseFloat(e.target.value);
             radiusValueEl.textContent = markerRadius;
@@ -1274,19 +2233,52 @@
 
         numberInput.addEventListener('input', updateNumberInputState);
         numberInput.addEventListener('blur', () => {
-            let val = parseInt(numberInput.value, 10);
+            let val = parseInt(String(numberInput.value).replace(/\D/g, ''), 10);
             if (isNaN(val) || val < 1) val = 1;
             if (val > MAX_MARKER_NUMBER) val = MAX_MARKER_NUMBER;
-            numberInput.value = val;
             nextMarkerNumber = val;
-            updateNumberInputState();
+            syncNumberInput();
         });
         numberInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') numberInput.blur();
         });
 
+        function openSettings() {
+            settingPadDigits.value = String(settings.numberPadDigits);
+            settingShowCaption.checked = !!settings.showPageCaption;
+            settingCaptionName.checked = !!settings.captionShowName;
+            settingCaptionSize.checked = !!settings.captionShowSize;
+            settingsBackdrop.classList.add('visible');
+        }
+        function closeSettings() {
+            settingsBackdrop.classList.remove('visible');
+        }
+        function applySettingsFromForm() {
+            settings.numberPadDigits = parseInt(settingPadDigits.value, 10) || 3;
+            settings.showPageCaption = settingShowCaption.checked;
+            settings.captionShowName = settingCaptionName.checked;
+            settings.captionShowSize = settingCaptionSize.checked;
+            saveSettings();
+            syncNumberInput();
+            requestRender();
+            closeSettings();
+        }
+        settingsBtn.addEventListener('click', openSettings);
+        settingsCloseBtn.addEventListener('click', closeSettings);
+        settingsCancelBtn.addEventListener('click', closeSettings);
+        settingsSaveBtn.addEventListener('click', applySettingsFromForm);
+        settingsBackdrop.addEventListener('click', (e) => {
+            if (e.target === settingsBackdrop) closeSettings();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && settingsBackdrop.classList.contains('visible')) {
+                closeSettings();
+            }
+        });
+
         radiusValueEl.textContent = markerRadius;
         fontSizeValueEl.textContent = markerFontSize;
+        renderTypeChips();
         syncNumberInput();
         updateUndoButtonState();
 
@@ -1303,7 +2295,9 @@
         window.__canvasAPI = {
             get pages() { return pages; },
             get markers() { return markers; },
+            get types() { return markerTypes; },
             reset: clearAll,
+            exportExcel,
         };
     </script>
 </body>
