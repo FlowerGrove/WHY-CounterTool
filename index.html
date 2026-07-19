@@ -3,584 +3,897 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>木含 · 九宫格</title>
-    <!-- Font Awesome 图标库 (免费) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <title>北斗七星 · 雅致中国纹</title>
     <style>
-        /* ===== 全局重置 & 字体 ===== */
+        /* ============================
+                   0. 基础重置 & 全局
+                   ============================ */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html,
         body {
-            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #e8ddd0;
-            /* 暖灰底色，衬托木纹 */
-            background-image:
-                repeating-linear-gradient(45deg,
-                    rgba(180, 150, 120, 0.03) 0px,
-                    rgba(180, 150, 120, 0.03) 2px,
-                    transparent 2px,
-                    transparent 8px),
-                repeating-linear-gradient(-45deg,
-                    rgba(180, 150, 120, 0.03) 0px,
-                    rgba(180, 150, 120, 0.03) 2px,
-                    transparent 2px,
-                    transparent 8px);
-            padding: 20px;
-        }
-
-        /* ===== 主卡片 ===== */
-        .container {
-            max-width: 720px;
             width: 100%;
-            background: #f7f0e8;
-            /* 米白底 */
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #1a1418;
+
+            /* ==============================================================
+                   1-9层：颜料质感背景（完全保留）
+                   ============================================================== */
             background-image:
-                radial-gradient(circle at 10% 20%, rgba(210, 180, 150, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 90% 80%, rgba(180, 150, 120, 0.10) 0%, transparent 50%);
-            border-radius: 48px 48px 40px 40px;
-            padding: 30px 28px 38px;
-            box-shadow:
-                0 20px 60px rgba(120, 90, 70, 0.25),
-                0 8px 24px rgba(120, 90, 70, 0.10),
-                inset 0 1px 0 rgba(255, 245, 235, 0.8);
-            backdrop-filter: blur(2px);
-            border: 1px solid rgba(210, 185, 160, 0.30);
-            transition: box-shadow 0.3s ease;
-        }
 
-        /* ===== 顶部 ===== */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-bottom: 18px;
-            border-bottom: 2px solid rgba(180, 150, 125, 0.20);
-            margin-bottom: 24px;
-        }
+                /* ---- 第1层：大面积底色晕染 ---- */
+                radial-gradient(ellipse 1200px 900px at 10% 20%,
+                    rgba(220, 120, 70, 0.35),
+                    transparent 70%),
+                radial-gradient(ellipse 1000px 800px at 88% 75%,
+                    rgba(60, 150, 220, 0.30),
+                    transparent 68%),
+                radial-gradient(ellipse 1100px 850px at 50% 50%,
+                    rgba(240, 200, 80, 0.25),
+                    transparent 75%),
+                radial-gradient(ellipse 900px 750px at 25% 80%,
+                    rgba(180, 80, 200, 0.18),
+                    transparent 72%),
+                radial-gradient(ellipse 950px 800px at 75% 15%,
+                    rgba(50, 210, 160, 0.20),
+                    transparent 70%),
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
+                /* ---- 第2层：厚涂颜料块 ---- */
+                radial-gradient(ellipse 550px 450px at 18% 35%,
+                    rgba(235, 140, 80, 0.55) 0%,
+                    rgba(235, 140, 80, 0.25) 40%,
+                    transparent 72%),
+                radial-gradient(ellipse 500px 420px at 80% 65%,
+                    rgba(70, 170, 235, 0.50) 0%,
+                    rgba(70, 170, 235, 0.20) 40%,
+                    transparent 70%),
+                radial-gradient(ellipse 480px 400px at 45% 25%,
+                    rgba(250, 210, 100, 0.45) 0%,
+                    rgba(250, 210, 100, 0.15) 45%,
+                    transparent 75%),
+                radial-gradient(ellipse 460px 380px at 55% 78%,
+                    rgba(200, 100, 220, 0.35) 0%,
+                    rgba(200, 100, 220, 0.12) 45%,
+                    transparent 72%),
+                radial-gradient(ellipse 420px 360px at 30% 60%,
+                    rgba(80, 220, 180, 0.30) 0%,
+                    rgba(80, 220, 180, 0.10) 45%,
+                    transparent 75%),
 
-        .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(145deg, #c9b09b, #b0957e);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #f5ede4;
-            font-size: 26px;
-            box-shadow: 0 6px 16px rgba(140, 110, 85, 0.25);
-            border: 1px solid rgba(255, 235, 215, 0.35);
-        }
+                /* ---- 第3层：颜料堆积 ---- */
+                radial-gradient(ellipse 280px 240px at 12% 28%,
+                    rgba(245, 160, 90, 0.60) 0%,
+                    rgba(245, 160, 90, 0.20) 50%,
+                    transparent 78%),
+                radial-gradient(ellipse 300px 250px at 85% 72%,
+                    rgba(80, 185, 245, 0.55) 0%,
+                    rgba(80, 185, 245, 0.18) 50%,
+                    transparent 76%),
+                radial-gradient(ellipse 260px 220px at 48% 50%,
+                    rgba(255, 215, 110, 0.50) 0%,
+                    rgba(255, 215, 110, 0.15) 50%,
+                    transparent 80%),
+                radial-gradient(ellipse 240px 200px at 70% 35%,
+                    rgba(160, 70, 210, 0.40) 0%,
+                    rgba(160, 70, 210, 0.12) 50%,
+                    transparent 78%),
+                radial-gradient(ellipse 220px 190px at 40% 85%,
+                    rgba(60, 210, 170, 0.35) 0%,
+                    rgba(60, 210, 170, 0.10) 50%,
+                    transparent 80%),
 
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 600;
-            color: #5c4a3a;
-            letter-spacing: 2px;
-        }
+                /* ---- 第4层：细部颜料 & 飞溅 ---- */
+                radial-gradient(circle 80px at 22% 18%,
+                    rgba(250, 180, 110, 0.50) 0%,
+                    transparent 70%),
+                radial-gradient(circle 70px at 78% 45%,
+                    rgba(100, 195, 250, 0.45) 0%,
+                    transparent 68%),
+                radial-gradient(circle 65px at 52% 82%,
+                    rgba(255, 225, 130, 0.40) 0%,
+                    transparent 72%),
+                radial-gradient(circle 55px at 35% 55%,
+                    rgba(210, 130, 230, 0.35) 0%,
+                    transparent 65%),
+                radial-gradient(circle 60px at 88% 25%,
+                    rgba(90, 225, 185, 0.30) 0%,
+                    transparent 70%),
+                radial-gradient(circle 40px at 8% 65%,
+                    rgba(240, 200, 150, 0.40) 0%,
+                    transparent 60%),
+                radial-gradient(circle 35px at 65% 88%,
+                    rgba(150, 210, 250, 0.35) 0%,
+                    transparent 60%),
+                radial-gradient(circle 30px at 92% 55%,
+                    rgba(255, 200, 80, 0.30) 0%,
+                    transparent 55%),
 
-        .header-title p {
-            font-size: 13px;
-            color: #8f7a68;
-            letter-spacing: 1px;
-            margin-top: 2px;
-        }
+                /* ---- 第5层：微型颜料颗粒 ---- */
+                radial-gradient(circle 12px at 15% 42%,
+                    rgba(245, 170, 100, 0.45) 0%,
+                    transparent 100%),
+                radial-gradient(circle 10px at 72% 12%,
+                    rgba(100, 200, 250, 0.40) 0%,
+                    transparent 100%),
+                radial-gradient(circle 14px at 58% 68%,
+                    rgba(255, 220, 120, 0.35) 0%,
+                    transparent 100%),
+                radial-gradient(circle 9px at 38% 32%,
+                    rgba(190, 110, 220, 0.30) 0%,
+                    transparent 100%),
+                radial-gradient(circle 11px at 85% 82%,
+                    rgba(70, 220, 180, 0.30) 0%,
+                    transparent 100%),
+                radial-gradient(circle 8px at 5% 88%,
+                    rgba(250, 190, 140, 0.35) 0%,
+                    transparent 100%),
+                radial-gradient(circle 13px at 48% 10%,
+                    rgba(130, 205, 250, 0.30) 0%,
+                    transparent 100%),
+                radial-gradient(circle 10px at 95% 38%,
+                    rgba(255, 210, 90, 0.30) 0%,
+                    transparent 100%),
+                radial-gradient(circle 7px at 28% 92%,
+                    rgba(170, 80, 200, 0.25) 0%,
+                    transparent 100%),
 
-        .header-right {
-            color: #8f7a68;
-            font-size: 20px;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-            cursor: default;
-        }
-
-        .header-right:hover {
-            opacity: 1;
-        }
-
-        /* ===== 九宫格 ===== */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-        }
-
-        /* ===== 每个格子 ===== */
-        .grid-item {
-            background: rgba(245, 238, 230, 0.70);
-            backdrop-filter: blur(4px);
-            border-radius: 28px;
-            padding: 22px 10px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-            border: 1px solid rgba(210, 185, 160, 0.25);
-            box-shadow:
-                0 6px 18px rgba(140, 110, 85, 0.08),
-                inset 0 1px 0 rgba(255, 245, 235, 0.6);
-            text-decoration: none;
-            color: #4d3e30;
-            min-height: 130px;
-            position: relative;
-            isolation: isolate;
-        }
-
-        /* 木纹纹理叠加 (每个格子独立木纹) */
-        .grid-item::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 28px;
-            background-image:
-                repeating-linear-gradient(85deg,
-                    transparent 0px,
-                    transparent 6px,
-                    rgba(180, 150, 120, 0.04) 6px,
-                    rgba(180, 150, 120, 0.04) 7px,
-                    transparent 7px,
+                /* ---- 第6层：干刷笔触 ---- */
+                repeating-linear-gradient(14deg,
+                    rgba(255, 255, 255, 0.035) 0px,
+                    rgba(255, 255, 255, 0.035) 2px,
+                    transparent 2px,
                     transparent 14px),
-                repeating-linear-gradient(175deg,
-                    transparent 0px,
-                    transparent 10px,
-                    rgba(150, 120, 95, 0.03) 10px,
-                    rgba(150, 120, 95, 0.03) 11px,
-                    transparent 11px,
-                    transparent 22px);
-            pointer-events: none;
-            z-index: 0;
-        }
+                repeating-linear-gradient(-18deg,
+                    rgba(0, 0, 0, 0.04) 0px,
+                    rgba(0, 0, 0, 0.04) 1.5px,
+                    transparent 1.5px,
+                    transparent 12px),
+                repeating-linear-gradient(8deg,
+                    rgba(255, 255, 255, 0.020) 0px,
+                    rgba(255, 255, 255, 0.020) 1px,
+                    transparent 1px,
+                    transparent 20px),
 
-        .grid-item>* {
-            position: relative;
-            z-index: 1;
-        }
+                /* ---- 第7层：粗画布纹理 ---- */
+                repeating-linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.020) 0px,
+                    rgba(255, 255, 255, 0.020) 1px,
+                    transparent 1px,
+                    transparent 6px),
+                repeating-linear-gradient(0deg,
+                    rgba(255, 255, 255, 0.018) 0px,
+                    rgba(255, 255, 255, 0.018) 1px,
+                    transparent 1px,
+                    transparent 6px),
 
-        /* 悬浮效果 */
-        .grid-item:hover {
-            transform: translateY(-6px) scale(1.02);
-            background: rgba(250, 242, 234, 0.90);
-            border-color: rgba(180, 150, 125, 0.45);
-            box-shadow:
-                0 20px 40px rgba(130, 100, 75, 0.18),
-                0 8px 20px rgba(130, 100, 75, 0.08),
-                inset 0 1px 0 rgba(255, 245, 235, 0.8);
-        }
+                /* ---- 第8层：细颗粒噪点 ---- */
+                repeating-radial-gradient(circle at center,
+                    rgba(255, 255, 255, 0.015) 0px,
+                    rgba(255, 255, 255, 0.015) 0.8px,
+                    transparent 0.8px,
+                    transparent 8px),
 
-        .grid-item:active {
-            transform: translateY(-2px) scale(0.98);
-            transition-duration: 0.08s;
-        }
+                /* ---- 第9层：微弱光泽 ---- */
+                radial-gradient(ellipse 600px 400px at 30% 40%,
+                    rgba(255, 255, 255, 0.06) 0%,
+                    transparent 70%),
+                radial-gradient(ellipse 500px 350px at 70% 60%,
+                    rgba(255, 255, 255, 0.04) 0%,
+                    transparent 70%);
 
-        /* ===== 图标 ===== */
-        .grid-item .icon {
-            font-size: 36px;
-            margin-bottom: 8px;
-            background: linear-gradient(145deg, #b8a08b, #9c8572);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 2px 6px rgba(140, 110, 85, 0.15));
-            transition: all 0.3s ease;
-        }
+            /* ---- 混合模式 ---- */
+            background-blend-mode:
+                screen, screen, soft-light, overlay, overlay,
+                overlay, overlay, soft-light, overlay, soft-light,
+                overlay, overlay, soft-light, overlay, soft-light,
+                overlay, overlay, soft-light, overlay, soft-light, overlay, overlay, overlay,
+                overlay, overlay, soft-light, overlay, soft-light, overlay, overlay, overlay, soft-light,
+                soft-light, multiply, soft-light,
+                overlay, overlay,
+                soft-light,
+                overlay, overlay;
 
-        .grid-item:hover .icon {
-            transform: scale(1.06);
-            filter: drop-shadow(0 4px 12px rgba(140, 110, 85, 0.25));
-        }
+            /* ---- 尺寸 ---- */
+            background-size:
+                cover, cover, cover, cover, cover,
+                cover, cover, cover, cover, cover,
+                cover, cover, cover, cover, cover,
+                cover, cover, cover, cover, cover, cover, cover, cover,
+                cover, cover, cover, cover, cover, cover, cover, cover, cover,
+                380px 380px, 320px 320px, 500px 500px,
+                8px 8px, 8px 8px,
+                140px 140px,
+                cover, cover;
 
-        /* ===== 文字 ===== */
-        .grid-item .label {
-            font-size: 15px;
-            font-weight: 500;
-            color: #4d3e30;
-            letter-spacing: 0.5px;
-            background: rgba(245, 238, 230, 0.40);
-            padding: 2px 14px;
-            border-radius: 30px;
-            backdrop-filter: blur(2px);
-            border: 1px solid rgba(210, 185, 160, 0.15);
-            transition: all 0.2s ease;
-        }
+            background-position:
+                0 0, 0 0, 0 0, 0 0, 0 0,
+                0 0, 0 0, 0 0, 0 0, 0 0,
+                0 0, 0 0, 0 0, 0 0, 0 0,
+                0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+                0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+                0 0, 0 0, 0 0,
+                0 0, 0 0,
+                0 0,
+                0 0, 0 0;
 
-        .grid-item:hover .label {
-            background: rgba(235, 220, 208, 0.50);
-            border-color: rgba(180, 150, 125, 0.25);
-        }
-
-        .grid-item .desc {
-            font-size: 11px;
-            color: #9a8676;
-            margin-top: 4px;
-            opacity: 0.7;
-            font-weight: 300;
-            letter-spacing: 0.3px;
-        }
-
-        /* ===== 每个格子单独配色 (木含风格 大地色系) ===== */
-        .item-1 .icon {
-            background: linear-gradient(145deg, #c9a88b, #af8b72);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-1:hover {
-            background: rgba(245, 228, 215, 0.85);
-        }
-
-        .item-2 .icon {
-            background: linear-gradient(145deg, #b8a08b, #95806d);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-2:hover {
-            background: rgba(238, 224, 212, 0.85);
-        }
-
-        .item-3 .icon {
-            background: linear-gradient(145deg, #c2a58a, #a5876e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-3:hover {
-            background: rgba(240, 222, 208, 0.85);
-        }
-
-        .item-4 .icon {
-            background: linear-gradient(145deg, #b5957c, #9a7c64);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-4:hover {
-            background: rgba(235, 218, 204, 0.85);
-        }
-
-        .item-5 .icon {
-            background: linear-gradient(145deg, #c8ad94, #ab8d76);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-5:hover {
-            background: rgba(242, 226, 214, 0.85);
-        }
-
-        .item-6 .icon {
-            background: linear-gradient(145deg, #bda088, #a1826a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-6:hover {
-            background: rgba(238, 220, 206, 0.85);
-        }
-
-        .item-7 .icon {
-            background: linear-gradient(145deg, #c4a890, #a78871);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-7:hover {
-            background: rgba(240, 224, 212, 0.85);
-        }
-
-        .item-8 .icon {
-            background: linear-gradient(145deg, #b3967e, #947a64);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-8:hover {
-            background: rgba(232, 214, 200, 0.85);
-        }
-
-        .item-9 .icon {
-            background: linear-gradient(145deg, #bfa48c, #a1856e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .item-9:hover {
-            background: rgba(244, 228, 216, 0.85);
-        }
-
-        /* ===== 底部 ===== */
-        .footer {
-            margin-top: 28px;
-            text-align: center;
-            font-size: 13px;
-            color: #b3a192;
-            letter-spacing: 2px;
-            border-top: 1px solid rgba(180, 150, 125, 0.15);
-            padding-top: 18px;
+            /* ---- 布局 ---- */
             display: flex;
             justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
+            align-items: center;
         }
 
-        .footer span {
-            opacity: 0.7;
-            transition: opacity 0.2s;
-            cursor: default;
+        /* ============================
+                   2. 容器：相对定位，覆盖全屏
+                   ============================ */
+        .sky-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .footer span:hover {
+        /* ============================
+                   3. 北斗七星连线 (SVG)
+                   ============================ */
+        .constellation-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* 让点击穿透 */;
+        }
+
+        .constellation-lines line {
+            stroke: rgba(255, 235, 210, 0.15);
+            stroke-width: 1.2;
+            stroke-linecap: round;
+            stroke-dasharray: 6 6;
+            animation: shimmer-lines 6s ease-in-out infinite alternate;
+        }
+
+        @keyframes shimmer-lines {
+            0% {
+                stroke-opacity: 0.10;
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-opacity: 0.30;
+                stroke-dashoffset: 12;
+            }
+        }
+
+        /* ============================
+                   4. 每颗星（花纹图标）
+                   ============================ */
+        .star {
+            position: absolute;
+            width: clamp(60px, 11vw, 100px);
+            height: clamp(60px, 11vw, 100px);
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.4s ease;
+            filter: drop-shadow(0 0 12px rgba(255, 220, 180, 0.05));
+            z-index: 10;
+        }
+
+        .star:hover {
+            transform: translate(-50%, -50%) scale(1.12);
+            filter: drop-shadow(0 0 28px rgba(255, 220, 180, 0.20));
+            z-index: 20;
+        }
+
+        .star.pulse {
+            animation: star-pulse 0.6s ease;
+        }
+
+        @keyframes star-pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            30% {
+                transform: translate(-50%, -50%) scale(1.25);
+                filter: drop-shadow(0 0 40px rgba(255, 220, 180, 0.35));
+            }
+            70% {
+                transform: translate(-50%, -50%) scale(0.92);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .star svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            overflow: visible;
+        }
+
+        /* 每个星的花纹颜色（雅致金、银、青、粉） */
+        .star-1 svg {
+            color: #E8C87A;
+        }
+        .star-2 svg {
+            color: #D4A05A;
+        }
+        .star-3 svg {
+            color: #B8C8D8;
+        }
+        .star-4 svg {
+            color: #8AB0C8;
+        }
+        .star-5 svg {
+            color: #C89870;
+        }
+        .star-6 svg {
+            color: #C8B0A0;
+        }
+        .star-7 svg {
+            color: #E0C8A8;
+        }
+
+        /* ============================
+                   5. Tooltip 弹出卡片
+                   ============================ */
+        .tooltip {
+            position: fixed;
+            padding: 10px 18px;
+            border-radius: 8px;
+            background: rgba(26, 20, 24, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 235, 210, 0.12);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 235, 210, 0.04) inset;
+            color: rgba(255, 245, 235, 0.92);
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px) scale(0.96);
+            transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.0, 0.64, 1);
+            z-index: 999;
+            max-width: 220px;
+            line-height: 1.5;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .tooltip .star-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: rgba(255, 235, 210, 0.95);
+        }
+
+        .tooltip .star-name-en {
+            font-size: 0.7rem;
+            opacity: 0.55;
+            font-weight: 300;
+            letter-spacing: 0.12em;
+            display: block;
+            margin-top: 1px;
+        }
+
+        .tooltip .pattern-name {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            margin-top: 4px;
+            letter-spacing: 0.06em;
+            border-top: 1px solid rgba(255, 235, 210, 0.08);
+            padding-top: 5px;
+        }
+
+        .tooltip .pattern-name span {
+            display: inline-block;
+            margin: 0 4px;
+            opacity: 0.5;
+        }
+        /* 开发中状态标记 */
+        .tooltip .dev-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            background: rgba(255, 215, 100, 0.15);
+            border: 1px solid rgba(255, 215, 100, 0.2);
+            padding: 0 8px;
+            border-radius: 12px;
+            color: rgba(255, 215, 100, 0.8);
+            margin-left: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        /* ============================
+                   6. 响应式适配
+                   ============================ */
+        @media (max-width: 640px) {
+            .star {
+                width: clamp(44px, 12vw, 68px);
+                height: clamp(44px, 12vw, 68px);
+            }
+            .tooltip {
+                padding: 8px 14px;
+                max-width: 170px;
+                font-size: 0.85rem;
+            }
+            .tooltip .star-name {
+                font-size: 0.95rem;
+            }
+            .tooltip .star-name-en {
+                font-size: 0.6rem;
+            }
+            .tooltip .pattern-name {
+                font-size: 0.75rem;
+            }
+            .constellation-lines line {
+                stroke-width: 0.8;
+                stroke-dasharray: 4 4;
+            }
+            .tooltip .dev-badge {
+                font-size: 0.5rem;
+                padding: 0 6px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .star {
+                width: clamp(36px, 14vw, 54px);
+                height: clamp(36px, 14vw, 54px);
+            }
+            .tooltip {
+                padding: 6px 10px;
+                max-width: 140px;
+                font-size: 0.75rem;
+            }
+            .tooltip .star-name {
+                font-size: 0.8rem;
+            }
+            .tooltip .star-name-en {
+                font-size: 0.5rem;
+            }
+            .tooltip .pattern-name {
+                font-size: 0.65rem;
+            }
+            .tooltip .dev-badge {
+                font-size: 0.4rem;
+                padding: 0 4px;
+            }
+        }
+
+        /* ============================
+                   7. 跳转提示标记（仅天枢星）
+                   ============================ */
+        .star-1 .jump-hint {
+            position: absolute;
+            bottom: -6px;
+            right: -6px;
+            font-size: 14px;
+            color: rgba(255, 235, 210, 0.7);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            line-height: 1;
+            text-shadow: 0 0 8px rgba(255, 200, 100, 0.3);
+        }
+        .star-1:hover .jump-hint {
             opacity: 1;
         }
-
-        .footer i {
-            margin: 0 6px;
-            font-size: 12px;
-            color: #c4b2a2;
-        }
-
-        /* ===== 响应式 ===== */
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px 16px 28px;
-                border-radius: 32px;
-            }
-
-            .header-title h1 {
-                font-size: 20px;
-            }
-            .header-title p {
+        @media (max-width: 640px) {
+            .star-1 .jump-hint {
                 font-size: 11px;
-            }
-            .logo-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-                border-radius: 14px;
-            }
-
-            .grid {
-                gap: 12px;
-            }
-
-            .grid-item {
-                min-height: 110px;
-                padding: 16px 6px 14px;
-                border-radius: 22px;
-            }
-
-            .grid-item .icon {
-                font-size: 28px;
-                margin-bottom: 4px;
-            }
-
-            .grid-item .label {
-                font-size: 13px;
-                padding: 1px 10px;
-            }
-
-            .grid-item .desc {
-                font-size: 10px;
-                margin-top: 2px;
-            }
-
-            .footer {
-                font-size: 11px;
-                gap: 12px;
+                bottom: -4px;
+                right: -4px;
             }
         }
-
-        @media (max-width: 420px) {
-            .grid {
-                gap: 10px;
-            }
-            .grid-item {
-                min-height: 90px;
-                padding: 12px 4px 10px;
-                border-radius: 18px;
-            }
-            .grid-item .icon {
-                font-size: 24px;
-            }
-            .grid-item .label {
-                font-size: 12px;
-            }
-            .header-title h1 {
-                font-size: 17px;
-            }
-            .container {
-                padding: 16px 12px 22px;
+        @media (max-width: 400px) {
+            .star-1 .jump-hint {
+                font-size: 9px;
+                bottom: -2px;
+                right: -2px;
             }
         }
     </style>
 </head>
+
 <body>
 
-    <div class="container">
+    <div class="sky-container" id="sky">
 
-        <!-- ====== 头部 ====== -->
-        <div class="header">
-            <div class="header-left">
-                <div class="logo-icon">
-                    <i class="fas fa-tree"></i>
-                </div>
-                <div class="header-title">
-                    <h1>木 含</h1>
-                    <p>· 自然 · 简素 ·</p>
-                </div>
-            </div>
-            <div class="header-right">
-                <i class="fas fa-ellipsis-h"></i>
-            </div>
-        </div>
+        <!-- ============================================================
+        北斗七星连线 (SVG)
+        ============================================================ -->
+        <svg class="constellation-lines" id="linesSvg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <!-- 勺斗：天枢 → 天璇 → 天玑 → 天权 -->
+            <line x1="25" y1="20" x2="20" y2="40" />
+            <line x1="20" y1="40" x2="30" y2="58" />
+            <line x1="30" y1="58" x2="48" y2="60" />
 
-        <!-- ====== 九宫格 ====== -->
-        <div class="grid">
+            <!-- 连接：天权 → 玉衡 -->
+            <line x1="48" y1="60" x2="65" y2="50" />
 
-            <!-- 1 -->
-            <a href="#" class="grid-item item-1" data-page="home">
-                <div class="icon"><i class="fas fa-home"></i></div>
-                <div class="label">首页</div>
-                <div class="desc">回到起点</div>
-            </a>
+            <!-- 勺柄：玉衡 → 开阳 → 瑶光 -->
+            <line x1="65" y1="50" x2="78" y2="35" />
+            <line x1="78" y1="35" x2="85" y2="18" />
 
-            <!-- 2 -->
-            <a href="#" class="grid-item item-2" data-page="discover">
-                <div class="icon"><i class="fas fa-compass"></i></div>
-                <div class="label">探索</div>
-                <div class="desc">发现美好</div>
-            </a>
+            <!-- 额外装饰：勺斗底部微弧 -->
+            <line x1="20" y1="40" x2="48" y2="60" opacity="0.3" stroke-dasharray="2 6" />
+        </svg>
 
-            <!-- 3 -->
-            <a href="#" class="grid-item item-3" data-page="gallery">
-                <div class="icon"><i class="fas fa-images"></i></div>
-                <div class="label">图库</div>
-                <div class="desc">木作光影</div>
-            </a>
+        <!-- ============================================================
+        七颗星 · 全部添加 data-link（目前仅天枢有实际地址）
+        ============================================================ -->
 
-            <!-- 4 -->
-            <a href="#" class="grid-item item-4" data-page="journal">
-                <div class="icon"><i class="fas fa-feather-alt"></i></div>
-                <div class="label">手记</div>
-                <div class="desc">随笔记录</div>
-            </a>
-
-            <!-- 5 -->
-            <a href="#" class="grid-item item-5" data-page="craft">
-                <div class="icon"><i class="fas fa-hammer"></i></div>
-                <div class="label">工坊</div>
-                <div class="desc">匠心手作</div>
-            </a>
-
-            <!-- 6 -->
-            <a href="#" class="grid-item item-6" data-page="tea">
-                <div class="icon"><i class="fas fa-mug-hot"></i></div>
-                <div class="label">茶事</div>
-                <div class="desc">一壶清欢</div>
-            </a>
-
-            <!-- 7 -->
-            <a href="#" class="grid-item item-7" data-page="music">
-                <div class="icon"><i class="fas fa-music"></i></div>
-                <div class="label">音律</div>
-                <div class="desc">松风竹韵</div>
-            </a>
-
-            <!-- 8 -->
-            <a href="#" class="grid-item item-8" data-page="garden">
-                <div class="icon"><i class="fas fa-leaf"></i></div>
-                <div class="label">庭院</div>
-                <div class="desc">四时草木</div>
-            </a>
-
-            <!-- 9 -->
-            <a href="#" class="grid-item item-9" data-page="about">
-                <div class="icon"><i class="fas fa-user-circle"></i></div>
-                <div class="label">关于</div>
-                <div class="desc">木含其人</div>
-            </a>
-
-        </div>
-
-        <!-- ====== 底部 ====== -->
-        <div class="footer">
-            <span><i class="fas fa-circle"></i> 木含 · 九宫</span>
-            <span><i class="fas fa-circle"></i> 点击跳转</span>
-            <span><i class="fas fa-circle"></i> 温润如木</span>
-        </div>
-
+        <!--
+        ★★★★★ 1. 天枢（飘带纹）—— 当前可跳转 ★★★★★
+        修改下方 data-link 的值即可更换跳转地址
+        -->
+        <div class="star star-1"
+        style="left:25%; top:20%;"
+        data-name="天枢"
+        data-name-en="Dubhe"
+        data-pattern="飘带纹"
+        data-link="../0001/index.html">   <!-- ★ 替换为你的实际页面地址 -->
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.6" fill="none">
+                <path d="M22 28 Q18 20 12 24 Q8 30 14 34 Q20 36 24 30 Q28 24 22 28"/>
+                <path d="M22 28 Q28 36 34 32 Q40 28 46 34 Q52 40 58 34 Q64 28 60 22 Q54 16 48 22 Q42 28 36 22 Q30 16 24 22 Q18 28 22 28"/>
+                <path d="M58 34 Q62 42 56 48 Q50 54 44 48 Q38 42 32 48 Q26 54 20 48 Q14 42 18 34" stroke-width="1.2" opacity="0.7"/>
+                <path d="M20 48 Q16 56 22 60 Q28 64 32 58" stroke-width="1.0" opacity="0.6"/>
+                <path d="M44 48 Q48 56 42 62 Q36 66 34 60" stroke-width="1.0" opacity="0.6"/>
+                <circle cx="14" cy="34" r="2.5" stroke-width="0.8" opacity="0.5"/>
+                <circle cx="60" cy="22" r="2.5" stroke-width="0.8" opacity="0.5"/>
+            </g>
+            <circle cx="40" cy="40" r="2" fill="currentColor" opacity="0.4"/>
+        </svg>
+        <span class="jump-hint">↗</span>
     </div>
 
-    <!-- ====== JavaScript 跳转逻辑 ====== -->
-    <script>
-        (function() {
-            const items = document.querySelectorAll('.grid-item');
+    <!--
+    ★★★★★ 2. 天璇（宝相花）—— 页面开发中，暂不跳转 ★★★★★
+    后续写好页面，把 data-link="" 里填上地址即可
+    -->
+    <div class="star star-2" style="left:20%; top:40%;" data-name="天璇" data-name-en="Merak" data-pattern="宝相花" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.2" fill="none">
+                <ellipse cx="40" cy="18" rx="8" ry="16" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(45 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(90 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(135 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(180 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(225 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(270 40 40)" />
+                <ellipse cx="40" cy="18" rx="8" ry="16" transform="rotate(315 40 40)" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(22.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(67.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(112.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(157.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(202.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(247.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(292.5 40 40)" stroke-width="0.8" opacity="0.6" />
+                <ellipse cx="40" cy="28" rx="4" ry="8" transform="rotate(337.5 40 40)" stroke-width="0.8" opacity="0.6" />
+            </g>
+            <circle cx="40" cy="40" r="10" fill="currentColor" opacity="0.15" />
+            <circle cx="40" cy="40" r="4" fill="currentColor" opacity="0.7" />
+            <circle cx="40" cy="40" r="1.5" fill="#fff" opacity="0.8" mix-blend-mode="overlay" />
+        </svg>
+    </div>
 
-            // 模拟页面映射 (实际可替换为真实 URL)
-            const pageMap = {
-                home: 'home.html',
-                discover: '../0001/index.html',
-                gallery: 'gallery.html',
-                journal: 'journal.html',
-                craft: 'craft.html',
-                tea: 'tea.html',
-                music: 'music.html',
-                garden: 'garden.html',
-                about: 'about.html'
-            };
+    <!--
+    ★★★★★ 3. 天玑（花鸟纹）—— 页面开发中 ★★★★★
+    -->
+    <div class="star star-3" style="left:30%; top:58%;" data-name="天玑" data-name-en="Phecda" data-pattern="花鸟纹" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.4" fill="none">
+                <path d="M32 28 Q24 22 18 28 Q14 34 20 38 Q26 40 30 34 Q34 28 32 28"/>
+                <path d="M32 28 Q28 20 22 22 Q18 24 20 30" stroke-width="1.0" opacity="0.5"/>
+                <circle cx="38" cy="24" r="3" fill="currentColor" opacity="0.15"/>
+                <path d="M40 32 Q44 26 50 30 Q54 34 48 38 Q44 40 42 36" stroke-width="1.2"/>
+                <path d="M42 36 Q40 44 44 48 Q48 50 52 46" stroke-width="1.0" opacity="0.6"/>
+                <path d="M52 46 Q58 44 62 48 Q66 52 60 56 Q56 58 52 54" stroke-width="1.0" opacity="0.6"/>
+                <path d="M50 30 Q56 26 60 30 Q64 34 58 36" stroke-width="0.8" opacity="0.5"/>
+                <ellipse cx="26" cy="40" rx="4" ry="2.5" transform="rotate(-20 26 40)" stroke-width="1.0"/>
+                <ellipse cx="44" cy="52" rx="5" ry="3" transform="rotate(15 44 52)" stroke-width="1.0" opacity="0.7"/>
+                <circle cx="20" cy="34" r="1.5" fill="currentColor" opacity="0.4"/>
+            </g>
+            <circle cx="40" cy="40" r="2" fill="currentColor" opacity="0.3"/>
+        </svg>
+    </div>
 
-            // 点击跳转
-            items.forEach((item) => {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault(); // 阻止默认 # 跳转
+    <!--
+    ★★★★★ 4. 天权（水波纹）—— 页面开发中 ★★★★★
+    -->
+    <div class="star star-4" style="left:48%; top:60%;" data-name="天权" data-name-en="Megrez" data-pattern="水波纹" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.4" fill="none">
+                <path d="M20 44 Q28 36 40 44 Q52 52 60 44" />
+                <path d="M16 50 Q28 40 40 50 Q52 60 64 50" stroke-width="1.2" />
+                <path d="M12 56 Q28 44 40 56 Q52 68 68 56" stroke-width="1.0" opacity="0.7" />
+                <path d="M8 62 Q28 48 40 62 Q52 76 72 62" stroke-width="0.8" opacity="0.5" />
+                <path d="M20 32 Q28 24 40 32 Q52 40 60 32" stroke-width="0.8" opacity="0.4" />
+                <path d="M16 26 Q28 16 40 26 Q52 36 64 26" stroke-width="0.6" opacity="0.3" />
+                <circle cx="28" cy="44" r="3" stroke-width="0.6" />
+                <circle cx="52" cy="44" r="3" stroke-width="0.6" />
+                <circle cx="40" cy="56" r="2" stroke-width="0.6" />
+            </g>
+            <circle cx="40" cy="40" r="14" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.2" stroke-dasharray="4 4" />
+            <circle cx="40" cy="40" r="2" fill="currentColor" opacity="0.5" />
+        </svg>
+    </div>
 
-                    const pageKey = this.dataset.page;
-                    const targetUrl = pageMap[pageKey] || '#';
+    <!--
+    ★★★★★ 5. 玉衡（缠枝莲）—— 页面开发中 ★★★★★
+    -->
+    <div class="star star-5" style="left:65%; top:50%;" data-name="玉衡" data-name-en="Alioth" data-pattern="缠枝莲" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.4" fill="none">
+                <path d="M20 48 Q32 32 48 44 Q60 54 68 38" stroke-width="1.8" />
+                <path d="M20 48 Q28 62 44 56 Q58 50 64 64" stroke-width="1.8" />
+                <path d="M44 38 Q38 32 32 36 Q28 40 34 44 Q38 46 44 42 Q50 46 54 42 Q58 38 54 34 Q48 30 44 38" stroke-width="1.2" />
+                <path d="M44 38 Q40 44 44 50 Q48 44 44 38" fill="currentColor" opacity="0.15" />
+                <circle cx="44" cy="38" r="3" fill="currentColor" opacity="0.3" />
+                <circle cx="44" cy="38" r="1" fill="currentColor" opacity="0.8" />
+                <ellipse cx="30" cy="46" rx="6" ry="4" transform="rotate(-30 30 46)" stroke-width="1.0" />
+                <ellipse cx="56" cy="46" rx="6" ry="4" transform="rotate(30 56 46)" stroke-width="1.0" />
+                <path d="M64 64 Q68 58 72 62 Q74 66 70 68 Q66 70 64 64" stroke-width="1.0" />
+            </g>
+            <circle cx="40" cy="40" r="3" fill="currentColor" opacity="0.4" />
+        </svg>
+    </div>
 
-                    if (targetUrl && targetUrl !== '#') {
-                        // 模拟跳转 —— 在真实环境中改为 window.location.href = targetUrl;
-                        // 这里为了演示，用 alert 显示要跳转的页面，同时控制台输出
-                        console.log(`📍 跳转至: ${targetUrl}`);
-                        alert(`🌿 跳转至 「${this.querySelector('.label').textContent}」页面\n→ ${targetUrl}\n(实际项目中替换为真实 URL)`);
+    <!--
+    ★★★★★ 6. 开阳（如意纹）—— 页面开发中 ★★★★★
+    -->
+    <div class="star star-6" style="left:78%; top:35%;" data-name="开阳" data-name-en="Mizar" data-pattern="如意纹" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.6" fill="none">
+                <path d="M40 22 Q28 14 18 22 Q10 30 18 38 Q24 44 32 38 Q36 34 40 28 Q44 34 48 38 Q56 44 62 38 Q70 30 62 22 Q52 14 40 22" />
+                <path d="M40 28 L40 50 Q40 58 48 62 Q54 64 58 60 Q62 56 58 52 Q54 48 48 50 Q44 52 40 50" stroke-width="1.2" />
+                <path d="M32 38 Q24 42 20 48 Q18 54 24 56 Q28 58 32 52" stroke-width="1.0" opacity="0.6" />
+                <path d="M48 38 Q56 42 60 48 Q62 54 56 56 Q52 58 48 52" stroke-width="1.0" opacity="0.6" />
+                <circle cx="40" cy="28" r="4" fill="currentColor" opacity="0.2" />
+                <circle cx="40" cy="28" r="1.5" fill="currentColor" opacity="0.9" />
+            </g>
+            <circle cx="40" cy="40" r="2" fill="currentColor" opacity="0.4" />
+        </svg>
+    </div>
 
-                        // 真实跳转 (取消注释即可使用)
-                        // window.location.href = targetUrl;
-                    } else {
-                        alert('🌱 该页面暂未配置跳转地址');
-                    }
-                });
+    <!--
+    ★★★★★ 7. 瑶光（并蒂莲）—— 页面开发中 ★★★★★
+    -->
+    <div class="star star-7" style="left:85%; top:18%;" data-name="瑶光" data-name-en="Alkaid" data-pattern="并蒂莲" data-link="">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="currentColor" stroke-width="1.4" fill="none">
+                <path d="M28 40 Q22 32 16 38 Q12 44 18 48 Q22 50 28 46 Q32 50 36 46 Q40 50 42 44 Q44 38 38 34 Q32 30 28 40" />
+                <path d="M28 40 Q24 46 28 52 Q32 46 28 40" fill="currentColor" opacity="0.12" />
+                <path d="M52 40 Q46 32 40 38 Q36 44 42 48 Q46 50 52 46 Q56 50 60 46 Q64 50 66 44 Q68 38 62 34 Q56 30 52 40" />
+                <path d="M52 40 Q48 46 52 52 Q56 46 52 40" fill="currentColor" opacity="0.12" />
+                <path d="M28 52 Q34 60 40 56 Q46 60 52 52" stroke-width="1.2" />
+                <ellipse cx="22" cy="52" rx="6" ry="3" transform="rotate(-20 22 52)" stroke-width="1.0" />
+                <ellipse cx="58" cy="52" rx="6" ry="3" transform="rotate(20 58 52)" stroke-width="1.0" />
+                <circle cx="28" cy="40" r="2" fill="currentColor" opacity="0.3" />
+                <circle cx="52" cy="40" r="2" fill="currentColor" opacity="0.3" />
+                <circle cx="40" cy="56" r="2" fill="currentColor" opacity="0.5" />
+            </g>
+            <circle cx="40" cy="40" r="2" fill="currentColor" opacity="0.4" />
+        </svg>
+    </div>
+
+    <!-- ============================================================
+    Tooltip 卡片
+    ============================================================ -->
+    <div class="tooltip" id="tooltip">
+        <div class="star-name" id="tipName">天枢</div>
+        <div class="star-name-en" id="tipNameEn">Dubhe</div>
+        <div class="pattern-name" id="tipPattern">✦ 飘带纹 ✦</div>
+    </div>
+
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // ----- DOM 引用 -----
+        const stars = document.querySelectorAll('.star');
+        const tooltip = document.getElementById('tooltip');
+        const tipName = document.getElementById('tipName');
+        const tipNameEn = document.getElementById('tipNameEn');
+        const tipPattern = document.getElementById('tipPattern');
+
+        let hideTimer = null;
+        let isVisible = false;
+        let jumpTimer = null;
+
+        // ----- 显示 Tooltip（增加“开发中”标记支持） -----
+        function showTooltip(el, name, nameEn, pattern, link) {
+            tipName.textContent = name;
+            tipNameEn.textContent = nameEn;
+
+            // 如果 link 为空或 #，说明页面开发中，显示标记
+            let patternText = '✦ ' + pattern + ' ✦';
+            if (!link || link === '#' || link.trim() === '') {
+                patternText += ' <span class="dev-badge">开发中</span>';
+            }
+            tipPattern.innerHTML = patternText;
+
+            const rect = el.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+
+            tooltip.classList.add('visible');
+            tooltip.style.opacity = '0';
+            const tw = tooltip.offsetWidth;
+            const th = tooltip.offsetHeight;
+
+            let left = cx - tw / 2;
+            let top = cy - th - 20;
+
+            const pad = 12;
+            const maxX = window.innerWidth - tw - pad;
+            const maxY = window.innerHeight - th - pad;
+            if (left < pad) left = pad;
+            if (left > maxX) left = maxX;
+            if (top < pad) top = cy + rect.height / 2 + 16;
+            if (top > maxY) top = maxY;
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.opacity = '1';
+
+            isVisible = true;
+
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+        }
+
+        // ----- 隐藏 Tooltip -----
+        function hideTooltip(delay) {
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+            if (delay > 0) {
+                hideTimer = setTimeout(() => {
+                    tooltip.classList.remove('visible');
+                    tooltip.style.opacity = '0';
+                    isVisible = false;
+                    hideTimer = null;
+                }, delay);
+            } else {
+                tooltip.classList.remove('visible');
+                tooltip.style.opacity = '0';
+                isVisible = false;
+            }
+        }
+
+        // ==============================================================
+        // ★★★ 核心点击逻辑：有链接就跳转，无链接仅显示“开发中” ★★★
+        // ==============================================================
+        function onStarClick(e) {
+            const el = e.currentTarget;
+
+            // ---- 脉冲动画 ----
+            el.classList.remove('pulse');
+            void el.offsetWidth;
+            el.classList.add('pulse');
+
+            // ---- 读取数据 ----
+            const name = el.dataset.name || '星';
+            const nameEn = el.dataset.nameEn || '';
+            const pattern = el.dataset.pattern || '纹饰';
+            const link = el.dataset.link || '';
+
+            // ---- 显示 tooltip（包含开发中状态） ----
+            showTooltip(el, name, nameEn, pattern, link);
+
+            // ---- 清除之前的定时器 ----
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+            if (jumpTimer) {
+                clearTimeout(jumpTimer);
+                jumpTimer = null;
+            }
+
+            // ---- 判断是否跳转（仅当 link 有实际内容且不为 #） ----
+            const hasValidLink = link && link !== '#' && link.trim() !== '';
+            if (hasValidLink) {
+                // ✅ 有有效链接：延迟 500ms 跳转
+                jumpTimer = setTimeout(function() {
+                    window.location.href = link;
+                }, 500);
+            } else {
+                // ❌ 无有效链接（开发中）：4 秒后自动隐藏 tooltip
+                hideTimer = setTimeout(function() {
+                    hideTooltip(0);
+                    hideTimer = null;
+                }, 4000);
+            }
+        }
+
+        // ----- 绑定事件 -----
+        stars.forEach(star => {
+            star.addEventListener('click', onStarClick);
+            star.addEventListener('mouseleave', function(e) {
+                // 鼠标离开时，如果当前没有跳转定时器，则延迟隐藏
+                if (isVisible && !star.dataset.link) {
+                    hideTooltip(600);
+                }
             });
-
-            // 增加一点“木含”风格的点击反馈 (波纹感)
-            items.forEach((item) => {
-                item.addEventListener('mousedown', function(e) {
-                    this.style.transition = 'transform 0.06s ease';
-                });
-                item.addEventListener('mouseup', function(e) {
-                    this.style.transition = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)';
-                });
+            star.addEventListener('mouseenter', function(e) {
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
             });
+        });
 
-            console.log('🌳 木含 · 九宫格已加载');
-        })();
-    </script>
+        // ----- 点击页面空白处隐藏 tooltip -----
+        document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (!target.closest('.star') && !target.closest('.tooltip')) {
+                if (isVisible) {
+                    hideTooltip(0);
+                }
+            }
+        });
+
+        // ----- 窗口尺寸变化时重新定位 tooltip -----
+        let lastStarEl = null;
+        const origShow = showTooltip;
+        showTooltip = function(el, name, nameEn, pattern, link) {
+            lastStarEl = el;
+            origShow(el, name, nameEn, pattern, link);
+        };
+
+        window.addEventListener('resize', function() {
+            if (isVisible && lastStarEl) {
+                const name = lastStarEl.dataset.name || '星';
+                const nameEn = lastStarEl.dataset.nameEn || '';
+                const pattern = lastStarEl.dataset.pattern || '纹饰';
+                const link = lastStarEl.dataset.link || '';
+                tooltip.classList.remove('visible');
+                tooltip.style.opacity = '0';
+                void tooltip.offsetWidth;
+                origShow(lastStarEl, name, nameEn, pattern, link);
+            }
+        });
+
+        // ----- 触摸设备支持 -----
+        stars.forEach(star => {
+            star.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                const clickEvent = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                this.dispatchEvent(clickEvent);
+            }, { passive: false });
+        });
+
+        console.log('✦ 北斗七星 · 雅致中国纹 ✦');
+        console.log('✦ 天枢（飘带纹）已配置跳转，其他6星为“开发中”状态');
+        console.log('✦ 后续只需在对应 data-link 中填入地址即可启用跳转');
+    })();
+</script>
 
 </body>
 </html>
