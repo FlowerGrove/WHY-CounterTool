@@ -225,6 +225,78 @@
             background: rgba(217, 48, 37, 0.10);
             color: #d93025;
         }
+        .btn-icon.active {
+            background: #d93025;
+            color: #fff;
+        }
+        .btn-icon.active:hover {
+            background: #c5281c;
+            color: #fff;
+        }
+        canvas.erase-mode {
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            bottom: 72px;
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            z-index: 60;
+            background: rgba(20, 20, 20, 0.86);
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            white-space: nowrap;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast i.fa-spinner {
+            font-size: 11px;
+        }
+        .session-banner {
+            position: fixed;
+            top: 66px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 21;
+            background: rgba(26, 115, 232, 0.96);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+            max-width: 92vw;
+        }
+        .session-banner.visible {
+            display: inline-flex;
+        }
+        .session-banner button {
+            border: none;
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+            border-radius: 12px;
+            padding: 3px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .session-banner button:hover {
+            background: rgba(255, 255, 255, 0.32);
+        }
         .btn-icon .tooltip {
             position: absolute;
             bottom: -26px;
@@ -648,6 +720,12 @@
         }
 
         @media (max-width:640px) {
+            .session-banner {
+                top: 58px;
+                font-size: 11px;
+                padding: 6px 12px;
+                gap: 8px;
+            }
             .type-dock {
                 left: 8px;
                 width: 72px;
@@ -795,7 +873,12 @@
     <div class="drop-hint" id="dropHint">
         <span class="drop-hint__icon"><i class="fa-solid fa-file-pdf"></i></span>
         <span class="drop-hint__text">拖放 PDF 图纸到此处</span>
-        <span class="drop-hint__sub">点击标记 PI / PT / PIT 等仪表，可统计导出 Excel</span>
+        <span class="drop-hint__sub">点击标记 PI / PT / PIT 等仪表，橡皮擦可删除，支持统计导出 Excel</span>
+    </div>
+
+    <div class="session-banner" id="sessionBanner">
+        <span id="sessionBannerText">检测到上次未保存的标注记录</span>
+        <button type="button" id="sessionBannerDismiss">知道了</button>
     </div>
 
     <!-- 左侧类型浮动栏 -->
@@ -829,6 +912,8 @@
         </div>
         <div class="divider"></div>
         <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
+        <button class="btn-icon" id="redoBtn" title="重做 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span class="tooltip">重做</span></button>
+        <button class="btn-icon" id="eraserBtn" title="点击已有标记可删除"><i class="fa-solid fa-eraser"></i><span class="tooltip">删除标记</span></button>
         <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
         <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
         <button class="btn-icon" id="settingsBtn" title="设置"><i class="fa-solid fa-gear"></i><span class="tooltip">设置</span></button>
@@ -881,6 +966,8 @@
         <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
     </div>
 
+    <div class="toast" id="toast"></div>
+
     <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple />
 
     <script type="module">
@@ -929,7 +1016,9 @@
         const ZOOM_SENSITIVITY = 0.001;
         const WHEEL_PAN_SPEED = 1.0;
         const MARKER_MIN_DIST = 28;
-        const MAX_MARKER_NUMBER = 999;
+        const MAX_MARKER_NUMBER = 9999;
+        const AUTOSAVE_KEY = 'elecPdfMarkerAutosave_v1';
+        const AUTOSAVE_DEBOUNCE_MS = 400;
         const SETTINGS_KEY = 'elecPdfMarkerSettings_v1';
 
         const defaultSettings = {
@@ -980,8 +1069,19 @@
         const DESKTOP_RADIUS = 12;
         const DESKTOP_FONT_SIZE = 8;
 
-        // ★★★ 极致画质：桌面渲染缩放 5.5，移动端 4.5 ★★★
+        // ★★★ 极致画质：桌面渲染缩放 5.5，移动端 4.5（大幅面图纸会自动降级，避免超出浏览器canvas限制）★★★
         const PDF_RENDER_SCALE = isMobile ? 4.5 : 5.5;
+        const RENDER_MAX_DIM = isMobile ? 6000 : 8000; // 单边像素安全上限（iOS Safari 等对canvas尺寸有硬限制）
+        const RENDER_MAX_PIXELS = isMobile ? 20000000 : 36000000; // 总像素安全上限，避免大幅面图纸耗尽内存
+
+        function computeRenderScale(origWidth, origHeight) {
+            let scale = PDF_RENDER_SCALE;
+            const dimCap = RENDER_MAX_DIM / Math.max(origWidth, origHeight);
+            if (dimCap < scale) scale = dimCap;
+            const pixelCap = Math.sqrt(RENDER_MAX_PIXELS / (origWidth * origHeight));
+            if (pixelCap < scale) scale = pixelCap;
+            return Math.max(1, scale);
+        }
 
         const DESKTOP_LINE_WIDTH = 2.0;
         const MOBILE_LINE_WIDTH = 2.5;
@@ -1001,6 +1101,8 @@
         const fontSizeValueEl = document.getElementById('fontSizeValue');
         const numberInput = document.getElementById('numberInput');
         const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
         const clearBtn = document.getElementById('clearBtn');
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsBackdrop = document.getElementById('settingsBackdrop');
@@ -1181,28 +1283,92 @@
             updateNumberInputState();
         }
 
-        // ============ 撤销历史 ============
+        // ============ 撤销/重做历史 ============
         const history = [];
+        const redoStack = [];
+
+        function removeMarkerFromArray(marker) {
+            const idx = markers.indexOf(marker);
+            if (idx !== -1) markers.splice(idx, 1);
+            // 无论是否仍在数组中，都释放编号，避免历史与数据不同步后编号永久占用
+            releaseNumber(marker.number, marker.typeId);
+        }
+
+        function insertMarkerToArray(marker) {
+            reserveNumber(marker.number, marker.typeId);
+            markers.push(marker);
+        }
+
+        function pushHistory(entry) {
+            history.push(entry);
+            redoStack.length = 0; // 新操作发生后，重做栈失效
+            updateUndoButtonState();
+        }
 
         function undo() {
             if (history.length === 0) return;
             const last = history.pop();
-            if (last && last.type === 'add' && last.marker) {
-                const marker = last.marker;
-                const idx = markers.indexOf(marker);
-                if (idx !== -1) markers.splice(idx, 1);
-                // 无论是否仍在数组中，都释放编号，避免历史与数据不同步后编号永久占用
-                releaseNumber(marker.number, marker.typeId);
-                nextMarkerNumber = findNextNumberForType(currentTypeId);
-                syncNumberInput();
-                requestRender();
-                updateUI();
+            if (last.type === 'add') {
+                removeMarkerFromArray(last.marker);
+            } else if (last.type === 'delete') {
+                insertMarkerToArray(last.marker);
             }
+            redoStack.push(last);
+            nextMarkerNumber = findNextNumberForType(currentTypeId);
+            syncNumberInput();
+            requestRender();
+            updateUI();
             updateUndoButtonState();
+            scheduleAutosave();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            const entry = redoStack.pop();
+            if (entry.type === 'add') {
+                insertMarkerToArray(entry.marker);
+            } else if (entry.type === 'delete') {
+                removeMarkerFromArray(entry.marker);
+            }
+            history.push(entry);
+            nextMarkerNumber = findNextNumberForType(currentTypeId);
+            syncNumberInput();
+            requestRender();
+            updateUI();
+            updateUndoButtonState();
+            scheduleAutosave();
+        }
+
+        function deleteMarker(marker) {
+            removeMarkerFromArray(marker);
+            pushHistory({ type: 'delete', marker });
+            nextMarkerNumber = findNextNumberForType(currentTypeId);
+            syncNumberInput();
+            requestRender();
+            updateUI();
+            scheduleAutosave();
+        }
+
+        function findMarkerAtVirtual(vx, vy) {
+            let found = null,
+                bestDist = Infinity;
+            const minScreenHit = 16; // 屏幕像素，确保缩小视图时也能点中标记
+            const hitRadius = Math.max(markerRadius, minScreenHit / zoom);
+            for (const m of markers) {
+                const dx = vx - m.vx,
+                    dy = vy - m.vy;
+                const dist = Math.hypot(dx, dy);
+                if (dist <= hitRadius && dist < bestDist) {
+                    bestDist = dist;
+                    found = m;
+                }
+            }
+            return found;
         }
 
         function updateUndoButtonState() {
             undoBtn.disabled = history.length === 0;
+            redoBtn.disabled = redoStack.length === 0;
         }
 
         // ============ 清空 ============
@@ -1214,6 +1380,7 @@
             markers = [];
             usedNumbersByType.clear();
             history.length = 0;
+            redoStack.length = 0;
             nextMarkerNumber = findNextNumberForType(currentTypeId);
             nextDocId = 1;
             panX = 0;
@@ -1225,6 +1392,155 @@
             updateUI();
             requestRender();
             updateUndoButtonState();
+            clearAutosave();
+            pendingRestore = null;
+            document.getElementById('sessionBanner').classList.remove('visible');
+        }
+
+        // ============ 自动保存 / 会话恢复 ============
+        // 注意：不保存原始PDF字节（体积大、易超出 localStorage 配额），只保存标记数据。
+        // 页面刷新后需要用户重新导入同名PDF，标记会自动按文件名+页码对齐恢复。
+        let pendingRestore = null;
+        let autosaveTimer = null;
+
+        function serializeMarkersForDoc(docId) {
+            const pageMap = new Map(pages.filter(p => p.docId === docId).map(p => [p.pageIndex, p]));
+            return markers.filter(m => m.docId === docId).map(m => {
+                const pd = pageMap.get(m.pageIndex);
+                return {
+                    pageIndex: m.pageIndex,
+                    localX: pd ? +(m.vx - pd.vx).toFixed(2) : m.vx,
+                    localY: pd ? +(m.vy - pd.vy).toFixed(2) : m.vy,
+                    number: m.number,
+                    color: m.color,
+                    typeCode: m.typeCode,
+                    typeName: m.typeName,
+                    typeFullName: m.typeFullName,
+                    typeAbbr: m.typeAbbr,
+                };
+            });
+        }
+
+        function buildAutosavePayload() {
+            const customTypes = markerTypes
+                .filter(t => t.id.startsWith('custom_'))
+                .map(t => ({ name: t.name, fullName: t.fullName, color: t.color, abbr: t.abbr, code: t.code }));
+            const docsPayload = documents
+                .map(d => ({ fileName: d.fileName, pageCount: d.pageCount, markers: serializeMarkersForDoc(d.id) }))
+                .filter(d => d.markers.length > 0);
+            // 保留尚未重新导入、仍待恢复的文件数据，避免被本次保存覆盖丢失
+            if (pendingRestore && Array.isArray(pendingRestore.docs)) {
+                for (const d of pendingRestore.docs) {
+                    if (!docsPayload.some(x => x.fileName === d.fileName)) docsPayload.push(d);
+                }
+            }
+            return { v: 1, savedAt: Date.now(), customTypes, docs: docsPayload };
+        }
+
+        function scheduleAutosave() {
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(doAutosave, AUTOSAVE_DEBOUNCE_MS);
+        }
+
+        function doAutosave() {
+            try {
+                const hasPending = !!(pendingRestore && Array.isArray(pendingRestore.docs) && pendingRestore.docs.length > 0);
+                if (markers.length === 0 && !hasPending) {
+                    localStorage.removeItem(AUTOSAVE_KEY);
+                    return;
+                }
+                localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildAutosavePayload()));
+            } catch (e) {
+                console.warn('自动保存失败（可能超出浏览器本地存储容量）', e);
+            }
+        }
+
+        function clearAutosave() {
+            if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
+            try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
+        }
+
+        function loadAutosave() {
+            try {
+                const raw = localStorage.getItem(AUTOSAVE_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (!data || !Array.isArray(data.docs) || data.docs.length === 0) return null;
+                return data;
+            } catch {
+                return null;
+            }
+        }
+
+        function applyPendingCustomTypes(data) {
+            if (!data || !Array.isArray(data.customTypes)) return;
+            for (const ct of data.customTypes) {
+                if (markerTypes.some(t => t.name === ct.name)) continue;
+                const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+                markerTypes.push({ id, name: ct.name, fullName: ct.fullName || ct.name, color: ct.color, abbr: ct.abbr, code: ct.code });
+            }
+            renderTypeChips();
+        }
+
+        function showSessionBanner(data) {
+            const names = data.docs.map(d => d.fileName).join('、');
+            document.getElementById('sessionBannerText').textContent = `检测到未保存的标注记录，请重新导入以下文件以恢复标记：${names}`;
+            document.getElementById('sessionBanner').classList.add('visible');
+        }
+
+        function tryRestoreMarkersForDoc(docEntry) {
+            if (!pendingRestore) return;
+            const idx = pendingRestore.docs.findIndex(d => d.fileName === docEntry.fileName);
+            if (idx === -1) return;
+            const saved = pendingRestore.docs[idx];
+            const pageMap = new Map(docEntry.pages.map(p => [p.pageIndex, p]));
+            let restoredCount = 0;
+            for (const sm of saved.markers) {
+                const pd = pageMap.get(sm.pageIndex);
+                if (!pd) continue;
+                let type = markerTypes.find(t => t.code === sm.typeCode || t.abbr === sm.typeAbbr || t.name === sm.typeName);
+                if (!type) {
+                    const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+                    type = {
+                        id,
+                        name: sm.typeName || sm.typeCode || '未知',
+                        fullName: sm.typeFullName || sm.typeName || '',
+                        color: sm.color || '#e53935',
+                        abbr: sm.typeAbbr || sm.typeCode || 'X',
+                        code: sm.typeCode || sm.typeAbbr || 'X',
+                    };
+                    markerTypes.push(type);
+                }
+                if (isNumberUsed(sm.number, type.id)) continue; // 理论上不会冲突，防御性跳过
+                const marker = {
+                    vx: pd.vx + sm.localX,
+                    vy: pd.vy + sm.localY,
+                    number: sm.number,
+                    color: sm.color || type.color,
+                    typeId: type.id,
+                    typeName: sm.typeName || type.name,
+                    typeFullName: sm.typeFullName || type.fullName,
+                    typeAbbr: sm.typeAbbr || type.abbr,
+                    typeCode: sm.typeCode || type.code,
+                    docId: docEntry.id,
+                    pageIndex: sm.pageIndex,
+                };
+                insertMarkerToArray(marker);
+                restoredCount++;
+            }
+            pendingRestore.docs.splice(idx, 1);
+            if (pendingRestore.docs.length === 0) {
+                pendingRestore = null;
+                document.getElementById('sessionBanner').classList.remove('visible');
+            } else {
+                showSessionBanner(pendingRestore);
+            }
+            if (restoredCount > 0) {
+                renderTypeChips();
+                nextMarkerNumber = findNextNumberForType(currentTypeId);
+                syncNumberInput();
+                showToast(`已恢复「${docEntry.fileName}」的 ${restoredCount} 个标记`);
+            }
         }
 
         // ============ 拖拽/触摸 ============
@@ -1316,13 +1632,13 @@
                 pageIndex: page.pageIndex,
             };
             markers.push(marker);
-            history.push({ type: 'add', marker });
-            updateUndoButtonState();
+            pushHistory({ type: 'add', marker });
 
             nextMarkerNumber = findNextNumberForType(currentTypeId);
             syncNumberInput();
             requestRender();
             updateUI();
+            scheduleAutosave();
             return true;
         }
 
@@ -1611,7 +1927,9 @@
             }
 
             pages.push(...newEntries);
+            tryRestoreMarkersForDoc(docEntry);
             updateUI();
+            requestRender();
 
             if (pages.length === newEntries.length && pages.length > 0) {
                 const first = pages[0];
@@ -1629,10 +1947,10 @@
 
         // ============ 高画质渲染 + 尺寸标注 (单位mm) ============
         async function renderPagesHighQuality(entries) {
-            const scale = PDF_RENDER_SCALE;
             for (const entry of entries) {
                 try {
                     const page = entry.pageObj;
+                    const scale = computeRenderScale(entry.origWidth, entry.origHeight);
                     const viewport = page.getViewport({ scale });
                     const offscreen = document.createElement('canvas');
                     offscreen.width = Math.floor(viewport.width);
@@ -1655,15 +1973,58 @@
                     requestRender();
                 } catch (e) {
                     console.warn('渲染失败', e);
+                    if (!window.__renderFailWarned) {
+                        window.__renderFailWarned = true;
+                        alert(`第 ${entry.pageIndex} 页渲染失败（图纸可能幅面过大或浏览器内存不足），该页将以低画质占位显示，其余页不受影响。`);
+                    }
                 }
             }
             updateUI();
             requestRender();
         }
 
+        // ============ 轻提示 / 导出进度反馈 ============
+        const toastEl = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, persist = false) {
+            toastEl.innerHTML = persist ? `<i class="fa-solid fa-spinner fa-spin"></i><span>${escapeHtml(msg)}</span>` : escapeHtml(msg);
+            toastEl.classList.add('visible');
+            if (toastTimer) clearTimeout(toastTimer);
+            if (!persist) {
+                toastTimer = setTimeout(() => toastEl.classList.remove('visible'), 2200);
+            }
+        }
+        function hideToast() {
+            toastEl.classList.remove('visible');
+            if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+        }
+        async function runExportTask(buttons, taskFn, busyMsg, doneMsg, failMsg) {
+            for (const b of buttons) if (b) b.disabled = true;
+            showToast(busyMsg, true);
+            try {
+                await taskFn();
+                showToast(doneMsg || '导出完成');
+            } catch (e) {
+                console.error(e);
+                hideToast();
+                alert(failMsg || '导出失败，请检查网络连接后重试');
+            } finally {
+                for (const b of buttons) if (b) b.disabled = false;
+            }
+        }
+
         // ============ 导出 ============
         async function exportMarkedPDF() {
             if (documents.length === 0) { alert('没有导入任何PDF'); return; }
+            await runExportTask(
+                [exportBtn, exportPdfFromStatsBtn],
+                exportMarkedPDFCore,
+                '正在导出标注PDF…',
+                'PDF 导出完成',
+                '导出PDF失败，请检查网络后重试（需加载 pdf-lib）'
+            );
+        }
+        async function exportMarkedPDFCore() {
             const PDFLib = await loadPdfLib();
             const mergedDoc = await PDFLib.PDFDocument.create();
             const font = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
@@ -1785,7 +2146,16 @@
                 alert('还没有标记，请先在图纸上点击标注');
                 return;
             }
-            try {
+            await runExportTask(
+                [exportExcelBtn, exportExcelBottomBtn],
+                exportExcelCore,
+                '正在生成统计表格…',
+                'Excel 导出完成',
+                '导出 Excel 失败，请检查网络后重试（需加载 ExcelJS）'
+            );
+        }
+        async function exportExcelCore() {
+            {
                 const ExcelJS = await loadExcelJS();
                 const wb = new ExcelJS.Workbook();
                 wb.creator = '电气PDF标注';
@@ -1988,9 +2358,6 @@
 
                 const buffer = await wb.xlsx.writeBuffer();
                 await downloadExcelBuffer(buffer, `电气标注统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
-            } catch (e) {
-                console.error(e);
-                alert('导出 Excel 失败，请检查网络后重试（需加载 ExcelJS）');
             }
         }
 
@@ -2027,6 +2394,18 @@
             }
         });
 
+        let eraseMode = false;
+
+        function handleCanvasTap(vx, vy) {
+            if (eraseMode) {
+                const hit = findMarkerAtVirtual(vx, vy);
+                if (hit) deleteMarker(hit);
+                // 未命中标记时不做任何提示，允许用户继续在图纸上寻找目标
+            } else {
+                addMarker(vx, vy);
+            }
+        }
+
         document.addEventListener('mouseup', (e) => {
             if (e.button === 1 && isDragging) {
                 isDragging = false;
@@ -2040,7 +2419,7 @@
                 const dy = upPos.y - mouseDownPos.y;
                 if (Math.sqrt(dx * dx + dy * dy) < 3) {
                     const v = screenToVirtual(upPos.x, upPos.y);
-                    addMarker(v.x, v.y);
+                    handleCanvasTap(v.x, v.y);
                 }
             }
             mouseDownPos = null;
@@ -2117,7 +2496,7 @@
                     const dy = Math.abs(panY - touchStartPanY);
                     if (dx < 3 && dy < 3) {
                         const v = screenToVirtual(touchStartPos.x, touchStartPos.y);
-                        addMarker(v.x, v.y);
+                        handleCanvasTap(v.x, v.y);
                     }
                 }
                 isTouchDragging = false;
@@ -2183,6 +2562,12 @@
 
         exportBtn.addEventListener('click', exportMarkedPDF);
         undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        eraserBtn.addEventListener('click', () => {
+            eraseMode = !eraseMode;
+            eraserBtn.classList.toggle('active', eraseMode);
+            canvas.classList.toggle('erase-mode', eraseMode);
+        });
         clearBtn.addEventListener('click', clearAll);
         addTypeBtn.addEventListener('click', addCustomType);
         exportExcelBtn.addEventListener('click', exportExcel);
@@ -2198,13 +2583,22 @@
                 statsPanel.classList.remove('visible');
                 statsToggle.classList.remove('active');
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-                const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-                if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) {
-                    return; // 输入框内保留系统撤销，不误撤标记
-                }
+            if (e.key === 'Escape' && eraseMode) {
+                eraseMode = false;
+                eraserBtn.classList.remove('active');
+                canvas.classList.remove('erase-mode');
+            }
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+                if (inInput) return; // 输入框内保留系统撤销，不误撤标记
                 e.preventDefault();
                 undo();
+            }
+            if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y' || e.key === 'Y')) {
+                if (inInput) return;
+                e.preventDefault();
+                redo();
             }
         });
 
@@ -2212,11 +2606,21 @@
             currentColor = e.target.value;
             const t = getCurrentType();
             t.color = currentColor;
-            // 类型色变更时同步该类型已有标记，避免统计/画布/色板不一致
-            for (const m of markers) {
-                if (m.typeId === t.id) m.color = currentColor;
-            }
             renderTypeChips();
+            requestRender();
+        });
+        colorPicker.addEventListener('change', (e) => {
+            const t = getCurrentType();
+            const existingCount = markers.filter(m => m.typeId === t.id).length;
+            if (existingCount > 0) {
+                const apply = confirm(`是否同时把该类型已有的 ${existingCount} 个标记也改成新颜色？\n点击"取消"则仅新标记使用新颜色，已有标记保持原色。`);
+                if (apply) {
+                    for (const m of markers) {
+                        if (m.typeId === t.id) m.color = currentColor;
+                    }
+                    scheduleAutosave();
+                }
+            }
             updateStatsPanel();
             requestRender();
         });
@@ -2289,8 +2693,19 @@
             updateCanvasSize();
             updateUI();
             requestRender();
+
+            pendingRestore = loadAutosave();
+            if (pendingRestore) {
+                applyPendingCustomTypes(pendingRestore);
+                showSessionBanner(pendingRestore);
+            }
         }
         init();
+
+        document.getElementById('sessionBannerDismiss').addEventListener('click', () => {
+            pendingRestore = null;
+            document.getElementById('sessionBanner').classList.remove('visible');
+        });
 
         window.__canvasAPI = {
             get pages() { return pages; },
