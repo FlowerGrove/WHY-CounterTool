@@ -2,2718 +2,585 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>个人标注工具</title>
-    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>木含 · 九宫格</title>
+    <!-- Font Awesome 图标库 (免费) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
+        /* ===== 全局重置 & 字体 ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        html,
+
         body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #e8e8e8;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: none;
-        }
-
-        canvas {
-            display: block;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            cursor: crosshair;
-            will-change: transform;
-            image-rendering: auto;
-        }
-        canvas:active {
-            cursor: crosshair;
-        }
-        canvas.grabbing {
-            cursor: crosshair;
-        }
-
-        .drop-hint {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
-            text-align: center;
-            opacity: 0.40;
-            transition: opacity 0.5s ease;
-        }
-        .drop-hint.hidden {
-            opacity: 0;
-        }
-        .drop-hint__icon {
-            display: block;
-            font-size: 64px;
-            line-height: 1;
-            margin-bottom: 12px;
-            color: #888;
-        }
-        .drop-hint__text {
-            font-size: 15px;
-            color: #555;
-            letter-spacing: 0.04em;
-            font-weight: 450;
-        }
-        .drop-hint__sub {
-            font-size: 12px;
-            color: #999;
-            margin-top: 6px;
-            letter-spacing: 0.03em;
-        }
-
-        .top-panel {
-            position: fixed;
-            top: 14px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            padding: 8px 16px;
-            border-radius: 30px;
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10);
-            font-size: 12px;
-            color: #444;
-            flex-wrap: nowrap;
-            max-width: 96vw;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-        }
-        .top-panel::-webkit-scrollbar {
-            display: none;
-        }
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        .control-group label {
-            font-size: 11px;
-            white-space: nowrap;
-            color: #666;
-            margin-right: 2px;
-        }
-        .size-slider {
-            width: 48px;
-            margin: 0 2px;
-            accent-color: #1a73e8;
-            height: 4px;
-            cursor: pointer;
-        }
-        .size-value {
-            font-size: 10px;
-            min-width: 18px;
-            text-align: center;
-            color: #333;
-            font-weight: 600;
-        }
-        .color-picker-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            flex-shrink: 0;
-        }
-        .color-picker {
-            width: 22px;
-            height: 22px;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            padding: 0;
-            background: transparent;
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.10);
-            -webkit-appearance: none;
-            appearance: none;
-        }
-        .color-picker::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        .color-picker::-webkit-color-swatch {
-            border: none;
-            border-radius: 50%;
-        }
-        .color-picker::-moz-color-swatch {
-            border: none;
-            border-radius: 50%;
-        }
-        .number-input-group {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        .number-input {
-            width: 52px;
-            height: 26px;
-            border: 1px solid #ccc;
-            border-radius: 13px;
-            text-align: center;
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            outline: none;
-            padding: 0 4px;
-            background: rgba(255, 255, 255, 0.9);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
-        }
-        .number-input:focus {
-            border-color: #1a73e8;
-            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
-        }
-        .number-input.error {
-            border-color: #d93025;
-            box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15);
-        }
-        .number-input::-webkit-inner-spin-button,
-        .number-input::-webkit-outer-spin-button {
-            opacity: 0.5;
-            height: 18px;
-        }
-        .btn-icon {
-            background: transparent;
-            border: none;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            cursor: pointer;
-            font-size: 16px;
-            color: #555;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            position: relative;
-        }
-        .btn-icon:hover {
-            background: rgba(0, 0, 0, 0.06);
-            color: #111;
-        }
-        .btn-icon:active {
-            transform: scale(0.92);
-        }
-        .btn-icon:disabled {
-            opacity: 0.30;
-            pointer-events: none;
-        }
-        .btn-icon.danger:hover {
-            background: rgba(217, 48, 37, 0.10);
-            color: #d93025;
-        }
-        .btn-icon.active {
-            background: #d93025;
-            color: #fff;
-        }
-        .btn-icon.active:hover {
-            background: #c5281c;
-            color: #fff;
-        }
-        canvas.erase-mode {
-            cursor: pointer;
-        }
-        .toast {
-            position: fixed;
-            bottom: 72px;
-            left: 50%;
-            transform: translateX(-50%) translateY(8px);
-            z-index: 60;
-            background: rgba(20, 20, 20, 0.86);
-            color: #fff;
-            padding: 9px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            letter-spacing: 0.02em;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            white-space: nowrap;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .toast.visible {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        .toast i.fa-spinner {
-            font-size: 11px;
-        }
-        .session-banner {
-            position: fixed;
-            top: 66px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 21;
-            background: rgba(26, 115, 232, 0.96);
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: none;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
-            max-width: 92vw;
-        }
-        .session-banner.visible {
-            display: inline-flex;
-        }
-        .session-banner button {
-            border: none;
-            background: rgba(255, 255, 255, 0.22);
-            color: #fff;
-            border-radius: 12px;
-            padding: 3px 10px;
-            font-size: 11px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-        .session-banner button:hover {
-            background: rgba(255, 255, 255, 0.32);
-        }
-        .btn-icon .tooltip {
-            position: absolute;
-            bottom: -26px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.80);
-            color: #fff;
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            font-weight: 400;
-            letter-spacing: 0.02em;
-        }
-        .btn-icon:hover .tooltip {
-            opacity: 1;
-        }
-        .divider {
-            width: 1px;
-            height: 24px;
-            background: rgba(0, 0, 0, 0.10);
-            flex-shrink: 0;
-            margin: 0 2px;
-        }
-
-        .bottom-bar {
-            position: fixed;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            padding: 6px 16px;
-            border-radius: 30px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        }
-        .page-count {
-            font-size: 11px;
-            color: #888;
-            letter-spacing: 0.03em;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            white-space: nowrap;
-        }
-        .page-count.visible {
-            opacity: 0.7;
-        }
-        .bottom-bar .btn-icon {
-            width: 32px;
-            height: 32px;
-            font-size: 14px;
-        }
-        #fileInput {
-            display: none;
-        }
-
-        .type-dock {
-            position: fixed;
-            top: 50%;
-            left: 14px;
-            transform: translateY(-50%);
-            z-index: 22;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 6px;
-            width: 88px;
-            padding: 12px 8px;
-            background: rgba(255, 255, 255, 0.94);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
-            max-height: calc(100vh - 120px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: thin;
-            touch-action: pan-y;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .type-dock::-webkit-scrollbar {
-            width: 3px;
-        }
-        .type-dock::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 2px;
-        }
-        .type-dock__title {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            color: #888;
-            text-align: center;
-            margin-bottom: 2px;
-            user-select: none;
-        }
-        .type-chips {
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 5px;
-        }
-        .type-chip {
-            border: 1.5px solid transparent;
-            border-radius: 12px;
-            padding: 8px 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.04);
-            color: #444;
-            white-space: nowrap;
-            transition: all 0.15s;
-            text-align: center;
-            line-height: 1.2;
-        }
-        .type-chip.active {
-            color: #fff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-            transform: scale(1.02);
-        }
-        .type-chip:hover:not(.active) {
-            filter: brightness(0.97);
-        }
-        .type-dock__footer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            margin-top: 4px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(0, 0, 0, 0.08);
-        }
-        .btn-add-type {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 1px dashed #aaa;
-            background: transparent;
-            color: #666;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-        .btn-add-type:hover {
-            border-color: #1a73e8;
-            color: #1a73e8;
-        }
-        .type-dock .color-picker-wrapper {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .stats-panel {
-            position: fixed;
-            top: 70px;
-            right: 16px;
-            z-index: 25;
-            width: 240px;
-            max-height: calc(100vh - 140px);
-            overflow: auto;
-            background: rgba(255, 255, 255, 0.94);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 16px;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
-            padding: 14px 14px 12px;
-            font-size: 12px;
-            color: #333;
-            display: none;
-        }
-        .stats-panel.visible {
-            display: block;
-        }
-        .stats-panel h3 {
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            color: #222;
-        }
-        .stats-panel h3 span {
-            font-weight: 500;
-            color: #888;
-            font-size: 11px;
-        }
-        .stats-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-            gap: 8px;
-        }
-        .stats-row:last-child {
-            border-bottom: none;
-        }
-        .stats-type {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            min-width: 0;
-        }
-        .stats-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .stats-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .stats-count {
-            font-weight: 700;
-            color: #111;
-            font-variant-numeric: tabular-nums;
-        }
-        .stats-empty {
-            color: #999;
-            text-align: center;
-            padding: 18px 0 10px;
-        }
-        .stats-actions {
-            display: flex;
-            gap: 6px;
-            margin-top: 10px;
-        }
-        .stats-actions button {
-            flex: 1;
-            border: none;
-            border-radius: 10px;
-            padding: 7px 0;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            background: #1a73e8;
-            color: #fff;
-        }
-        .stats-actions button.secondary {
-            background: rgba(0, 0, 0, 0.06);
-            color: #444;
-        }
-        .stats-actions button:hover {
-            filter: brightness(1.05);
-        }
-        .stats-toggle {
-            position: fixed;
-            top: 70px;
-            right: 16px;
-            z-index: 24;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255, 255, 255, 0.92);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-            cursor: pointer;
-            color: #444;
-            font-size: 16px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .stats-toggle.visible {
-            display: inline-flex;
-        }
-        .stats-panel.visible ~ .stats-toggle,
-        .stats-toggle.active {
-            background: #1a73e8;
-            color: #fff;
-        }
-        body:has(.stats-panel.visible) .stats-toggle {
-            right: 250px;
-        }
-
-        .stats-file {
-            margin-top: 10px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(0, 0, 0, 0.08);
-        }
-        .stats-file:first-child {
-            margin-top: 0;
-            padding-top: 0;
-            border-top: none;
-        }
-        .stats-file__name {
-            font-size: 11px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 4px;
-            word-break: break-all;
-            line-height: 1.35;
-        }
-        .stats-file__total {
-            font-weight: 500;
-            color: #888;
-            font-size: 10px;
-            margin-left: 4px;
-        }
-
-        .settings-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 40;
-            background: rgba(0, 0, 0, 0.28);
-            display: none;
-            align-items: center;
-            justify-content: center;
+            background: #e8ddd0;
+            /* 暖灰底色，衬托木纹 */
+            background-image:
+                repeating-linear-gradient(45deg,
+                    rgba(180, 150, 120, 0.03) 0px,
+                    rgba(180, 150, 120, 0.03) 2px,
+                    transparent 2px,
+                    transparent 8px),
+                repeating-linear-gradient(-45deg,
+                    rgba(180, 150, 120, 0.03) 0px,
+                    rgba(180, 150, 120, 0.03) 2px,
+                    transparent 2px,
+                    transparent 8px);
             padding: 20px;
         }
-        .settings-backdrop.visible {
-            display: flex;
-        }
-        .settings-modal {
-            width: min(360px, 100%);
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
-            padding: 18px 18px 14px;
-            color: #333;
-            font-size: 13px;
-        }
-        .settings-modal h3 {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .settings-modal h3 button {
-            border: none;
-            background: transparent;
-            font-size: 18px;
-            color: #888;
-            cursor: pointer;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-        }
-        .settings-modal h3 button:hover {
-            background: rgba(0, 0, 0, 0.06);
-            color: #333;
-        }
-        .settings-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        }
-        .settings-row:last-of-type {
-            border-bottom: none;
-        }
-        .settings-row label {
-            color: #444;
-            line-height: 1.35;
-        }
-        .settings-row label small {
-            display: block;
-            color: #999;
-            font-size: 11px;
-            margin-top: 2px;
-            font-weight: 400;
-        }
-        .settings-row select,
-        .settings-row input[type="number"] {
-            height: 30px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 0 8px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            outline: none;
-            background: #fff;
-            min-width: 72px;
-        }
-        .settings-row input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #1a73e8;
-        }
-        .settings-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 12px;
-        }
-        .settings-actions button {
-            border: none;
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .settings-actions .btn-primary {
-            background: #1a73e8;
-            color: #fff;
-        }
-        .settings-actions .btn-secondary {
-            background: rgba(0, 0, 0, 0.06);
-            color: #444;
+
+        /* ===== 主卡片 ===== */
+        .container {
+            max-width: 720px;
+            width: 100%;
+            background: #f7f0e8;
+            /* 米白底 */
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(210, 180, 150, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(180, 150, 120, 0.10) 0%, transparent 50%);
+            border-radius: 48px 48px 40px 40px;
+            padding: 30px 28px 38px;
+            box-shadow:
+                0 20px 60px rgba(120, 90, 70, 0.25),
+                0 8px 24px rgba(120, 90, 70, 0.10),
+                inset 0 1px 0 rgba(255, 245, 235, 0.8);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(210, 185, 160, 0.30);
+            transition: box-shadow 0.3s ease;
         }
 
-        @media (max-width:640px) {
-            .session-banner {
-                top: 58px;
-                font-size: 11px;
-                padding: 6px 12px;
-                gap: 8px;
+        /* ===== 顶部 ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 18px;
+            border-bottom: 2px solid rgba(180, 150, 125, 0.20);
+            margin-bottom: 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(145deg, #c9b09b, #b0957e);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #f5ede4;
+            font-size: 26px;
+            box-shadow: 0 6px 16px rgba(140, 110, 85, 0.25);
+            border: 1px solid rgba(255, 235, 215, 0.35);
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #5c4a3a;
+            letter-spacing: 2px;
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: #8f7a68;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            color: #8f7a68;
+            font-size: 20px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            cursor: default;
+        }
+
+        .header-right:hover {
+            opacity: 1;
+        }
+
+        /* ===== 九宫格 ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        /* ===== 每个格子 ===== */
+        .grid-item {
+            background: rgba(245, 238, 230, 0.70);
+            backdrop-filter: blur(4px);
+            border-radius: 28px;
+            padding: 22px 10px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            border: 1px solid rgba(210, 185, 160, 0.25);
+            box-shadow:
+                0 6px 18px rgba(140, 110, 85, 0.08),
+                inset 0 1px 0 rgba(255, 245, 235, 0.6);
+            text-decoration: none;
+            color: #4d3e30;
+            min-height: 130px;
+            position: relative;
+            isolation: isolate;
+        }
+
+        /* 木纹纹理叠加 (每个格子独立木纹) */
+        .grid-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 28px;
+            background-image:
+                repeating-linear-gradient(85deg,
+                    transparent 0px,
+                    transparent 6px,
+                    rgba(180, 150, 120, 0.04) 6px,
+                    rgba(180, 150, 120, 0.04) 7px,
+                    transparent 7px,
+                    transparent 14px),
+                repeating-linear-gradient(175deg,
+                    transparent 0px,
+                    transparent 10px,
+                    rgba(150, 120, 95, 0.03) 10px,
+                    rgba(150, 120, 95, 0.03) 11px,
+                    transparent 11px,
+                    transparent 22px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .grid-item>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 悬浮效果 */
+        .grid-item:hover {
+            transform: translateY(-6px) scale(1.02);
+            background: rgba(250, 242, 234, 0.90);
+            border-color: rgba(180, 150, 125, 0.45);
+            box-shadow:
+                0 20px 40px rgba(130, 100, 75, 0.18),
+                0 8px 20px rgba(130, 100, 75, 0.08),
+                inset 0 1px 0 rgba(255, 245, 235, 0.8);
+        }
+
+        .grid-item:active {
+            transform: translateY(-2px) scale(0.98);
+            transition-duration: 0.08s;
+        }
+
+        /* ===== 图标 ===== */
+        .grid-item .icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+            background: linear-gradient(145deg, #b8a08b, #9c8572);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 6px rgba(140, 110, 85, 0.15));
+            transition: all 0.3s ease;
+        }
+
+        .grid-item:hover .icon {
+            transform: scale(1.06);
+            filter: drop-shadow(0 4px 12px rgba(140, 110, 85, 0.25));
+        }
+
+        /* ===== 文字 ===== */
+        .grid-item .label {
+            font-size: 15px;
+            font-weight: 500;
+            color: #4d3e30;
+            letter-spacing: 0.5px;
+            background: rgba(245, 238, 230, 0.40);
+            padding: 2px 14px;
+            border-radius: 30px;
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(210, 185, 160, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .grid-item:hover .label {
+            background: rgba(235, 220, 208, 0.50);
+            border-color: rgba(180, 150, 125, 0.25);
+        }
+
+        .grid-item .desc {
+            font-size: 11px;
+            color: #9a8676;
+            margin-top: 4px;
+            opacity: 0.7;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== 每个格子单独配色 (木含风格 大地色系) ===== */
+        .item-1 .icon {
+            background: linear-gradient(145deg, #c9a88b, #af8b72);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-1:hover {
+            background: rgba(245, 228, 215, 0.85);
+        }
+
+        .item-2 .icon {
+            background: linear-gradient(145deg, #b8a08b, #95806d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-2:hover {
+            background: rgba(238, 224, 212, 0.85);
+        }
+
+        .item-3 .icon {
+            background: linear-gradient(145deg, #c2a58a, #a5876e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-3:hover {
+            background: rgba(240, 222, 208, 0.85);
+        }
+
+        .item-4 .icon {
+            background: linear-gradient(145deg, #b5957c, #9a7c64);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-4:hover {
+            background: rgba(235, 218, 204, 0.85);
+        }
+
+        .item-5 .icon {
+            background: linear-gradient(145deg, #c8ad94, #ab8d76);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-5:hover {
+            background: rgba(242, 226, 214, 0.85);
+        }
+
+        .item-6 .icon {
+            background: linear-gradient(145deg, #bda088, #a1826a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-6:hover {
+            background: rgba(238, 220, 206, 0.85);
+        }
+
+        .item-7 .icon {
+            background: linear-gradient(145deg, #c4a890, #a78871);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-7:hover {
+            background: rgba(240, 224, 212, 0.85);
+        }
+
+        .item-8 .icon {
+            background: linear-gradient(145deg, #b3967e, #947a64);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-8:hover {
+            background: rgba(232, 214, 200, 0.85);
+        }
+
+        .item-9 .icon {
+            background: linear-gradient(145deg, #bfa48c, #a1856e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .item-9:hover {
+            background: rgba(244, 228, 216, 0.85);
+        }
+
+        /* ===== 底部 ===== */
+        .footer {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 13px;
+            color: #b3a192;
+            letter-spacing: 2px;
+            border-top: 1px solid rgba(180, 150, 125, 0.15);
+            padding-top: 18px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer span {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            cursor: default;
+        }
+
+        .footer span:hover {
+            opacity: 1;
+        }
+
+        .footer i {
+            margin: 0 6px;
+            font-size: 12px;
+            color: #c4b2a2;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 16px 28px;
+                border-radius: 32px;
             }
-            .type-dock {
-                left: 8px;
-                width: 72px;
-                padding: 10px 6px;
+
+            .header-title h1 {
+                font-size: 20px;
+            }
+            .header-title p {
+                font-size: 11px;
+            }
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
                 border-radius: 14px;
-                max-height: calc(100vh - 100px);
             }
-            .type-chip {
-                padding: 7px 4px;
-                font-size: 11px;
-                border-radius: 10px;
+
+            .grid {
+                gap: 12px;
             }
-            .top-panel {
-                top: 10px;
-                padding: 6px 12px;
-                gap: 5px;
+
+            .grid-item {
+                min-height: 110px;
+                padding: 16px 6px 14px;
                 border-radius: 22px;
             }
-            .top-panel .control-group label {
-                font-size: 10px;
+
+            .grid-item .icon {
+                font-size: 28px;
+                margin-bottom: 4px;
             }
-            .top-panel .size-slider {
-                width: 36px;
-            }
-            .top-panel .number-input {
-                width: 38px;
-                height: 24px;
-                font-size: 12px;
-            }
-            .top-panel .btn-icon {
-                width: 30px;
-                height: 30px;
-                font-size: 14px;
-            }
-            .top-panel .color-picker {
-                width: 20px;
-                height: 20px;
-            }
-            .top-panel .divider {
-                height: 20px;
-            }
-            .bottom-bar {
-                bottom: 12px;
-                padding: 4px 12px;
-                gap: 6px;
-            }
-            .bottom-bar .btn-icon {
-                width: 28px;
-                height: 28px;
-                font-size: 12px;
-            }
-            .bottom-bar .page-count {
-                font-size: 10px;
-            }
-            .drop-hint__icon {
-                font-size: 44px;
-            }
-            .drop-hint__text {
+
+            .grid-item .label {
                 font-size: 13px;
+                padding: 1px 10px;
             }
-            .drop-hint__sub {
+
+            .grid-item .desc {
+                font-size: 10px;
+                margin-top: 2px;
+            }
+
+            .footer {
                 font-size: 11px;
-            }
-            .btn-icon .tooltip {
-                display: none;
+                gap: 12px;
             }
         }
-        @media (max-width:420px) {
-            .top-panel {
-                padding: 4px 8px;
-                gap: 3px;
+
+        @media (max-width: 420px) {
+            .grid {
+                gap: 10px;
+            }
+            .grid-item {
+                min-height: 90px;
+                padding: 12px 4px 10px;
                 border-radius: 18px;
-                top: 8px;
             }
-            .top-panel .control-group label {
-                font-size: 9px;
+            .grid-item .icon {
+                font-size: 24px;
             }
-            .top-panel .size-slider {
-                width: 28px;
-            }
-            .top-panel .number-input {
-                width: 32px;
-                height: 20px;
-                font-size: 10px;
-                border-radius: 10px;
-            }
-            .top-panel .btn-icon {
-                width: 26px;
-                height: 26px;
+            .grid-item .label {
                 font-size: 12px;
             }
-            .top-panel .color-picker {
-                width: 18px;
-                height: 18px;
+            .header-title h1 {
+                font-size: 17px;
             }
-            .top-panel .divider {
-                height: 16px;
-                margin: 0 1px;
-            }
-            .bottom-bar {
-                padding: 3px 8px;
-                gap: 4px;
-                bottom: 8px;
-                border-radius: 20px;
-            }
-            .bottom-bar .btn-icon {
-                width: 24px;
-                height: 24px;
-                font-size: 11px;
-            }
-            .bottom-bar .page-count {
-                font-size: 9px;
-            }
-        }
-        @media (orientation:landscape) and (max-height:500px) {
-            .top-panel {
-                top: 6px;
-                padding: 4px 10px;
-                gap: 4px;
-                border-radius: 16px;
-            }
-            .top-panel .btn-icon {
-                width: 24px;
-                height: 24px;
-                font-size: 11px;
-            }
-            .top-panel .number-input {
-                width: 30px;
-                height: 18px;
-                font-size: 10px;
-            }
-            .top-panel .size-slider {
-                width: 24px;
-            }
-            .bottom-bar {
-                bottom: 6px;
-                padding: 2px 8px;
+            .container {
+                padding: 16px 12px 22px;
             }
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
 
-    <div class="drop-hint" id="dropHint">
-        <span class="drop-hint__icon"><i class="fa-solid fa-file-pdf"></i></span>
-        <span class="drop-hint__text">拖放 PDF 图纸到此处</span>
-        <span class="drop-hint__sub">点击标记 PI / PT / PIT 等仪表，橡皮擦可删除，支持统计导出 Excel</span>
+    <div class="container">
+
+        <!-- ====== 头部 ====== -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-icon">
+                    <i class="fas fa-tree"></i>
+                </div>
+                <div class="header-title">
+                    <h1>木 含</h1>
+                    <p>· 自然 · 简素 ·</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <i class="fas fa-ellipsis-h"></i>
+            </div>
+        </div>
+
+        <!-- ====== 九宫格 ====== -->
+        <div class="grid">
+
+            <!-- 1 -->
+            <a href="#" class="grid-item item-1" data-page="home">
+                <div class="icon"><i class="fas fa-home"></i></div>
+                <div class="label">首页</div>
+                <div class="desc">回到起点</div>
+            </a>
+
+            <!-- 2 -->
+            <a href="#" class="grid-item item-2" data-page="discover">
+                <div class="icon"><i class="fas fa-compass"></i></div>
+                <div class="label">探索</div>
+                <div class="desc">发现美好</div>
+            </a>
+
+            <!-- 3 -->
+            <a href="#" class="grid-item item-3" data-page="gallery">
+                <div class="icon"><i class="fas fa-images"></i></div>
+                <div class="label">图库</div>
+                <div class="desc">木作光影</div>
+            </a>
+
+            <!-- 4 -->
+            <a href="#" class="grid-item item-4" data-page="journal">
+                <div class="icon"><i class="fas fa-feather-alt"></i></div>
+                <div class="label">手记</div>
+                <div class="desc">随笔记录</div>
+            </a>
+
+            <!-- 5 -->
+            <a href="#" class="grid-item item-5" data-page="craft">
+                <div class="icon"><i class="fas fa-hammer"></i></div>
+                <div class="label">工坊</div>
+                <div class="desc">匠心手作</div>
+            </a>
+
+            <!-- 6 -->
+            <a href="#" class="grid-item item-6" data-page="tea">
+                <div class="icon"><i class="fas fa-mug-hot"></i></div>
+                <div class="label">茶事</div>
+                <div class="desc">一壶清欢</div>
+            </a>
+
+            <!-- 7 -->
+            <a href="#" class="grid-item item-7" data-page="music">
+                <div class="icon"><i class="fas fa-music"></i></div>
+                <div class="label">音律</div>
+                <div class="desc">松风竹韵</div>
+            </a>
+
+            <!-- 8 -->
+            <a href="#" class="grid-item item-8" data-page="garden">
+                <div class="icon"><i class="fas fa-leaf"></i></div>
+                <div class="label">庭院</div>
+                <div class="desc">四时草木</div>
+            </a>
+
+            <!-- 9 -->
+            <a href="#" class="grid-item item-9" data-page="about">
+                <div class="icon"><i class="fas fa-user-circle"></i></div>
+                <div class="label">关于</div>
+                <div class="desc">木含其人</div>
+            </a>
+
+        </div>
+
+        <!-- ====== 底部 ====== -->
+        <div class="footer">
+            <span><i class="fas fa-circle"></i> 木含 · 九宫</span>
+            <span><i class="fas fa-circle"></i> 点击跳转</span>
+            <span><i class="fas fa-circle"></i> 温润如木</span>
+        </div>
+
     </div>
 
-    <div class="session-banner" id="sessionBanner">
-        <span id="sessionBannerText">检测到上次未保存的标注记录</span>
-        <button type="button" id="sessionBannerDismiss">知道了</button>
-    </div>
-
-    <!-- 左侧类型浮动栏 -->
-    <aside class="type-dock" id="typeDock">
-        <div class="type-dock__title">仪表</div>
-        <div class="type-chips" id="typeChips"></div>
-        <div class="type-dock__footer">
-            <div class="color-picker-wrapper">
-                <input type="color" id="colorPicker" class="color-picker" value="#1565c0" title="当前类型颜色" />
-            </div>
-            <button class="btn-add-type" id="addTypeBtn" title="添加自定义类型">+</button>
-        </div>
-    </aside>
-
-    <!-- 顶部工具栏 -->
-    <div class="top-panel" id="topPanel">
-        <div class="number-input-group">
-            <label for="numberInput"><i class="fa-solid fa-hashtag" style="font-size:11px; color:#888;"></i></label>
-            <input type="text" id="numberInput" class="number-input" value="001" inputmode="numeric" maxlength="4" />
-        </div>
-        <div class="divider"></div>
-        <div class="control-group">
-            <label for="radiusSlider"><i class="fa-regular fa-circle" style="font-size:11px; color:#888;"></i></label>
-            <input type="range" id="radiusSlider" class="size-slider" min="6" max="30" value="12" step="0.5" />
-            <span class="size-value" id="radiusValue">12</span>
-        </div>
-        <div class="control-group">
-            <label for="fontSizeSlider"><i class="fa-solid fa-font" style="font-size:11px; color:#888;"></i></label>
-            <input type="range" id="fontSizeSlider" class="size-slider" min="5" max="24" value="8" step="0.5" />
-            <span class="size-value" id="fontSizeValue">8</span>
-        </div>
-        <div class="divider"></div>
-        <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
-        <button class="btn-icon" id="redoBtn" title="重做 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span class="tooltip">重做</span></button>
-        <button class="btn-icon" id="eraserBtn" title="点击已有标记可删除"><i class="fa-solid fa-eraser"></i><span class="tooltip">删除标记</span></button>
-        <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
-        <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
-        <button class="btn-icon" id="settingsBtn" title="设置"><i class="fa-solid fa-gear"></i><span class="tooltip">设置</span></button>
-    </div>
-
-    <div class="settings-backdrop" id="settingsBackdrop">
-        <div class="settings-modal" role="dialog" aria-label="设置">
-            <h3>设置 <button type="button" id="settingsCloseBtn" title="关闭">×</button></h3>
-            <div class="settings-row">
-                <label>编号补零<small>如 001、002（仪表显示）</small></label>
-                <select id="settingPadDigits">
-                    <option value="2">2 位 (01)</option>
-                    <option value="3" selected>3 位 (001)</option>
-                    <option value="4">4 位 (0001)</option>
-                </select>
-            </div>
-            <div class="settings-row">
-                <label>文档页脚信息<small>文件名 / 尺寸mm</small></label>
-                <input type="checkbox" id="settingShowCaption" checked />
-            </div>
-            <div class="settings-row">
-                <label>页脚显示文件名</label>
-                <input type="checkbox" id="settingCaptionName" checked />
-            </div>
-            <div class="settings-row">
-                <label>页脚显示尺寸</label>
-                <input type="checkbox" id="settingCaptionSize" checked />
-            </div>
-            <div class="settings-actions">
-                <button type="button" class="btn-secondary" id="settingsCancelBtn">取消</button>
-                <button type="button" class="btn-primary" id="settingsSaveBtn">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <button class="stats-toggle" id="statsToggle" title="统计"><i class="fa-solid fa-chart-simple"></i></button>
-    <aside class="stats-panel" id="statsPanel">
-        <h3>类型统计 <span id="statsTotal">0</span></h3>
-        <div id="statsList"><div class="stats-empty">暂无标记</div></div>
-        <div class="stats-actions">
-            <button type="button" id="exportExcelBtn">导出 Excel</button>
-            <button type="button" class="secondary" id="exportPdfFromStatsBtn">导出 PDF</button>
-        </div>
-    </aside>
-
-    <!-- 底部工具栏 -->
-    <div class="bottom-bar">
-        <span class="page-count" id="pageCount"></span>
-        <button class="btn-icon" id="exportExcelBottomBtn" title="导出统计 Excel"><i class="fa-solid fa-file-excel"></i><span class="tooltip">Excel</span></button>
-        <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
-    </div>
-
-    <div class="toast" id="toast"></div>
-
-    <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple />
-
-    <script type="module">
-        // ============ 外部库加载 ============
-        const PDFJS_VERSION = '3.11.174';
-        const PDFJS_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
-        const PDFJS_WORKER_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
-        const PDFLIB_CDN = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
-        const EXCELJS_CDN = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
-
-        async function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = () => reject(new Error(`加载失败: ${src}`));
-                document.head.appendChild(script);
-            });
-        }
-
-        async function loadPdfJs() {
-            if (window.pdfjsLib) return window.pdfjsLib;
-            await loadScript(PDFJS_CDN);
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
-            return window.pdfjsLib;
-        }
-
-        async function loadPdfLib() {
-            if (window.PDFLib) return window.PDFLib;
-            await loadScript(PDFLIB_CDN);
-            return window.PDFLib;
-        }
-
-        async function loadExcelJS() {
-            if (window.ExcelJS) return window.ExcelJS;
-            await loadScript(EXCELJS_CDN);
-            return window.ExcelJS;
-        }
-
-        // ============ 常量 ============
-        const PAGE_GAP = 16;
-        const PAGE_CAPTION_H = 22;
-        const DOC_GAP = 48;
-        const MIN_ZOOM = 0.02;
-        const MAX_ZOOM = 30;
-        const ZOOM_SENSITIVITY = 0.001;
-        const WHEEL_PAN_SPEED = 1.0;
-        const MARKER_MIN_DIST = 28;
-        const MAX_MARKER_NUMBER = 9999;
-        const AUTOSAVE_KEY = 'elecPdfMarkerAutosave_v1';
-        const AUTOSAVE_DEBOUNCE_MS = 400;
-        const SETTINGS_KEY = 'elecPdfMarkerSettings_v1';
-
-        const defaultSettings = {
-            numberPadDigits: 3,
-            showPageCaption: true,
-            captionShowName: true,
-            captionShowSize: true,
-        };
-        let settings = loadSettings();
-
-        function loadSettings() {
-            try {
-                const raw = localStorage.getItem(SETTINGS_KEY);
-                if (!raw) return { ...defaultSettings };
-                return { ...defaultSettings, ...JSON.parse(raw) };
-            } catch {
-                return { ...defaultSettings };
-            }
-        }
-
-        function saveSettings() {
-            try {
-                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-            } catch { /* ignore */ }
-        }
-
-        function formatMarkerNumber(n) {
-            const digits = Math.min(4, Math.max(2, settings.numberPadDigits | 0));
-            return String(n).padStart(digits, '0');
-        }
-
-        function formatMarkerLabel(m) {
-            const abbr = m.typeAbbr || getTypeById(m.typeId).abbr;
-            return `${abbr}${formatMarkerNumber(m.number)}`;
-        }
-
-        function pageStackGap(prevDocId, nextDocId) {
-            const caption = PAGE_CAPTION_H;
-            return (prevDocId !== nextDocId ? DOC_GAP : PAGE_GAP) + caption;
-        }
-
-        // ============ 移动端检测 ============
-        const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||
-            ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
-        const MOBILE_RADIUS = 16;
-        const MOBILE_FONT_SIZE = 11;
-        const DESKTOP_RADIUS = 12;
-        const DESKTOP_FONT_SIZE = 8;
-
-        // ★★★ 极致画质：桌面渲染缩放 5.5，移动端 4.5（大幅面图纸会自动降级，避免超出浏览器canvas限制）★★★
-        const PDF_RENDER_SCALE = isMobile ? 4.5 : 5.5;
-        const RENDER_MAX_DIM = isMobile ? 6000 : 8000; // 单边像素安全上限（iOS Safari 等对canvas尺寸有硬限制）
-        const RENDER_MAX_PIXELS = isMobile ? 20000000 : 36000000; // 总像素安全上限，避免大幅面图纸耗尽内存
-
-        function computeRenderScale(origWidth, origHeight) {
-            let scale = PDF_RENDER_SCALE;
-            const dimCap = RENDER_MAX_DIM / Math.max(origWidth, origHeight);
-            if (dimCap < scale) scale = dimCap;
-            const pixelCap = Math.sqrt(RENDER_MAX_PIXELS / (origWidth * origHeight));
-            if (pixelCap < scale) scale = pixelCap;
-            return Math.max(1, scale);
-        }
-
-        const DESKTOP_LINE_WIDTH = 2.0;
-        const MOBILE_LINE_WIDTH = 2.5;
-
-        // ============ DOM元素 ============
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
-        const dropHint = document.getElementById('dropHint');
-        const pageCountEl = document.getElementById('pageCount');
-        const exportBtn = document.getElementById('exportBtn');
-        const importBtn = document.getElementById('importBtn');
-        const fileInput = document.getElementById('fileInput');
-        const colorPicker = document.getElementById('colorPicker');
-        const radiusSlider = document.getElementById('radiusSlider');
-        const fontSizeSlider = document.getElementById('fontSizeSlider');
-        const radiusValueEl = document.getElementById('radiusValue');
-        const fontSizeValueEl = document.getElementById('fontSizeValue');
-        const numberInput = document.getElementById('numberInput');
-        const undoBtn = document.getElementById('undoBtn');
-        const redoBtn = document.getElementById('redoBtn');
-        const eraserBtn = document.getElementById('eraserBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const settingsBtn = document.getElementById('settingsBtn');
-        const settingsBackdrop = document.getElementById('settingsBackdrop');
-        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-        const settingsCancelBtn = document.getElementById('settingsCancelBtn');
-        const settingsSaveBtn = document.getElementById('settingsSaveBtn');
-        const settingPadDigits = document.getElementById('settingPadDigits');
-        const settingShowCaption = document.getElementById('settingShowCaption');
-        const settingCaptionName = document.getElementById('settingCaptionName');
-        const settingCaptionSize = document.getElementById('settingCaptionSize');
-        const typeChipsEl = document.getElementById('typeChips');
-        const addTypeBtn = document.getElementById('addTypeBtn');
-        const statsPanel = document.getElementById('statsPanel');
-        const statsToggle = document.getElementById('statsToggle');
-        const statsList = document.getElementById('statsList');
-        const statsTotal = document.getElementById('statsTotal');
-        const exportExcelBtn = document.getElementById('exportExcelBtn');
-        const exportExcelBottomBtn = document.getElementById('exportExcelBottomBtn');
-        const exportPdfFromStatsBtn = document.getElementById('exportPdfFromStatsBtn');
-
-        // ============ 标记类型（常用仪表位号）============
-        const DEFAULT_TYPES = [
-            { id: 'pi',  name: 'PI',  fullName: '压力指示',     color: '#1565c0', abbr: 'PI',  code: 'PI' },
-            { id: 'pt',  name: 'PT',  fullName: '压力变送',     color: '#0277bd', abbr: 'PT',  code: 'PT' },
-            { id: 'pit', name: 'PIT', fullName: '压力指示变送', color: '#0288d1', abbr: 'PIT', code: 'PIT' },
-            { id: 'ti',  name: 'TI',  fullName: '温度指示',     color: '#ef6c00', abbr: 'TI',  code: 'TI' },
-            { id: 'tt',  name: 'TT',  fullName: '温度变送',     color: '#f57c00', abbr: 'TT',  code: 'TT' },
-            { id: 'tit', name: 'TIT', fullName: '温度指示变送', color: '#fb8c00', abbr: 'TIT', code: 'TIT' },
-            { id: 'fi',  name: 'FI',  fullName: '流量指示',     color: '#2e7d32', abbr: 'FI',  code: 'FI' },
-            { id: 'ft',  name: 'FT',  fullName: '流量变送',     color: '#388e3c', abbr: 'FT',  code: 'FT' },
-            { id: 'fit', name: 'FIT', fullName: '流量指示变送', color: '#43a047', abbr: 'FIT', code: 'FIT' },
-            { id: 'li',  name: 'LI',  fullName: '液位指示',     color: '#6a1b9a', abbr: 'LI',  code: 'LI' },
-            { id: 'lt',  name: 'LT',  fullName: '液位变送',     color: '#7b1fa2', abbr: 'LT',  code: 'LT' },
-            { id: 'lit', name: 'LIT', fullName: '液位指示变送', color: '#8e24aa', abbr: 'LIT', code: 'LIT' },
-            { id: 'pdi', name: 'PDI', fullName: '差压指示',   color: '#00838f', abbr: 'PDI', code: 'PDI' },
-            { id: 'pdt', name: 'PDT', fullName: '差压变送',   color: '#00695c', abbr: 'PDT', code: 'PDT' },
-            { id: 'other', name: '其他', fullName: '其他仪表', color: '#e53935', abbr: 'X', code: 'X' },
-        ];
-        let markerTypes = DEFAULT_TYPES.map(t => ({ ...t }));
-        let currentTypeId = markerTypes[0].id;
-
-        function getTypeById(id) {
-            return markerTypes.find(t => t.id === id) || markerTypes[0];
-        }
-
-        function getCurrentType() {
-            return getTypeById(currentTypeId);
-        }
-
-        function renderTypeChips() {
-            typeChipsEl.innerHTML = '';
-            for (const t of markerTypes) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'type-chip' + (t.id === currentTypeId ? ' active' : '');
-                btn.textContent = t.name;
-                btn.style.borderColor = t.color;
-                if (t.id === currentTypeId) {
-                    btn.style.background = t.color;
-                    btn.style.color = '#fff';
-                } else {
-                    btn.style.color = t.color;
-                    btn.style.background = t.color + '18';
-                }
-                btn.title = t.fullName ? `${t.name} · ${t.fullName}` : `${t.name}（点击选择）`;
-                btn.addEventListener('click', () => selectType(t.id));
-                typeChipsEl.appendChild(btn);
-            }
-        }
-
-        function selectType(typeId) {
-            const t = getTypeById(typeId);
-            currentTypeId = t.id;
-            currentColor = t.color;
-            colorPicker.value = t.color;
-            nextMarkerNumber = findNextNumberForType(t.id);
-            syncNumberInput();
-            renderTypeChips();
-        }
-
-        function addCustomType() {
-            const name = prompt('输入新仪表类型代号（如：PSH、AI、HCV）', '');
-            if (!name) return;
-            const trimmed = name.trim().slice(0, 12);
-            if (!trimmed) return;
-            if (markerTypes.some(t => t.name === trimmed)) {
-                alert('该类型已存在');
-                return;
-            }
-            const colors = ['#00838f', '#ad1457', '#4527a0', '#558b2f', '#bf360c', '#37474f'];
-            const color = colors[markerTypes.length % colors.length];
-            const id = 'custom_' + Date.now();
-            const usedCodes = new Set(markerTypes.map(t => t.code));
-            let code = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'A';
-            if (usedCodes.has(code)) {
-                for (let i = 0; i < 26; i++) {
-                    const c = String.fromCharCode(65 + i);
-                    if (!usedCodes.has(c)) { code = c; break; }
-                }
-            }
-            markerTypes.push({
-                id,
-                name: trimmed,
-                fullName: trimmed,
-                color,
-                abbr: code,
-                code,
-            });
-            selectType(id);
-        }
-
-        // ============ 视图状态 ============
-        let panX = 0,
-            panY = 0,
-            zoom = 1;
-
-        // ============ 文档与页面 ============
-        let documents = [];
-        let pages = [];
-        let nextDocId = 1;
-
-        // ============ 标记数据 ============
-        let markers = [];
-        let currentColor = colorPicker.value;
-
-        let markerRadius = isMobile ? MOBILE_RADIUS : DESKTOP_RADIUS;
-        let markerFontSize = isMobile ? MOBILE_FONT_SIZE : DESKTOP_FONT_SIZE;
-        const markerLineWidth = isMobile ? MOBILE_LINE_WIDTH : DESKTOP_LINE_WIDTH;
-
-        radiusSlider.value = markerRadius;
-        fontSizeSlider.value = markerFontSize;
-        radiusValueEl.textContent = markerRadius;
-        fontSizeValueEl.textContent = markerFontSize;
-
-        // ============ 编号管理（按类型独立编号）============
-        let nextMarkerNumber = 1;
-        /** @type {Map<string, Set<number>>} */
-        const usedNumbersByType = new Map();
-
-        function getUsedSet(typeId) {
-            if (!usedNumbersByType.has(typeId)) usedNumbersByType.set(typeId, new Set());
-            return usedNumbersByType.get(typeId);
-        }
-
-        function isNumberUsed(num, typeId = currentTypeId) {
-            return getUsedSet(typeId).has(num);
-        }
-
-        function reserveNumber(num, typeId = currentTypeId) {
-            getUsedSet(typeId).add(num);
-        }
-
-        function releaseNumber(num, typeId) {
-            getUsedSet(typeId).delete(num);
-        }
-
-        function findNextNumberForType(typeId) {
-            let n = 1;
-            const used = getUsedSet(typeId);
-            while (n <= MAX_MARKER_NUMBER && used.has(n)) n++;
-            return n > MAX_MARKER_NUMBER ? MAX_MARKER_NUMBER : n;
-        }
-
-        function updateNumberInputState() {
-            const val = parseInt(numberInput.value, 10);
-            if (isNaN(val) || val < 1 || val > MAX_MARKER_NUMBER) {
-                numberInput.classList.add('error');
-            } else if (isNumberUsed(val)) {
-                numberInput.classList.add('error');
-            } else {
-                numberInput.classList.remove('error');
-            }
-        }
-
-        function syncNumberInput() {
-            numberInput.value = formatMarkerNumber(nextMarkerNumber);
-            numberInput.classList.remove('error');
-            updateNumberInputState();
-        }
-
-        // ============ 撤销/重做历史 ============
-        const history = [];
-        const redoStack = [];
-
-        function removeMarkerFromArray(marker) {
-            const idx = markers.indexOf(marker);
-            if (idx !== -1) markers.splice(idx, 1);
-            // 无论是否仍在数组中，都释放编号，避免历史与数据不同步后编号永久占用
-            releaseNumber(marker.number, marker.typeId);
-        }
-
-        function insertMarkerToArray(marker) {
-            reserveNumber(marker.number, marker.typeId);
-            markers.push(marker);
-        }
-
-        function pushHistory(entry) {
-            history.push(entry);
-            redoStack.length = 0; // 新操作发生后，重做栈失效
-            updateUndoButtonState();
-        }
-
-        function undo() {
-            if (history.length === 0) return;
-            const last = history.pop();
-            if (last.type === 'add') {
-                removeMarkerFromArray(last.marker);
-            } else if (last.type === 'delete') {
-                insertMarkerToArray(last.marker);
-            }
-            redoStack.push(last);
-            nextMarkerNumber = findNextNumberForType(currentTypeId);
-            syncNumberInput();
-            requestRender();
-            updateUI();
-            updateUndoButtonState();
-            scheduleAutosave();
-        }
-
-        function redo() {
-            if (redoStack.length === 0) return;
-            const entry = redoStack.pop();
-            if (entry.type === 'add') {
-                insertMarkerToArray(entry.marker);
-            } else if (entry.type === 'delete') {
-                removeMarkerFromArray(entry.marker);
-            }
-            history.push(entry);
-            nextMarkerNumber = findNextNumberForType(currentTypeId);
-            syncNumberInput();
-            requestRender();
-            updateUI();
-            updateUndoButtonState();
-            scheduleAutosave();
-        }
-
-        function deleteMarker(marker) {
-            removeMarkerFromArray(marker);
-            pushHistory({ type: 'delete', marker });
-            nextMarkerNumber = findNextNumberForType(currentTypeId);
-            syncNumberInput();
-            requestRender();
-            updateUI();
-            scheduleAutosave();
-        }
-
-        function findMarkerAtVirtual(vx, vy) {
-            let found = null,
-                bestDist = Infinity;
-            const minScreenHit = 16; // 屏幕像素，确保缩小视图时也能点中标记
-            const hitRadius = Math.max(markerRadius, minScreenHit / zoom);
-            for (const m of markers) {
-                const dx = vx - m.vx,
-                    dy = vy - m.vy;
-                const dist = Math.hypot(dx, dy);
-                if (dist <= hitRadius && dist < bestDist) {
-                    bestDist = dist;
-                    found = m;
-                }
-            }
-            return found;
-        }
-
-        function updateUndoButtonState() {
-            undoBtn.disabled = history.length === 0;
-            redoBtn.disabled = redoStack.length === 0;
-        }
-
-        // ============ 清空 ============
-        function clearAll() {
-            if (pages.length === 0 && markers.length === 0) return;
-            if (!confirm('确定要清空所有数据吗？此操作不可撤销。')) return;
-            documents = [];
-            pages = [];
-            markers = [];
-            usedNumbersByType.clear();
-            history.length = 0;
-            redoStack.length = 0;
-            nextMarkerNumber = findNextNumberForType(currentTypeId);
-            nextDocId = 1;
-            panX = 0;
-            panY = 0;
-            zoom = 1;
-            statsPanel.classList.remove('visible');
-            statsToggle.classList.remove('active');
-            syncNumberInput();
-            updateUI();
-            requestRender();
-            updateUndoButtonState();
-            clearAutosave();
-            pendingRestore = null;
-            document.getElementById('sessionBanner').classList.remove('visible');
-        }
-
-        // ============ 自动保存 / 会话恢复 ============
-        // 注意：不保存原始PDF字节（体积大、易超出 localStorage 配额），只保存标记数据。
-        // 页面刷新后需要用户重新导入同名PDF，标记会自动按文件名+页码对齐恢复。
-        let pendingRestore = null;
-        let autosaveTimer = null;
-
-        function serializeMarkersForDoc(docId) {
-            const pageMap = new Map(pages.filter(p => p.docId === docId).map(p => [p.pageIndex, p]));
-            return markers.filter(m => m.docId === docId).map(m => {
-                const pd = pageMap.get(m.pageIndex);
-                return {
-                    pageIndex: m.pageIndex,
-                    localX: pd ? +(m.vx - pd.vx).toFixed(2) : m.vx,
-                    localY: pd ? +(m.vy - pd.vy).toFixed(2) : m.vy,
-                    number: m.number,
-                    color: m.color,
-                    typeCode: m.typeCode,
-                    typeName: m.typeName,
-                    typeFullName: m.typeFullName,
-                    typeAbbr: m.typeAbbr,
-                };
-            });
-        }
-
-        function buildAutosavePayload() {
-            const customTypes = markerTypes
-                .filter(t => t.id.startsWith('custom_'))
-                .map(t => ({ name: t.name, fullName: t.fullName, color: t.color, abbr: t.abbr, code: t.code }));
-            const docsPayload = documents
-                .map(d => ({ fileName: d.fileName, pageCount: d.pageCount, markers: serializeMarkersForDoc(d.id) }))
-                .filter(d => d.markers.length > 0);
-            // 保留尚未重新导入、仍待恢复的文件数据，避免被本次保存覆盖丢失
-            if (pendingRestore && Array.isArray(pendingRestore.docs)) {
-                for (const d of pendingRestore.docs) {
-                    if (!docsPayload.some(x => x.fileName === d.fileName)) docsPayload.push(d);
-                }
-            }
-            return { v: 1, savedAt: Date.now(), customTypes, docs: docsPayload };
-        }
-
-        function scheduleAutosave() {
-            if (autosaveTimer) clearTimeout(autosaveTimer);
-            autosaveTimer = setTimeout(doAutosave, AUTOSAVE_DEBOUNCE_MS);
-        }
-
-        function doAutosave() {
-            try {
-                const hasPending = !!(pendingRestore && Array.isArray(pendingRestore.docs) && pendingRestore.docs.length > 0);
-                if (markers.length === 0 && !hasPending) {
-                    localStorage.removeItem(AUTOSAVE_KEY);
-                    return;
-                }
-                localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(buildAutosavePayload()));
-            } catch (e) {
-                console.warn('自动保存失败（可能超出浏览器本地存储容量）', e);
-            }
-        }
-
-        function clearAutosave() {
-            if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
-            try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
-        }
-
-        function loadAutosave() {
-            try {
-                const raw = localStorage.getItem(AUTOSAVE_KEY);
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (!data || !Array.isArray(data.docs) || data.docs.length === 0) return null;
-                return data;
-            } catch {
-                return null;
-            }
-        }
-
-        function applyPendingCustomTypes(data) {
-            if (!data || !Array.isArray(data.customTypes)) return;
-            for (const ct of data.customTypes) {
-                if (markerTypes.some(t => t.name === ct.name)) continue;
-                const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-                markerTypes.push({ id, name: ct.name, fullName: ct.fullName || ct.name, color: ct.color, abbr: ct.abbr, code: ct.code });
-            }
-            renderTypeChips();
-        }
-
-        function showSessionBanner(data) {
-            const names = data.docs.map(d => d.fileName).join('、');
-            document.getElementById('sessionBannerText').textContent = `检测到未保存的标注记录，请重新导入以下文件以恢复标记：${names}`;
-            document.getElementById('sessionBanner').classList.add('visible');
-        }
-
-        function tryRestoreMarkersForDoc(docEntry) {
-            if (!pendingRestore) return;
-            const idx = pendingRestore.docs.findIndex(d => d.fileName === docEntry.fileName);
-            if (idx === -1) return;
-            const saved = pendingRestore.docs[idx];
-            const pageMap = new Map(docEntry.pages.map(p => [p.pageIndex, p]));
-            let restoredCount = 0;
-            for (const sm of saved.markers) {
-                const pd = pageMap.get(sm.pageIndex);
-                if (!pd) continue;
-                let type = markerTypes.find(t => t.code === sm.typeCode || t.abbr === sm.typeAbbr || t.name === sm.typeName);
-                if (!type) {
-                    const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-                    type = {
-                        id,
-                        name: sm.typeName || sm.typeCode || '未知',
-                        fullName: sm.typeFullName || sm.typeName || '',
-                        color: sm.color || '#e53935',
-                        abbr: sm.typeAbbr || sm.typeCode || 'X',
-                        code: sm.typeCode || sm.typeAbbr || 'X',
-                    };
-                    markerTypes.push(type);
-                }
-                if (isNumberUsed(sm.number, type.id)) continue; // 理论上不会冲突，防御性跳过
-                const marker = {
-                    vx: pd.vx + sm.localX,
-                    vy: pd.vy + sm.localY,
-                    number: sm.number,
-                    color: sm.color || type.color,
-                    typeId: type.id,
-                    typeName: sm.typeName || type.name,
-                    typeFullName: sm.typeFullName || type.fullName,
-                    typeAbbr: sm.typeAbbr || type.abbr,
-                    typeCode: sm.typeCode || type.code,
-                    docId: docEntry.id,
-                    pageIndex: sm.pageIndex,
-                };
-                insertMarkerToArray(marker);
-                restoredCount++;
-            }
-            pendingRestore.docs.splice(idx, 1);
-            if (pendingRestore.docs.length === 0) {
-                pendingRestore = null;
-                document.getElementById('sessionBanner').classList.remove('visible');
-            } else {
-                showSessionBanner(pendingRestore);
-            }
-            if (restoredCount > 0) {
-                renderTypeChips();
-                nextMarkerNumber = findNextNumberForType(currentTypeId);
-                syncNumberInput();
-                showToast(`已恢复「${docEntry.fileName}」的 ${restoredCount} 个标记`);
-            }
-        }
-
-        // ============ 拖拽/触摸 ============
-        let isDragging = false;
-        let dragStartX = 0,
-            dragStartY = 0;
-        let dragPanStartX = 0,
-            dragPanStartY = 0;
-        let mouseDownPos = null;
-        let mouseDownButton = -1;
-
-        // ============ Canvas尺寸 ============
-        function updateCanvasSize() {
-            const dpr = window.devicePixelRatio || 1;
-            const w = window.innerWidth,
-                h = window.innerHeight;
-            canvas.width = Math.floor(w * dpr);
-            canvas.height = Math.floor(h * dpr);
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            if (isMobile) {
-                ctx.imageSmoothingQuality = 'high';
-            }
-        }
-
-        // ============ 坐标转换 ============
-        function screenToVirtual(sx, sy) {
-            return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
-        }
-
-        function virtualToScreen(vx, vy) {
-            return { x: vx * zoom + panX, y: vy * zoom + panY };
-        }
-
-        function findPageAtVirtual(vx, vy) {
-            for (const page of pages) {
-                if (vx >= page.vx && vx <= page.vx + page.origWidth &&
-                    vy >= page.vy && vy <= page.vy + page.origHeight) {
-                    return page;
-                }
-            }
-            return null;
-        }
-
-        function isMarkerTooClose(vx, vy) {
-            for (const m of markers) {
-                const dx = vx - m.vx;
-                const dy = vy - m.vy;
-                if (Math.sqrt(dx * dx + dy * dy) < MARKER_MIN_DIST) return true;
-            }
-            return false;
-        }
-
-        function addMarker(vx, vy) {
-            const desiredNumber = parseInt(numberInput.value, 10);
-            if (isNaN(desiredNumber) || desiredNumber < 1 || desiredNumber > MAX_MARKER_NUMBER) {
-                alert(`编号必须在 1 到 ${MAX_MARKER_NUMBER} 之间`);
-                numberInput.focus();
-                return false;
-            }
-            if (isNumberUsed(desiredNumber)) {
-                alert(`当前类型下编号 ${desiredNumber} 已被使用，请更换编号`);
-                numberInput.focus();
-                return false;
-            }
-            const page = findPageAtVirtual(vx, vy);
-            if (!page) {
-                alert('请在PDF页面范围内点击');
-                return false;
-            }
-            if (isMarkerTooClose(vx, vy)) {
-                alert('标记过于靠近，请选择其他位置');
-                return false;
-            }
-
-            const type = getCurrentType();
-            reserveNumber(desiredNumber, type.id);
-            const marker = {
-                vx,
-                vy,
-                number: desiredNumber,
-                color: currentColor,
-                typeId: type.id,
-                typeName: type.name,
-                typeFullName: type.fullName || type.name,
-                typeAbbr: type.abbr,
-                typeCode: type.code,
-                docId: page.docId,
-                pageIndex: page.pageIndex,
+    <!-- ====== JavaScript 跳转逻辑 ====== -->
+    <script>
+        (function() {
+            const items = document.querySelectorAll('.grid-item');
+
+            // 模拟页面映射 (实际可替换为真实 URL)
+            const pageMap = {
+                home: 'home.html',
+                discover: '../0001/index.html',
+                gallery: 'gallery.html',
+                journal: 'journal.html',
+                craft: 'craft.html',
+                tea: 'tea.html',
+                music: 'music.html',
+                garden: 'garden.html',
+                about: 'about.html'
             };
-            markers.push(marker);
-            pushHistory({ type: 'add', marker });
 
-            nextMarkerNumber = findNextNumberForType(currentTypeId);
-            syncNumberInput();
-            requestRender();
-            updateUI();
-            scheduleAutosave();
-            return true;
-        }
+            // 点击跳转
+            items.forEach((item) => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault(); // 阻止默认 # 跳转
 
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? {
-                r: parseInt(result[1], 16) / 255,
-                g: parseInt(result[2], 16) / 255,
-                b: parseInt(result[3], 16) / 255,
-            } : { r: 0.9, g: 0.22, b: 0.21 };
-        }
+                    const pageKey = this.dataset.page;
+                    const targetUrl = pageMap[pageKey] || '#';
 
-        // ============ 渲染 ============
-        function render() {
-            const dpr = window.devicePixelRatio || 1;
-            const w = canvas.width,
-                h = canvas.height;
+                    if (targetUrl && targetUrl !== '#') {
+                        // 模拟跳转 —— 在真实环境中改为 window.location.href = targetUrl;
+                        // 这里为了演示，用 alert 显示要跳转的页面，同时控制台输出
+                        console.log(`📍 跳转至: ${targetUrl}`);
+                        alert(`🌿 跳转至 「${this.querySelector('.label').textContent}」页面\n→ ${targetUrl}\n(实际项目中替换为真实 URL)`);
 
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = '#f5f5f5';
-            ctx.fillRect(0, 0, w, h);
-
-            ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, panX * dpr, panY * dpr);
-            ctx.imageSmoothingEnabled = true;
-            if (isMobile) ctx.imageSmoothingQuality = 'high';
-
-            for (const page of pages) {
-                if (!page.offscreenCanvas) continue;
-                const dx = page.vx,
-                    dy = page.vy,
-                    dw = page.origWidth,
-                    dh = page.origHeight;
-                const sp = virtualToScreen(dx, dy);
-                if (sp.x + dw * zoom < -150 || sp.x > window.innerWidth + 150 ||
-                    sp.y + dh * zoom < -150 || sp.y > window.innerHeight + 150) continue;
-
-                ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.08)';
-                ctx.shadowBlur = 4 / zoom;
-                ctx.shadowOffsetX = 0.5 / zoom;
-                ctx.shadowOffsetY = 1.5 / zoom;
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(dx, dy, dw, dh);
-                ctx.restore();
-
-                ctx.drawImage(page.offscreenCanvas, dx, dy, dw, dh);
-                ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-                ctx.lineWidth = 0.4 / zoom;
-                ctx.strokeRect(dx, dy, dw, dh);
-
-                if (settings.showPageCaption) {
-                    drawPageCaption(page, dx, dy, dw, dh);
-                }
-            }
-
-            // 绘制标记
-            const radius = markerRadius;
-            const fontSize = markerFontSize;
-            const lineWidth = markerLineWidth;
-
-            for (const m of markers) {
-                const { vx, vy, color } = m;
-                const label = formatMarkerLabel(m);
-
-                ctx.beginPath();
-                ctx.arc(vx, vy, radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#ffffff';
-                ctx.fill();
-                ctx.strokeStyle = color;
-                ctx.lineWidth = lineWidth;
-                ctx.stroke();
-
-                ctx.fillStyle = color;
-                const useSize = label.length > 5 ? fontSize * 0.68 : (label.length > 4 ? fontSize * 0.78 : fontSize);
-                ctx.font = `bold ${useSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.shadowColor = 'rgba(255,255,255,0.6)';
-                ctx.shadowBlur = 2 / zoom;
-                ctx.fillText(label, vx, vy);
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-            }
-
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-
-        function drawPageCaption(page, dx, dy, dw, dh) {
-            const mmW = (page.origWidth * 25.4 / 72).toFixed(1);
-            const mmH = (page.origHeight * 25.4 / 72).toFixed(1);
-            const parts = [];
-            if (settings.captionShowName) parts.push(getDocFileName(page.docId));
-            if (settings.captionShowSize) parts.push(`${mmW} × ${mmH} mm`);
-            if (parts.length === 0) return;
-
-            const text = parts.join('  ·  ');
-            const fontSize = Math.max(9, Math.min(13, dw * 0.028));
-            const padX = 6;
-            const padY = 3.5;
-            const cy = dy + dh + fontSize + padY + 2;
-
-            ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            const textW = ctx.measureText(text).width;
-            const boxW = Math.min(dw, textW + padX * 2);
-            const boxH = fontSize + padY * 2;
-            const boxX = dx;
-            const boxY = cy - boxH / 2;
-
-            ctx.fillStyle = 'rgba(255,255,255,0.92)';
-            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-            ctx.lineWidth = 0.5 / Math.max(zoom, 0.01);
-            const r = 3;
-            ctx.beginPath();
-            ctx.moveTo(boxX + r, boxY);
-            ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
-            ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
-            ctx.arcTo(boxX, boxY + boxH, boxX, boxY, r);
-            ctx.arcTo(boxX, boxY, boxX + boxW, boxY, r);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#555555';
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(boxX + padX * 0.5, boxY, boxW - padX, boxH);
-            ctx.clip();
-            ctx.fillText(text, boxX + padX, cy);
-            ctx.restore();
-        }
-
-        function requestRender() {
-            requestAnimationFrame(render);
-        }
-
-        function getDocFileName(docId) {
-            const doc = documents.find(d => d.id === docId);
-            return doc?.fileName || `文档${docId}`;
-        }
-
-        function updateStatsPanel() {
-            statsTotal.textContent = `共 ${markers.length} 个`;
-            if (markers.length === 0) {
-                statsList.innerHTML = '<div class="stats-empty">暂无标记</div>';
-            } else {
-                const byDoc = new Map();
-                for (const m of markers) {
-                    if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
-                    byDoc.get(m.docId).push(m);
-                }
-                // 按导入顺序显示文件
-                const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
-                for (const id of byDoc.keys()) {
-                    if (!docOrder.includes(id)) docOrder.push(id);
-                }
-
-                let html = '';
-                for (const docId of docOrder) {
-                    const list = byDoc.get(docId);
-                    const counts = new Map();
-                    for (const m of list) {
-                        const key = m.typeId || 'other';
-                        counts.set(key, (counts.get(key) || 0) + 1);
+                        // 真实跳转 (取消注释即可使用)
+                        // window.location.href = targetUrl;
+                    } else {
+                        alert('🌱 该页面暂未配置跳转地址');
                     }
-                    const rows = markerTypes
-                        .map(t => ({ t, count: counts.get(t.id) || 0 }))
-                        .filter(x => x.count > 0);
-                    for (const [id, count] of counts) {
-                        if (!markerTypes.some(t => t.id === id)) {
-                            rows.push({ t: { id, name: id, color: '#888' }, count });
-                        }
-                    }
-                    html += `<div class="stats-file">
-                        <div class="stats-file__name">${escapeHtml(getDocFileName(docId))}<span class="stats-file__total">（${list.length}）</span></div>
-                        ${rows.map(({ t, count }) => `
-                            <div class="stats-row">
-                                <div class="stats-type">
-                                    <span class="stats-dot" style="background:${t.color}"></span>
-                                    <span class="stats-name">${escapeHtml(t.name)}</span>
-                                </div>
-                                <span class="stats-count">${count}</span>
-                            </div>
-                        `).join('')}
-                    </div>`;
-                }
-                statsList.innerHTML = html;
-            }
-            const show = pages.length > 0 || markers.length > 0;
-            statsToggle.classList.toggle('visible', show);
-            if (!show) {
-                statsPanel.classList.remove('visible');
-                statsToggle.classList.remove('active');
-            }
-        }
-
-        function escapeHtml(str) {
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        // ============ UI更新 ============
-        function updateUI() {
-            if (pages.length === 0) {
-                dropHint.classList.remove('hidden');
-                pageCountEl.classList.remove('visible');
-            } else {
-                dropHint.classList.add('hidden');
-                const total = pages.length;
-                const rendered = pages.filter(p => p.offscreenCanvas).length;
-                if (rendered < total) {
-                    pageCountEl.textContent = `渲染中… ${rendered}/${total} 页`;
-                    pageCountEl.classList.add('visible');
-                } else if (total > 1) {
-                    const docLabel = documents.length > 1
-                        ? `${documents.length} 个文件 · 共 ${total} 页 · 标记 ${markers.length}`
-                        : `共 ${total} 页 · 标记 ${markers.length}`;
-                    pageCountEl.textContent = docLabel;
-                    pageCountEl.classList.add('visible');
-                } else {
-                    const name = documents[0]?.fileName ? ` · ${documents[0].fileName}` : '';
-                    pageCountEl.textContent = `1 页 · 标记 ${markers.length}${name}`;
-                    pageCountEl.classList.add('visible');
-                }
-            }
-            updateUndoButtonState();
-            updateStatsPanel();
-        }
-
-        // ============ 导入PDF ============
-        function isPdfFile(file) {
-            if (!file) return false;
-            if (file.type === 'application/pdf') return true;
-            return /\.pdf$/i.test(file.name || '');
-        }
-
-        async function importPdfFile(file) {
-            if (!isPdfFile(file)) return;
-            const pdfjsLib = window.pdfjsLib;
-            if (!pdfjsLib) return;
-
-            let arrayBuffer;
-            try { arrayBuffer = await file.arrayBuffer(); } catch (e) { return; }
-
-            let pdfDoc;
-            try { pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise; } catch (e) { return; }
-
-            const docId = nextDocId++;
-            const numPages = pdfDoc.numPages;
-            const fileName = (file.name && file.name.trim()) ? file.name.trim() : `未命名_${docId}.pdf`;
-            const docEntry = { id: docId, fileName, arrayBuffer, pages: [], pageCount: numPages };
-            documents.push(docEntry);
-
-            const newEntries = [];
-            let startY = 0;
-            if (pages.length > 0) {
-                const last = pages[pages.length - 1];
-                startY = last.vy + last.origHeight + pageStackGap(last.docId, docId);
-            }
-
-            for (let i = 1; i <= numPages; i++) {
-                const page = await pdfDoc.getPage(i);
-                const viewport = page.getViewport({ scale: 1 });
-                const origWidth = viewport.width,
-                    origHeight = viewport.height;
-                const vy = (i === 1)
-                    ? startY
-                    : newEntries[i - 2].vy + newEntries[i - 2].origHeight + pageStackGap(docId, docId);
-                const vx = 0;
-                const pageData = {
-                    offscreenCanvas: null,
-                    origWidth,
-                    origHeight,
-                    vx,
-                    vy,
-                    docId,
-                    pageIndex: i,
-                    pageObj: page,
-                };
-                newEntries.push(pageData);
-                docEntry.pages.push(pageData);
-            }
-
-            pages.push(...newEntries);
-            tryRestoreMarkersForDoc(docEntry);
-            updateUI();
-            requestRender();
-
-            if (pages.length === newEntries.length && pages.length > 0) {
-                const first = pages[0];
-                const vw = window.innerWidth,
-                    vh = window.innerHeight;
-                zoom = Math.min(vw / first.origWidth * 0.85, vh / first.origHeight * 0.85, 1.5);
-                zoom = Math.max(0.05, Math.min(MAX_ZOOM, zoom));
-                panX = vw / 2 - (first.vx + first.origWidth / 2) * zoom;
-                panY = vh / 2 - (first.vy + first.origHeight / 2) * zoom;
-            }
-
-            requestRender();
-            await renderPagesHighQuality(newEntries);
-        }
-
-        // ============ 高画质渲染 + 尺寸标注 (单位mm) ============
-        async function renderPagesHighQuality(entries) {
-            for (const entry of entries) {
-                try {
-                    const page = entry.pageObj;
-                    const scale = computeRenderScale(entry.origWidth, entry.origHeight);
-                    const viewport = page.getViewport({ scale });
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = Math.floor(viewport.width);
-                    offscreen.height = Math.floor(viewport.height);
-                    const offCtx = offscreen.getContext('2d', { alpha: false });
-                    offCtx.fillStyle = '#ffffff';
-                    offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
-                    await page.render({
-                        canvasContext: offCtx,
-                        viewport,
-                        intent: 'display',
-                        enableWebGL: false,
-                        renderInteractiveForms: false,
-                    }).promise;
-
-                    // 文件名、尺寸改到页面下方页脚绘制，不再烙印在图纸角上
-                    entry.offscreenCanvas = offscreen;
-                    entry.pageObj = null;
-                    updateUI();
-                    requestRender();
-                } catch (e) {
-                    console.warn('渲染失败', e);
-                    if (!window.__renderFailWarned) {
-                        window.__renderFailWarned = true;
-                        alert(`第 ${entry.pageIndex} 页渲染失败（图纸可能幅面过大或浏览器内存不足），该页将以低画质占位显示，其余页不受影响。`);
-                    }
-                }
-            }
-            updateUI();
-            requestRender();
-        }
-
-        // ============ 轻提示 / 导出进度反馈 ============
-        const toastEl = document.getElementById('toast');
-        let toastTimer = null;
-        function showToast(msg, persist = false) {
-            toastEl.innerHTML = persist ? `<i class="fa-solid fa-spinner fa-spin"></i><span>${escapeHtml(msg)}</span>` : escapeHtml(msg);
-            toastEl.classList.add('visible');
-            if (toastTimer) clearTimeout(toastTimer);
-            if (!persist) {
-                toastTimer = setTimeout(() => toastEl.classList.remove('visible'), 2200);
-            }
-        }
-        function hideToast() {
-            toastEl.classList.remove('visible');
-            if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
-        }
-        async function runExportTask(buttons, taskFn, busyMsg, doneMsg, failMsg) {
-            for (const b of buttons) if (b) b.disabled = true;
-            showToast(busyMsg, true);
-            try {
-                await taskFn();
-                showToast(doneMsg || '导出完成');
-            } catch (e) {
-                console.error(e);
-                hideToast();
-                alert(failMsg || '导出失败，请检查网络连接后重试');
-            } finally {
-                for (const b of buttons) if (b) b.disabled = false;
-            }
-        }
-
-        // ============ 导出 ============
-        async function exportMarkedPDF() {
-            if (documents.length === 0) { alert('没有导入任何PDF'); return; }
-            await runExportTask(
-                [exportBtn, exportPdfFromStatsBtn],
-                exportMarkedPDFCore,
-                '正在导出标注PDF…',
-                'PDF 导出完成',
-                '导出PDF失败，请检查网络后重试（需加载 pdf-lib）'
-            );
-        }
-        async function exportMarkedPDFCore() {
-            const PDFLib = await loadPdfLib();
-            const mergedDoc = await PDFLib.PDFDocument.create();
-            const font = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-
-            const VISUAL_CENTER_OFFSET = 0.38;
-            const radius = markerRadius;
-            const fontSize = markerFontSize;
-
-            for (const doc of documents) {
-                const srcDoc = await PDFLib.PDFDocument.load(doc.arrayBuffer);
-                const pageCount = srcDoc.getPageCount();
-
-                for (let i = 0; i < pageCount; i++) {
-                    const pageIndex = i + 1;
-                    const pageMarkers = markers.filter(m => m.docId === doc.id && m.pageIndex === pageIndex);
-                    const [copiedPage] = await mergedDoc.copyPages(srcDoc, [i]);
-                    mergedDoc.addPage(copiedPage);
-                    if (pageMarkers.length === 0) continue;
-
-                    const { width, height } = copiedPage.getSize();
-
-                    for (const m of pageMarkers) {
-                        const pageData = doc.pages.find(p => p.pageIndex === pageIndex);
-                        if (!pageData) continue;
-
-                        const localX = m.vx - pageData.vx;
-                        const localY = m.vy - pageData.vy;
-                        const pdfX = localX;
-                        const pdfY = height - localY;
-
-                        const rgb = hexToRgb(m.color);
-                        const text = formatMarkerLabel(m);
-                        const drawSize = text.length > 5 ? fontSize * 0.68 : (text.length > 4 ? fontSize * 0.78 : fontSize);
-                        const textWidth = font.widthOfTextAtSize(text, drawSize);
-
-                        copiedPage.drawCircle({
-                            x: pdfX,
-                            y: pdfY,
-                            size: radius,
-                            color: PDFLib.rgb(1, 1, 1),
-                            borderColor: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                            borderWidth: 2,
-                        });
-
-                        const baselineY = pdfY - VISUAL_CENTER_OFFSET * drawSize;
-                        copiedPage.drawText(text, {
-                            x: pdfX - textWidth / 2,
-                            y: baselineY,
-                            size: drawSize,
-                            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                            font: font,
-                        });
-                    }
-                }
-            }
-
-            const pdfBytes = await mergedDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `电气标注_${new Date().toISOString().slice(0, 10)}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        // ============ 导出 Excel 统计 ============
-        function normalizeHexColor(hex) {
-            if (!hex || typeof hex !== 'string') return 'E53935';
-            const h = hex.replace('#', '').trim();
-            if (/^[0-9a-fA-F]{6}$/.test(h)) return h.toUpperCase();
-            if (/^[0-9a-fA-F]{3}$/.test(h)) {
-                return (h[0] + h[0] + h[1] + h[1] + h[2] + h[2]).toUpperCase();
-            }
-            return 'E53935';
-        }
-
-        function applyColorFill(cell, hex) {
-            const rgb = normalizeHexColor(hex);
-            cell.value = '';
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FF' + rgb },
-            };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-                right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        }
-
-        function styleHeaderRow(row) {
-            row.font = { bold: true, color: { argb: 'FF333333' } };
-            row.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFF1F3F4' },
-            };
-            row.alignment = { vertical: 'middle' };
-        }
-
-        async function downloadExcelBuffer(buffer, filename) {
-            const blob = new Blob([buffer], {
-                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
             });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
 
-        async function exportExcel() {
-            if (markers.length === 0) {
-                alert('还没有标记，请先在图纸上点击标注');
-                return;
-            }
-            await runExportTask(
-                [exportExcelBtn, exportExcelBottomBtn],
-                exportExcelCore,
-                '正在生成统计表格…',
-                'Excel 导出完成',
-                '导出 Excel 失败，请检查网络后重试（需加载 ExcelJS）'
-            );
-        }
-        async function exportExcelCore() {
-            {
-                const ExcelJS = await loadExcelJS();
-                const wb = new ExcelJS.Workbook();
-                wb.creator = '电气PDF标注';
-                wb.created = new Date();
-
-                // ---- 按文件汇总 ----
-                const wsByFile = wb.addWorksheet('按文件汇总', {
-                    views: [{ state: 'frozen', ySplit: 1 }],
+            // 增加一点“木含”风格的点击反馈 (波纹感)
+            items.forEach((item) => {
+                item.addEventListener('mousedown', function(e) {
+                    this.style.transition = 'transform 0.06s ease';
                 });
-                wsByFile.columns = [
-                    { header: '文件名', key: 'file', width: 36 },
-                    { header: '类型', key: 'type', width: 10 },
-                    { header: '说明', key: 'desc', width: 16 },
-                    { header: '数量', key: 'count', width: 8 },
-                    { header: '颜色', key: 'color', width: 10 },
-                ];
-                styleHeaderRow(wsByFile.getRow(1));
-
-                const byDoc = new Map();
-                for (const m of markers) {
-                    if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
-                    byDoc.get(m.docId).push(m);
-                }
-                const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
-                for (const id of byDoc.keys()) {
-                    if (!docOrder.includes(id)) docOrder.push(id);
-                }
-
-                for (const docId of docOrder) {
-                    const list = byDoc.get(docId);
-                    const fileName = getDocFileName(docId);
-                    const counts = new Map();
-                    for (const m of list) {
-                        const key = m.typeId || 'other';
-                        if (!counts.has(key)) {
-                            counts.set(key, {
-                                count: 0,
-                                name: m.typeName,
-                                fullName: m.typeFullName || '',
-                                color: m.color,
-                            });
-                        }
-                        const entry = counts.get(key);
-                        entry.count++;
-                        entry.color = m.color;
-                        if (m.typeFullName) entry.fullName = m.typeFullName;
-                    }
-
-                    const typeRows = [];
-                    for (const t of markerTypes) {
-                        const c = counts.get(t.id);
-                        if (c) typeRows.push({
-                            name: t.name,
-                            fullName: c.fullName || t.fullName || '',
-                            count: c.count,
-                            color: c.color || t.color,
-                        });
-                    }
-                    for (const [id, c] of counts) {
-                        if (!markerTypes.some(t => t.id === id)) {
-                            typeRows.push({
-                                name: c.name || id,
-                                fullName: c.fullName || '',
-                                count: c.count,
-                                color: c.color,
-                            });
-                        }
-                    }
-
-                    typeRows.forEach((row, idx) => {
-                        const r = wsByFile.addRow({
-                            file: idx === 0 ? fileName : '',
-                            type: row.name,
-                            desc: row.fullName,
-                            count: row.count,
-                            color: '',
-                        });
-                        applyColorFill(r.getCell(5), row.color);
-                    });
-
-                    const totalRow = wsByFile.addRow({
-                        file: '',
-                        type: '小计',
-                        desc: '',
-                        count: list.length,
-                        color: '',
-                    });
-                    totalRow.font = { bold: true };
-                    totalRow.getCell(2).font = { bold: true, color: { argb: 'FF555555' } };
-
-                    wsByFile.addRow({}); // 空行分隔文件
-                }
-
-                const grand = wsByFile.addRow({
-                    file: '全部合计',
-                    type: '',
-                    desc: '',
-                    count: markers.length,
-                    color: '',
+                item.addEventListener('mouseup', function(e) {
+                    this.style.transition = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)';
                 });
-                grand.font = { bold: true };
+            });
 
-                // ---- 类型总汇（跨文件）----
-                const wsType = wb.addWorksheet('类型总汇', {
-                    views: [{ state: 'frozen', ySplit: 1 }],
-                });
-                wsType.columns = [
-                    { header: '类型', key: 'type', width: 10 },
-                    { header: '说明', key: 'desc', width: 16 },
-                    { header: '数量', key: 'count', width: 8 },
-                    { header: '颜色', key: 'color', width: 10 },
-                ];
-                styleHeaderRow(wsType.getRow(1));
-
-                const typeCounts = new Map();
-                for (const m of markers) {
-                    const key = m.typeId;
-                    if (!typeCounts.has(key)) {
-                        typeCounts.set(key, {
-                            count: 0,
-                            name: m.typeName,
-                            fullName: m.typeFullName || '',
-                            color: m.color,
-                        });
-                    }
-                    const entry = typeCounts.get(key);
-                    entry.count++;
-                    entry.color = m.color;
-                    if (m.typeFullName) entry.fullName = m.typeFullName;
-                }
-                for (const t of markerTypes) {
-                    const c = typeCounts.get(t.id);
-                    if (!c) continue;
-                    const r = wsType.addRow({
-                        type: t.name,
-                        desc: c.fullName || t.fullName || '',
-                        count: c.count,
-                        color: '',
-                    });
-                    applyColorFill(r.getCell(4), c.color || t.color);
-                }
-                for (const [id, c] of typeCounts) {
-                    if (markerTypes.some(t => t.id === id)) continue;
-                    const r = wsType.addRow({
-                        type: c.name || id,
-                        desc: c.fullName || '',
-                        count: c.count,
-                        color: '',
-                    });
-                    applyColorFill(r.getCell(4), c.color);
-                }
-                const typeTotal = wsType.addRow({ type: '合计', desc: '', count: markers.length, color: '' });
-                typeTotal.font = { bold: true };
-
-                // ---- 明细清单 ----
-                const wsDetail = wb.addWorksheet('明细清单', {
-                    views: [{ state: 'frozen', ySplit: 1 }],
-                });
-                wsDetail.columns = [
-                    { header: '序号', key: 'idx', width: 6 },
-                    { header: '文件名', key: 'file', width: 36 },
-                    { header: '类型', key: 'type', width: 10 },
-                    { header: '说明', key: 'desc', width: 16 },
-                    { header: '编号', key: 'num', width: 8 },
-                    { header: '标记标签', key: 'label', width: 12 },
-                    { header: '页码', key: 'page', width: 6 },
-                    { header: '颜色', key: 'color', width: 10 },
-                    { header: 'X(pt)', key: 'x', width: 10 },
-                    { header: 'Y(pt)', key: 'y', width: 10 },
-                ];
-                styleHeaderRow(wsDetail.getRow(1));
-
-                const sorted = [...markers].sort((a, b) => {
-                    const fa = getDocFileName(a.docId);
-                    const fb = getDocFileName(b.docId);
-                    if (fa !== fb) return fa.localeCompare(fb, 'zh');
-                    if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-                    return a.number - b.number;
-                });
-
-                sorted.forEach((m, i) => {
-                    const t = getTypeById(m.typeId);
-                    const pageData = pages.find(p => p.docId === m.docId && p.pageIndex === m.pageIndex);
-                    const localX = pageData ? +(m.vx - pageData.vx).toFixed(1) : '';
-                    const localY = pageData ? +(m.vy - pageData.vy).toFixed(1) : '';
-                    const r = wsDetail.addRow({
-                        idx: i + 1,
-                        file: getDocFileName(m.docId),
-                        type: m.typeName || t.name,
-                        desc: m.typeFullName || t.fullName || '',
-                        num: m.number,
-                        label: formatMarkerLabel(m),
-                        page: m.pageIndex,
-                        color: '',
-                        x: localX,
-                        y: localY,
-                    });
-                    applyColorFill(r.getCell(8), m.color);
-                });
-
-                const buffer = await wb.xlsx.writeBuffer();
-                await downloadExcelBuffer(buffer, `电气标注统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
-            }
-        }
-
-        // ============ 事件绑定 ============
-        function getEventPos(e) {
-            if (e.touches && e.touches.length > 0) {
-                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-            return { x: e.clientX, y: e.clientY };
-        }
-
-        canvas.addEventListener('mousedown', (e) => {
-            mouseDownPos = getEventPos(e);
-            mouseDownButton = e.button;
-            if (e.button === 1) {
-                e.preventDefault();
-                e.stopPropagation();
-                isDragging = true;
-                dragStartX = mouseDownPos.x;
-                dragStartY = mouseDownPos.y;
-                dragPanStartX = panX;
-                dragPanStartY = panY;
-                canvas.classList.add('grabbing');
-            }
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                e.preventDefault();
-                const pos = { x: e.clientX, y: e.clientY };
-                panX = dragPanStartX + (pos.x - dragStartX);
-                panY = dragPanStartY + (pos.y - dragStartY);
-                requestRender();
-            }
-        });
-
-        let eraseMode = false;
-
-        function handleCanvasTap(vx, vy) {
-            if (eraseMode) {
-                const hit = findMarkerAtVirtual(vx, vy);
-                if (hit) deleteMarker(hit);
-                // 未命中标记时不做任何提示，允许用户继续在图纸上寻找目标
-            } else {
-                addMarker(vx, vy);
-            }
-        }
-
-        document.addEventListener('mouseup', (e) => {
-            if (e.button === 1 && isDragging) {
-                isDragging = false;
-                canvas.classList.remove('grabbing');
-                requestRender();
-                return;
-            }
-            if (mouseDownButton === 0 && mouseDownPos && !isDragging) {
-                const upPos = getEventPos(e);
-                const dx = upPos.x - mouseDownPos.x;
-                const dy = upPos.y - mouseDownPos.y;
-                if (Math.sqrt(dx * dx + dy * dy) < 3) {
-                    const v = screenToVirtual(upPos.x, upPos.y);
-                    handleCanvasTap(v.x, v.y);
-                }
-            }
-            mouseDownPos = null;
-            mouseDownButton = -1;
-            isDragging = false;
-            canvas.classList.remove('grabbing');
-        });
-
-        canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
-        canvas.addEventListener('contextmenu', (e) => { if (isDragging) e.preventDefault(); });
-
-        // 触摸
-        let touchStartPos = null;
-        let touchStartPanX = 0,
-            touchStartPanY = 0;
-        let isTouchDragging = false;
-        let lastTouchDist = 0;
-        let isPinching = false;
-
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                touchStartPos = { x: touch.clientX, y: touch.clientY };
-                touchStartPanX = panX;
-                touchStartPanY = panY;
-                isTouchDragging = true;
-                isPinching = false;
-            } else if (e.touches.length === 2) {
-                const t1 = e.touches[0],
-                    t2 = e.touches[1];
-                lastTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-                isPinching = true;
-                isTouchDragging = false;
-                const cx = (t1.clientX + t2.clientX) / 2;
-                const cy = (t1.clientY + t2.clientY) / 2;
-                touchStartPos = { x: cx, y: cy };
-                touchStartPanX = panX;
-                touchStartPanY = panY;
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (e.touches.length === 1 && isTouchDragging && !isPinching) {
-                const touch = e.touches[0];
-                const dx = touch.clientX - touchStartPos.x;
-                const dy = touch.clientY - touchStartPos.y;
-                panX = touchStartPanX + dx;
-                panY = touchStartPanY + dy;
-                requestRender();
-            } else if (e.touches.length === 2 && isPinching) {
-                const t1 = e.touches[0],
-                    t2 = e.touches[1];
-                const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-                const scale = dist / lastTouchDist;
-                lastTouchDist = dist;
-                const cx = (t1.clientX + t2.clientX) / 2;
-                const cy = (t1.clientY + t2.clientY) / 2;
-                const vb = screenToVirtual(cx, cy);
-                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * scale));
-                panX = cx - vb.x * newZoom;
-                panY = cy - vb.y * newZoom;
-                zoom = newZoom;
-                requestRender();
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if (e.touches.length === 0) {
-                if (isTouchDragging && touchStartPos) {
-                    const dx = Math.abs(panX - touchStartPanX);
-                    const dy = Math.abs(panY - touchStartPanY);
-                    if (dx < 3 && dy < 3) {
-                        const v = screenToVirtual(touchStartPos.x, touchStartPos.y);
-                        handleCanvasTap(v.x, v.y);
-                    }
-                }
-                isTouchDragging = false;
-                isPinching = false;
-                touchStartPos = null;
-            } else if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                touchStartPos = { x: touch.clientX, y: touch.clientY };
-                touchStartPanX = panX;
-                touchStartPanY = panY;
-                isTouchDragging = true;
-                isPinching = false;
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const pos = getEventPos(e);
-            if (e.ctrlKey || e.metaKey) {
-                const vb = screenToVirtual(pos.x, pos.y);
-                const delta = -e.deltaY * ZOOM_SENSITIVITY;
-                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * Math.exp(delta)));
-                panX = pos.x - vb.x * newZoom;
-                panY = pos.y - vb.y * newZoom;
-                zoom = newZoom;
-            } else {
-                panX -= e.deltaX * WHEEL_PAN_SPEED;
-                panY -= e.deltaY * WHEEL_PAN_SPEED;
-            }
-            requestRender();
-        }, { passive: false });
-
-        window.addEventListener('resize', () => { updateCanvasSize();
-            requestRender(); });
-
-        document.addEventListener('dragover', (e) => { e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'copy'; });
-        document.addEventListener('dragenter', (e) => { e.preventDefault();
-            e.stopPropagation(); });
-        document.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const files = e.dataTransfer?.files;
-            if (!files) return;
-            for (const file of files) {
-                if (isPdfFile(file)) {
-                    await importPdfFile(file);
-                }
-            }
-        });
-
-        importBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', async () => {
-            const files = fileInput.files;
-            if (files && files.length > 0) {
-                for (const file of files) {
-                    await importPdfFile(file);
-                }
-                fileInput.value = '';
-            }
-        });
-
-        exportBtn.addEventListener('click', exportMarkedPDF);
-        undoBtn.addEventListener('click', undo);
-        redoBtn.addEventListener('click', redo);
-        eraserBtn.addEventListener('click', () => {
-            eraseMode = !eraseMode;
-            eraserBtn.classList.toggle('active', eraseMode);
-            canvas.classList.toggle('erase-mode', eraseMode);
-        });
-        clearBtn.addEventListener('click', clearAll);
-        addTypeBtn.addEventListener('click', addCustomType);
-        exportExcelBtn.addEventListener('click', exportExcel);
-        exportExcelBottomBtn.addEventListener('click', exportExcel);
-        exportPdfFromStatsBtn.addEventListener('click', exportMarkedPDF);
-        statsToggle.addEventListener('click', () => {
-            const open = !statsPanel.classList.contains('visible');
-            statsPanel.classList.toggle('visible', open);
-            statsToggle.classList.toggle('active', open);
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && statsPanel.classList.contains('visible')) {
-                statsPanel.classList.remove('visible');
-                statsToggle.classList.remove('active');
-            }
-            if (e.key === 'Escape' && eraseMode) {
-                eraseMode = false;
-                eraserBtn.classList.remove('active');
-                canvas.classList.remove('erase-mode');
-            }
-            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-            const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-                if (inInput) return; // 输入框内保留系统撤销，不误撤标记
-                e.preventDefault();
-                undo();
-            }
-            if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y' || e.key === 'Y')) {
-                if (inInput) return;
-                e.preventDefault();
-                redo();
-            }
-        });
-
-        colorPicker.addEventListener('input', (e) => {
-            currentColor = e.target.value;
-            const t = getCurrentType();
-            t.color = currentColor;
-            renderTypeChips();
-            requestRender();
-        });
-        colorPicker.addEventListener('change', (e) => {
-            const t = getCurrentType();
-            const existingCount = markers.filter(m => m.typeId === t.id).length;
-            if (existingCount > 0) {
-                const apply = confirm(`是否同时把该类型已有的 ${existingCount} 个标记也改成新颜色？\n点击"取消"则仅新标记使用新颜色，已有标记保持原色。`);
-                if (apply) {
-                    for (const m of markers) {
-                        if (m.typeId === t.id) m.color = currentColor;
-                    }
-                    scheduleAutosave();
-                }
-            }
-            updateStatsPanel();
-            requestRender();
-        });
-        radiusSlider.addEventListener('input', (e) => {
-            markerRadius = parseFloat(e.target.value);
-            radiusValueEl.textContent = markerRadius;
-            requestRender();
-        });
-        fontSizeSlider.addEventListener('input', (e) => {
-            markerFontSize = parseFloat(e.target.value);
-            fontSizeValueEl.textContent = markerFontSize;
-            requestRender();
-        });
-
-        numberInput.addEventListener('input', updateNumberInputState);
-        numberInput.addEventListener('blur', () => {
-            let val = parseInt(String(numberInput.value).replace(/\D/g, ''), 10);
-            if (isNaN(val) || val < 1) val = 1;
-            if (val > MAX_MARKER_NUMBER) val = MAX_MARKER_NUMBER;
-            nextMarkerNumber = val;
-            syncNumberInput();
-        });
-        numberInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') numberInput.blur();
-        });
-
-        function openSettings() {
-            settingPadDigits.value = String(settings.numberPadDigits);
-            settingShowCaption.checked = !!settings.showPageCaption;
-            settingCaptionName.checked = !!settings.captionShowName;
-            settingCaptionSize.checked = !!settings.captionShowSize;
-            settingsBackdrop.classList.add('visible');
-        }
-        function closeSettings() {
-            settingsBackdrop.classList.remove('visible');
-        }
-        function applySettingsFromForm() {
-            settings.numberPadDigits = parseInt(settingPadDigits.value, 10) || 3;
-            settings.showPageCaption = settingShowCaption.checked;
-            settings.captionShowName = settingCaptionName.checked;
-            settings.captionShowSize = settingCaptionSize.checked;
-            saveSettings();
-            syncNumberInput();
-            requestRender();
-            closeSettings();
-        }
-        settingsBtn.addEventListener('click', openSettings);
-        settingsCloseBtn.addEventListener('click', closeSettings);
-        settingsCancelBtn.addEventListener('click', closeSettings);
-        settingsSaveBtn.addEventListener('click', applySettingsFromForm);
-        settingsBackdrop.addEventListener('click', (e) => {
-            if (e.target === settingsBackdrop) closeSettings();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && settingsBackdrop.classList.contains('visible')) {
-                closeSettings();
-            }
-        });
-
-        radiusValueEl.textContent = markerRadius;
-        fontSizeValueEl.textContent = markerFontSize;
-        renderTypeChips();
-        syncNumberInput();
-        updateUndoButtonState();
-
-        async function init() {
-            try { await loadPdfJs(); } catch (e) {
-                dropHint.querySelector('.drop-hint__text').textContent = 'PDF库加载失败，请刷新';
-            }
-            updateCanvasSize();
-            updateUI();
-            requestRender();
-
-            pendingRestore = loadAutosave();
-            if (pendingRestore) {
-                applyPendingCustomTypes(pendingRestore);
-                showSessionBanner(pendingRestore);
-            }
-        }
-        init();
-
-        document.getElementById('sessionBannerDismiss').addEventListener('click', () => {
-            pendingRestore = null;
-            document.getElementById('sessionBanner').classList.remove('visible');
-        });
-
-        window.__canvasAPI = {
-            get pages() { return pages; },
-            get markers() { return markers; },
-            get types() { return markerTypes; },
-            reset: clearAll,
-            exportExcel,
-        };
+            console.log('🌳 木含 · 九宫格已加载');
+        })();
     </script>
+
 </body>
 </html>
