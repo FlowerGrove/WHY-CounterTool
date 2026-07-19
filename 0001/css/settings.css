@@ -1,0 +1,106 @@
+.settings-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.28);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.settings-backdrop.visible {
+    display: flex;
+}
+.settings-modal {
+    width: min(360px, 100%);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    padding: 18px 18px 14px;
+    color: #333;
+    font-size: 13px;
+}
+.settings-modal h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.settings-modal h3 button {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    color: #888;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+}
+.settings-modal h3 button:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #333;
+}
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.settings-row:last-of-type {
+    border-bottom: none;
+}
+.settings-row label {
+    color: #444;
+    line-height: 1.35;
+}
+.settings-row label small {
+    display: block;
+    color: #999;
+    font-size: 11px;
+    margin-top: 2px;
+    font-weight: 400;
+}
+.settings-row select,
+.settings-row input[type="number"] {
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    outline: none;
+    background: #fff;
+    min-width: 72px;
+}
+.settings-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #1a73e8;
+}
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+.settings-actions button {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.settings-actions .btn-primary {
+    background: #1a73e8;
+    color: #fff;
+}
+.settings-actions .btn-secondary {
+    background: rgba(0, 0, 0, 0.06);
+    color: #444;
+}

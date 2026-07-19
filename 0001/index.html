@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>个人标注工具</title>
+    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/drop-hint.css" />
+    <link rel="stylesheet" href="css/top-panel.css" />
+    <link rel="stylesheet" href="css/bottom-bar.css" />
+    <link rel="stylesheet" href="css/type-dock.css" />
+    <link rel="stylesheet" href="css/toast.css" />
+    <link rel="stylesheet" href="css/session-banner.css" />
+    <link rel="stylesheet" href="css/stats-panel.css" />
+    <link rel="stylesheet" href="css/settings.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="drop-hint" id="dropHint">
+        <span class="drop-hint__icon"><i class="fa-solid fa-file-pdf"></i></span>
+        <span class="drop-hint__text">拖放 PDF 图纸到此处</span>
+        <span class="drop-hint__sub">点击标记 PI / PT / PIT 等仪表，橡皮擦可删除，支持统计导出 Excel</span>
+    </div>
+
+    <div class="session-banner" id="sessionBanner">
+        <span id="sessionBannerText">检测到上次未保存的标注记录</span>
+        <button type="button" id="sessionBannerDismiss">知道了</button>
+    </div>
+
+    <!-- 左侧类型浮动栏 -->
+    <aside class="type-dock" id="typeDock">
+        <div class="type-dock__header">
+            <div class="color-picker-wrapper">
+                <input type="color" id="colorPicker" class="color-picker" value="#1565c0" title="当前类型颜色" />
+            </div>
+            <button class="btn-add-type" id="addTypeBtn" title="添加自定义类型">+</button>
+        </div>
+        <div class="type-dock__title">仪表</div>
+        <div class="type-chips" id="typeChips"></div>
+    </aside>
+
+    <!-- 顶部工具栏 -->
+    <div class="top-panel" id="topPanel">
+        <div class="number-input-group">
+            <label for="numberInput"><i class="fa-solid fa-hashtag" style="font-size:11px; color:#888;"></i></label>
+            <input type="text" id="numberInput" class="number-input" value="001" inputmode="numeric" maxlength="4" />
+        </div>
+        <div class="divider"></div>
+        <div class="control-group">
+            <label for="radiusSlider"><i class="fa-regular fa-circle" style="font-size:11px; color:#888;"></i></label>
+            <input type="range" id="radiusSlider" class="size-slider" min="6" max="40" value="20" step="0.5" />
+            <span class="size-value" id="radiusValue">20</span>
+        </div>
+        <div class="control-group">
+            <label for="fontSizeSlider"><i class="fa-solid fa-font" style="font-size:11px; color:#888;"></i></label>
+            <input type="range" id="fontSizeSlider" class="size-slider" min="5" max="30" value="10" step="0.5" />
+            <span class="size-value" id="fontSizeValue">10</span>
+        </div>
+        <div class="divider"></div>
+        <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
+        <button class="btn-icon" id="redoBtn" title="重做 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span class="tooltip">重做</span></button>
+        <button class="btn-icon" id="eraserBtn" title="点击已有标记可删除"><i class="fa-solid fa-eraser"></i><span class="tooltip">删除标记</span></button>
+        <button class="btn-icon" id="measureBtn" title="折线测量（连续点击添加节点，双击结束）"><i class="fa-solid fa-draw-polygon"></i><span class="tooltip">折线测量</span></button>
+        <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
+        <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
+        <button class="btn-icon" id="settingsBtn" title="设置"><i class="fa-solid fa-gear"></i><span class="tooltip">设置</span></button>
+    </div>
+
+    <div class="settings-backdrop" id="settingsBackdrop">
+        <div class="settings-modal" role="dialog" aria-label="设置">
+            <h3>设置 <button type="button" id="settingsCloseBtn" title="关闭">×</button></h3>
+            <div class="settings-row">
+                <label>编号补零<small>如 001、002（仪表显示）</small></label>
+                <select id="settingPadDigits">
+                    <option value="2">2 位 (01)</option>
+                    <option value="3" selected>3 位 (001)</option>
+                    <option value="4">4 位 (0001)</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label>文档页脚信息<small>文件名 / 尺寸mm</small></label>
+                <input type="checkbox" id="settingShowCaption" checked />
+            </div>
+            <div class="settings-row">
+                <label>页脚显示文件名</label>
+                <input type="checkbox" id="settingCaptionName" checked />
+            </div>
+            <div class="settings-row">
+                <label>页脚显示尺寸</label>
+                <input type="checkbox" id="settingCaptionSize" checked />
+            </div>
+            <div class="settings-actions">
+                <button type="button" class="btn-secondary" id="settingsCancelBtn">取消</button>
+                <button type="button" class="btn-primary" id="settingsSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="stats-toggle" id="statsToggle" title="统计"><i class="fa-solid fa-chart-simple"></i></button>
+    <aside class="stats-panel" id="statsPanel">
+        <h3>类型统计 <span id="statsTotal">0</span></h3>
+        <div id="statsList"><div class="stats-empty">暂无标记</div></div>
+        <div class="stats-actions">
+            <button type="button" id="exportExcelBtn">导出 Excel</button>
+            <button type="button" class="secondary" id="exportPdfFromStatsBtn">导出 PDF</button>
+        </div>
+    </aside>
+
+    <!-- 底部工具栏 -->
+    <div class="bottom-bar">
+        <span class="page-count" id="pageCount"></span>
+        <button class="btn-icon" id="exportExcelBottomBtn" title="导出统计 Excel"><i class="fa-solid fa-file-excel"></i><span class="tooltip">Excel</span></button>
+        <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple />
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js\types.js"></script>
+    <script src="js\state.js"></script>
+    <script src="js\history.js"></script>
+    <script src="js\autosave.js"></script>
+    <script src="js\ui.js"></script>
+    <script src="js\markers.js"></script>
+    <script src="js\render.js"></script>
+    <script src="js\pdf-loader.js"></script>
+    <script src="js\export.js"></script>
+    <script src="js\events.js"></script>
+    <script src="js\main.js"></script>
+</body>
+</html>
