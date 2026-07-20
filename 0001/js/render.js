@@ -300,13 +300,7 @@ function updateUI() {
     updateStats();
 }
 
-function updateStats() {
-    if (markers.length === 0) {
-        statsList.innerHTML = '<div class="stats-empty">暂无标记</div>';
-        statsTotal.textContent = '共 0 个';
-        return;
-    }
-
+function renderStatsByFile() {
     const byDoc = new Map();
     for (const m of markers) {
         if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
@@ -347,6 +341,86 @@ function updateStats() {
         }
 
         html += '</div>';
+    }
+
+    return html;
+}
+
+function renderStatsByPage() {
+    const doc = documents[0];
+
+    let html = '';
+
+    html += `<div class="stats-file-header">
+        📄 ${escapeHtml(doc.fileName)}
+        <span class="stats-total-markers">${markers.length} 个标记</span>
+    </div>`;
+
+    const byPage = new Map();
+    for (const m of markers) {
+        if (!byPage.has(m.pageIndex)) {
+            byPage.set(m.pageIndex, []);
+        }
+        byPage.get(m.pageIndex).push(m);
+    }
+
+    const sortedPages = [...byPage.keys()].sort((a, b) => a - b);
+
+    for (const pageIndex of sortedPages) {
+        const pageMarkers = byPage.get(pageIndex);
+
+        html += `<div class="stats-page-group" data-page="${pageIndex}">
+            <div class="stats-page__name">
+                📄 第${pageIndex}页
+                <span>${pageMarkers.length} 个</span>
+            </div>`;
+
+        const typeCounts = new Map();
+        for (const m of pageMarkers) {
+            if (!typeCounts.has(m.typeId)) {
+                typeCounts.set(m.typeId, {
+                    count: 0,
+                    name: m.typeName,
+                    color: m.color
+                });
+            }
+            typeCounts.get(m.typeId).count++;
+        }
+
+        for (const [id, tc] of typeCounts) {
+            html += `<div class="stats-row">
+                <div class="stats-type">
+                    <span class="stats-dot" style="background:${tc.color}"></span>
+                    <span class="stats-name">${escapeHtml(tc.name)}</span>
+                </div>
+                <span class="stats-count">${tc.count}</span>
+            </div>`;
+        }
+
+        html += '</div>';
+    }
+
+    return html;
+}
+
+function updateStats() {
+    if (markers.length === 0) {
+        statsList.innerHTML = '<div class="stats-empty">暂无标记</div>';
+        statsTotal.textContent = '共 0 个';
+        return;
+    }
+
+    const isSingleMultiPageDoc =
+        documents.length === 1 &&
+        documents[0] &&
+        documents[0].pageCount > 1;
+
+    let html;
+
+    if (isSingleMultiPageDoc) {
+        html = renderStatsByPage();
+    } else {
+        html = renderStatsByFile();
     }
 
     statsList.innerHTML = html;

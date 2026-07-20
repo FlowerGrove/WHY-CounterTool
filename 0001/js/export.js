@@ -162,79 +162,158 @@ async function exportExcelCore() {
     ];
     styleHeaderRow(wsByFile.getRow(1));
 
-    const byDoc = new Map();
-    for (const m of markers) {
-        if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
-        byDoc.get(m.docId).push(m);
-    }
-    const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
-    for (const id of byDoc.keys()) {
-        if (!docOrder.includes(id)) docOrder.push(id);
-    }
+    const isSingleMultiPageDoc =
+        documents.length === 1 &&
+        documents[0] &&
+        documents[0].pageCount > 1;
 
-    for (const docId of docOrder) {
-        const list = byDoc.get(docId);
-        const fileName = getDocFileName(docId);
-        const counts = new Map();
-        for (const m of list) {
-            const key = m.typeId || 'other';
-            if (!counts.has(key)) {
-                counts.set(key, {
-                    count: 0,
-                    name: m.typeName,
-                    fullName: m.typeFullName || '',
-                    color: m.color,
-                });
-            }
-            const entry = counts.get(key);
-            entry.count++;
-            entry.color = m.color;
-            if (m.typeFullName) entry.fullName = m.typeFullName;
-        }
+    if (isSingleMultiPageDoc) {
+        wsByFile.columns = [
+            { header: '页码', key: 'page', width: 10 },
+            { header: '类型', key: 'type', width: 12 },
+            { header: '说明', key: 'desc', width: 16 },
+            { header: '数量', key: 'count', width: 8 },
+            { header: '颜色', key: 'color', width: 10 },
+        ];
+        styleHeaderRow(wsByFile.getRow(1));
 
-        const typeRows = [];
-        for (const t of markerTypes) {
-            const c = counts.get(t.id);
-            if (c) typeRows.push({
-                name: t.name,
-                fullName: c.fullName || t.fullName || '',
-                count: c.count,
-                color: c.color || t.color,
-            });
-        }
-        for (const [id, c] of counts) {
-            if (!markerTypes.some(t => t.id === id)) {
-                typeRows.push({
-                    name: c.name || id,
-                    fullName: c.fullName || '',
-                    count: c.count,
-                    color: c.color,
-                });
-            }
-        }
-
-        typeRows.forEach((row, idx) => {
-            const r = wsByFile.addRow({
-                file: idx === 0 ? fileName : '',
-                type: row.name,
-                desc: row.fullName,
-                count: row.count,
-                color: '',
-            });
-            applyColorFill(r.getCell(5), row.color);
-        });
-
-        const totalRow = wsByFile.addRow({
-            file: '',
-            type: '小计',
+        const doc = documents[0];
+        const titleRow = wsByFile.addRow({
+            page: `📄 ${doc.fileName}`,
+            type: '',
             desc: '',
-            count: list.length,
+            count: `共 ${markers.length} 个标记`,
             color: '',
         });
-        totalRow.font = { bold: true };
-        totalRow.getCell(2).font = { bold: true, color: { argb: 'FF555555' } };
+        titleRow.font = { bold: true, size: 12 };
+        titleRow.getCell(4).font = { bold: true, color: { argb: 'FF1A73E8' } };
 
         wsByFile.addRow({});
+
+        const byPage = new Map();
+        for (const m of markers) {
+            if (!byPage.has(m.pageIndex)) byPage.set(m.pageIndex, []);
+            byPage.get(m.pageIndex).push(m);
+        }
+
+        const sortedPages = [...byPage.keys()].sort((a, b) => a - b);
+
+        for (const pageIndex of sortedPages) {
+            const pageMarkers = byPage.get(pageIndex);
+
+            const pageHeader = wsByFile.addRow({
+                page: `第 ${pageIndex} 页`,
+                type: '',
+                desc: '',
+                count: `${pageMarkers.length} 个`,
+                color: '',
+            });
+            pageHeader.font = { bold: true };
+            pageHeader.getCell(1).font = { bold: true, color: { argb: 'FF1A73E8' } };
+
+            const typeCounts = new Map();
+            for (const m of pageMarkers) {
+                if (!typeCounts.has(m.typeId)) {
+                    typeCounts.set(m.typeId, {
+                        count: 0,
+                        name: m.typeName,
+                        fullName: m.typeFullName || '',
+                        color: m.color,
+                    });
+                }
+                typeCounts.get(m.typeId).count++;
+                typeCounts.get(m.typeId).color = m.color;
+                if (m.typeFullName) typeCounts.get(m.typeId).fullName = m.typeFullName;
+            }
+
+            for (const [id, tc] of typeCounts) {
+                const r = wsByFile.addRow({
+                    page: '',
+                    type: tc.name,
+                    desc: tc.fullName,
+                    count: tc.count,
+                    color: '',
+                });
+                applyColorFill(r.getCell(5), tc.color);
+            }
+
+            wsByFile.addRow({});
+        }
+    } else {
+        const byDoc = new Map();
+        for (const m of markers) {
+            if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
+            byDoc.get(m.docId).push(m);
+        }
+        const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
+        for (const id of byDoc.keys()) {
+            if (!docOrder.includes(id)) docOrder.push(id);
+        }
+
+        for (const docId of docOrder) {
+            const list = byDoc.get(docId);
+            const fileName = getDocFileName(docId);
+            const counts = new Map();
+            for (const m of list) {
+                const key = m.typeId || 'other';
+                if (!counts.has(key)) {
+                    counts.set(key, {
+                        count: 0,
+                        name: m.typeName,
+                        fullName: m.typeFullName || '',
+                        color: m.color,
+                    });
+                }
+                const entry = counts.get(key);
+                entry.count++;
+                entry.color = m.color;
+                if (m.typeFullName) entry.fullName = m.typeFullName;
+            }
+
+            const typeRows = [];
+            for (const t of markerTypes) {
+                const c = counts.get(t.id);
+                if (c) typeRows.push({
+                    name: t.name,
+                    fullName: c.fullName || t.fullName || '',
+                    count: c.count,
+                    color: c.color || t.color,
+                });
+            }
+            for (const [id, c] of counts) {
+                if (!markerTypes.some(t => t.id === id)) {
+                    typeRows.push({
+                        name: c.name || id,
+                        fullName: c.fullName || '',
+                        count: c.count,
+                        color: c.color,
+                    });
+                }
+            }
+
+            typeRows.forEach((row, idx) => {
+                const r = wsByFile.addRow({
+                    file: idx === 0 ? fileName : '',
+                    type: row.name,
+                    desc: row.fullName,
+                    count: row.count,
+                    color: '',
+                });
+                applyColorFill(r.getCell(5), row.color);
+            });
+
+            const totalRow = wsByFile.addRow({
+                file: '',
+                type: '小计',
+                desc: '',
+                count: list.length,
+                color: '',
+            });
+            totalRow.font = { bold: true };
+            totalRow.getCell(2).font = { bold: true, color: { argb: 'FF555555' } };
+
+            wsByFile.addRow({});
+        }
     }
 
     const grand = wsByFile.addRow({
