@@ -1,8 +1,8 @@
 const PDFJS_VERSION = '3.11.174';
 const PDFJS_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
 const PDFJS_WORKER_CDN = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
-const PDFLIB_CDN = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
-const EXCELJS_CDN = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+const PDFLIB_CDN = 'https://cdn.bootcdn.net/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+const EXCELJS_CDN = 'https://cdn.bootcdn.net/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 
 const PAGE_GAP = 16;
 const PAGE_CAPTION_H = 22;
