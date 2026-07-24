@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-Lib 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: white;
+            border-left: 4px solid #ccc;
+        }
+        .success { border-left-color: #4caf50; }
+        .error { border-left-color: #f44336; }
+        .info { border-left-color: #2196f3; }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover { background: #1976d2; }
+    </style>
+</head>
+<body>
+    <h1>PDF-Lib 库诊断工具</h1>
+
+    <button onclick="runTests()">开始测试</button>
+
+    <div id="results"></div>
+
+    <script src="0001/lib/pdf-lib.min.js"></script>
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function runTests() {
+            document.getElementById('results').innerHTML = '';
+
+            try {
+                // 测试1: 检查PDFLib是否存在
+                if (typeof PDFLib === 'undefined') {
+                    log('❌ 错误: PDFLib 未定义! 库未正确加载', 'error');
+                    return;
+                }
+                log('✅ PDFLib 已成功加载', 'success');
+
+                // 测试2: 显示版本信息
+                const version = PDFLib.version || '未知版本';
+                log(`📌 版本信息: ${version}`, 'info');
+
+                // 测试3: 列出主要API
+                const apis = [
+                    'PDFDocument',
+                    'StandardFonts',
+                    'rgb',
+                    'degreesToRadians',
+                    'PDFName',
+                    'PDFString',
+                    'PDFNumber'
+                ];
+                const availableApis = apis.filter(api => typeof PDFLib[api] !== 'undefined');
+                const missingApis = apis.filter(api => typeof PDFLib[api] === 'undefined');
+
+                log(`🔧 可用的API (${availableApis.length}/${apis.length}):`, 'info');
+                if (availableApis.length > 0) {
+                    log(`<pre>${availableApis.join(', ')}</pre>`, 'info');
+                }
+
+                if (missingApis.length > 0) {
+                    log(`⚠️ 缺失的API: ${missingApis.join(', ')}`, 'error');
+                }
+
+                // 测试4: 创建空白文档
+                log('📝 测试创建空白PDF文档...', 'info');
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                log('✅ 空白文档创建成功', 'success');
+
+                // 测试5: 嵌入字体
+                log('🔤 测试嵌入字体...', 'info');
+                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+                log('✅ 字体嵌入成功', 'success');
+
+                // 测试6: 添加页面
+                log('📄 测试添加页面...', 'info');
+                const page = pdfDoc.addPage([500, 700]);
+                log('✅ 页面添加成功', 'success');
+
+                // 测试7: 绘制文字（ASCII字符）
+        log('✍️ 测试绘制英文文字...', 'info');
+        page.drawText('Test Label 001', {
+            x: 50,
+            y: 650,
+            size: 24,
+            font: font,
+            color: PDFLib.rgb(0, 0, 0)
+        });
+        log('✅ 英文文字绘制成功', 'success');
+
+        // 测试8: 绘制中文（应该失败或被过滤）
+        log('✍️ 测试绘制中文（预期会报错）...', 'info');
+        try {
+            page.drawText('中文测试', {
+                x: 50,
+                y: 600,
+                size: 24,
+                font: font,
+                color: PDFLib.rgb(1, 0, 0)
+            });
+            log('⚠️ 意外：中文字体渲染成功（可能使用了支持中文的字体）', 'error');
+        } catch (chineseError) {
+            log(`✅ 预期的错误：${chineseError.message}`, 'success');
+            log('💡 提示：标准字体不支持中文，需要使用自定义字体或过滤中文字符', 'info');
+        }
+
+                // 测试9: 绘制圆形
+        log('⭕ 测试绘制圆形...', 'info');
+                page.drawCircle({
+                    x: 250,
+                    y: 500,
+                    size: 30,
+                    color: PDFLib.rgb(1, 1, 1),
+                    borderColor: PDFLib.rgb(0, 0, 1),
+                    borderWidth: 2
+                });
+                log('✅ 圆形绘制成功', 'success');
+
+                // 测试10: 保存文档
+                log('💾 测试保存文档...', 'info');
+                const pdfBytes = await pdfDoc.save();
+                const sizeKB = (pdfBytes.length / 1024).toFixed(2);
+        log(`✅ 文档保存成功, 大小: ${sizeKB} KB`, 'success');
+
+                // 测试11: 下载测试文件
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'pdf-lib-test.pdf';
+                a.click();
+                URL.revokeObjectURL(url);
+        log('📥 测试PDF已下载, 请检查是否能正常打开', 'success');
+
+                log('🎉 所有测试通过! PDF-Lib 工作正常', 'success');
+
+            } catch (error) {
+                log(`❌ 测试失败: ${error.message}`, 'error');
+                log(`<pre>${error.stack}</pre>`, 'error');
+            }
+        }
+
+        function hexToRgb(hex) {
+            const h = hex.replace('#', '');
+            return {
+                r: parseInt(h.slice(0, 2), 16) / 255,
+                g: parseInt(h.slice(2, 4), 16) / 255,
+                b: parseInt(h.slice(4, 6), 16) / 255,
+            };
+        }
+
+        function formatMarkerLabel(m, padDigits) {
+            const abbr = m.typeAbbr || '?';
+            const n = String(m.number).padStart(padDigits, '0');
+            return abbr + n;
+        }
+
+        window.exportMarkedPDF = async function(data) {
+            const { documents, markers, markerRadius, markerFontSize, numberPadDigits } = data;
+            const PDFLib = window.PDFLib;
+            const mergedDoc = await PDFLib.PDFDocument.create();
+            const font = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+            const VISUAL_CENTER_OFFSET = 0.38;
+            const radius = markerRadius;
+            const fontSize = markerFontSize;
+
+            for (const doc of documents) {
+                const srcDoc = await PDFLib.PDFDocument.load(doc.arrayBuffer);
+                const pageCount = srcDoc.getPageCount();
+
+                for (let i = 0; i < pageCount; i++) {
+                    const pageIndex = i + 1;
+                    const pageMarkers = markers.filter(function(m) { return m.docId === doc.id && m.pageIndex === pageIndex; });
+                    const copiedPages = await mergedDoc.copyPages(srcDoc, [i]);
+                    const copiedPage = copiedPages[0];
+                    mergedDoc.addPage(copiedPage);
+                    if (pageMarkers.length === 0) continue;
+
+                    const size = copiedPage.getSize();
+                    const pdfHeight = size.height;
+                    const pageData = doc.pages.find(function(p) { return p.pageIndex === pageIndex; });
+                    if (!pageData) continue;
+
+                    const renderScale = pageData.width / pageData.origWidth;
+                    const pdfRadius = radius / renderScale;
+                    const pdfFontSize = fontSize / renderScale;
+
+                    for (var j = 0; j < pageMarkers.length; j++) {
+                        var m = pageMarkers[j];
+                        var localX = m.vx - pageData.vx;
+                        var localY = m.vy - pageData.vy;
+                        var pdfX = localX / renderScale;
+                        var pdfY = pdfHeight - localY / renderScale;
+
+                        var rgb = hexToRgb(m.color);
+                        var text = formatMarkerLabel(m, numberPadDigits);
+                        var drawSize = text.length > 5 ? pdfFontSize * 0.68 : (text.length > 4 ? pdfFontSize * 0.78 : pdfFontSize);
+                        var textWidth = font.widthOfTextAtSize(text, drawSize);
+
+                        copiedPage.drawCircle({
+                            x: pdfX,
+                            y: pdfY,
+                            size: pdfRadius,
+                            color: PDFLib.rgb(1, 1, 1),
+                            borderColor: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                            borderWidth: Math.max(0.5, 2 / renderScale),
+                        });
+
+                        copiedPage.drawText(text, {
+                            x: pdfX - textWidth / 2,
+                            y: pdfY - VISUAL_CENTER_OFFSET * drawSize,
+                            size: drawSize,
+                            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                            font: font,
+                        });
+                    }
+                }
+            }
+
+            var pdfBytes = await mergedDoc.save();
+            var blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = '电气标注_' + new Date().toISOString().slice(0, 10) + '.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+    </script>
+</body>
+</html>

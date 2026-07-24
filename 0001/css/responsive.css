@@ -20,4 +20,25 @@
         bottom: 6px;
         padding: 2px 8px;
     }
+    .type-dock {
+        width: 64px;
+        left: 8px;
+        border-radius: 16px;
+        max-height: calc(100vh - 80px);
+    }
+    .type-dock__header {
+        padding: 8px 10px;
+    }
+    .btn-add-type {
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+    }
+    .type-chip {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+    .type-chip__code {
+        font-size: 12px;
+    }
 }

@@ -225,13 +225,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-colorPicker.addEventListener('input', () => {
-    currentColor = colorPicker.value;
-    const t = getCurrentType();
-    t.color = currentColor;
-    renderTypeChips();
-});
-
 radiusSlider.addEventListener('input', () => {
     markerRadius = parseFloat(radiusSlider.value);
     radiusValueEl.textContent = markerRadius;
@@ -423,5 +416,5 @@ fileInput.addEventListener('change', async (e) => {
         f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
     );
     if (files.length > 0) await importPDF(files);
-    file.value = '';
+    fileInput.value = '';
 });

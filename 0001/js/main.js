@@ -5,7 +5,6 @@ const pageCountEl = document.getElementById('pageCount');
 const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const fileInput = document.getElementById('fileInput');
-const colorPicker = document.getElementById('colorPicker');
 const radiusSlider = document.getElementById('radiusSlider');
 const fontSizeSlider = document.getElementById('fontSizeSlider');
 const radiusValueEl = document.getElementById('radiusValue');
@@ -35,7 +34,7 @@ const exportExcelBtn = document.getElementById('exportExcelBtn');
 const exportExcelBottomBtn = document.getElementById('exportExcelBottomBtn');
 const exportPdfFromStatsBtn = document.getElementById('exportPdfFromStatsBtn');
 
-let currentColor = colorPicker.value;
+const currentColor = '#e53935';
 let markerRadius = isMobile ? MOBILE_RADIUS : DESKTOP_RADIUS;
 let markerFontSize = isMobile ? MOBILE_FONT_SIZE : DESKTOP_FONT_SIZE;
 

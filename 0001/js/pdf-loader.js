@@ -7,7 +7,8 @@ async function importPDF(files) {
 
         for (const file of files) {
             const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+            // 传副本给 PDF.js，它会被 transfer/detach，保留原始的给导出用
+            const pdf = await pdfjs.getDocument({ data: arrayBuffer.slice(0) }).promise;
             const docId = nextDocId++;
 
             const doc = {
@@ -49,6 +50,7 @@ async function importPDF(files) {
                     height: rv.height,
                     origWidth,
                     origHeight,
+                    vTransform: rv.transform,
                     img,
                 };
 

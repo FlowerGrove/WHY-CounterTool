@@ -1,8 +1,22 @@
 function loadScript(src) {
     return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            if (existing.dataset.loaded === 'true') {
+                resolve();
+            } else {
+                existing.addEventListener('load', resolve);
+                existing.addEventListener('error', () => reject(new Error(`加载失败: ${src}`)));
+            }
+            return;
+        }
         const script = document.createElement('script');
         script.src = src;
-        script.onload = resolve;
+        script.async = true;
+        script.onload = function() {
+            script.dataset.loaded = 'true';
+            resolve();
+        };
         script.onerror = () => reject(new Error(`加载失败: ${src}`));
         document.head.appendChild(script);
     });
@@ -149,6 +163,21 @@ function getSegmentDistances(points) {
         });
     }
     return segments;
+}
+
+async function runExportTask(buttons, taskFn, busyMsg, doneMsg, failMsg) {
+    for (const b of buttons) if (b) b.disabled = true;
+    showToast(busyMsg, true);
+    try {
+        await taskFn();
+        showToast(doneMsg || '导出完成');
+    } catch (e) {
+        console.error(e);
+        hideToast();
+        alert(failMsg || '导出失败，请检查网络连接后重试');
+    } finally {
+        for (const b of buttons) if (b) b.disabled = false;
+    }
 }
 
 function calculateLabelPosition(points) {

@@ -51,35 +51,6 @@
     color: #333;
     font-weight: 600;
 }
-.color-picker-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    flex-shrink: 0;
-}
-.color-picker {
-    width: 22px;
-    height: 22px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    padding: 0;
-    background: transparent;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.10);
-    -webkit-appearance: none;
-    appearance: none;
-}
-.color-picker::-webkit-color-swatch-wrapper {
-    padding: 0;
-}
-.color-picker::-webkit-color-swatch {
-    border: none;
-    border-radius: 50%;
-}
-.color-picker::-moz-color-swatch {
-    border: none;
-    border-radius: 50%;
-}
 .number-input-group {
     display: flex;
     align-items: center;
