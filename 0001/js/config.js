@@ -22,6 +22,16 @@ const defaultSettings = {
     showPageCaption: true,
     captionShowName: true,
     captionShowSize: true,
+    measureMode: 'drawing',
+    measureScale: 530,
+    // 测量标注显示设置
+    measureShowSegmentLen: true,   // 显示线段距离
+    measureShowArea: true,         // 显示面积
+    measureShowSegLabel: true,     // 显示段编号(M1/M2)
+    measureShowHatch: true,        // 多边形内部斜线填充
+    measureLabelFontSize: 13,      // 标注文字字号(px 基准)
+    measureHatchSpacing: 8,        // 斜线间距(px)
+    measureHatchOpacity: 0.35,     // 斜线透明度(0-1)
 };
 
 const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||

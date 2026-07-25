@@ -30,10 +30,146 @@ function render() {
         drawMarker(ctx, m);
     }
 
-    if (polylineMode && currentPolylinePoints.length > 0) {
-        drawPolyline(ctx, currentPolylinePoints, isPolylineComplete);
+    // 先绘制所有已完成的测量段（蓝色，带段编号）
+    for (const m of measurements) {
+        drawPolyline(ctx, m.points, true, `M${m.id}`);
     }
 
+    // 再绘制当前进行中的段（红色/未完成态）
+    if (polylineMode && currentPolylinePoints.length > 0) {
+        drawPolyline(ctx, currentPolylinePoints, isPolylineComplete, null);
+    }
+
+    if (polylineMode && measurePhase === 'calibrate') {
+        drawCalibrate(ctx);
+    }
+
+    if (polylineMode && snapHint) {
+        drawSnapHint(ctx, snapHint.x, snapHint.y);
+    }
+
+    ctx.restore();
+}
+
+// 绘制校准阶段：已拾取的点 + 正交投影预览线
+function drawCalibrate(ctx) {
+    if (calibratePoints.length === 0 && !calibratePreview) return;
+
+    ctx.save();
+    // 以数字字号为基准统一计算，保证外圈/内圈/数字同步缩放
+    const labelSize = Math.max(9, 11 / zoom);
+    const lineWidth = 2.5 / Math.max(zoom, 0.01);
+    const pointRadius = labelSize * 0.55;
+    const outerRadius = labelSize * 0.95;
+
+    // 已拾取的第一点
+    if (calibratePoints.length >= 1) {
+        const p1 = calibratePoints[0];
+        // 预览线（第一点 → 投影点）
+        if (calibratePreview) {
+            ctx.strokeStyle = '#FF9800';
+            ctx.lineWidth = lineWidth;
+            ctx.setLineDash([10 / Math.max(zoom, 0.01), 5 / Math.max(zoom, 0.01)]);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(calibratePreview.x, calibratePreview.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 投影点（虚线圆环）
+            ctx.beginPath();
+            ctx.arc(calibratePreview.x, calibratePreview.y, outerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 152, 0, 0.15)';
+            ctx.fill();
+            ctx.strokeStyle = '#FF9800';
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(calibratePreview.x, calibratePreview.y, pointRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#FF9800';
+            ctx.fill();
+        }
+
+        // 第一点（实心圆 + 编号）
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 152, 0, 0.15)';
+        ctx.fill();
+        ctx.strokeStyle = '#FF9800';
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, pointRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#FF9800';
+        ctx.fill();
+
+        ctx.font = `bold ${labelSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5 / Math.max(zoom, 0.01);
+        ctx.strokeText('1', p1.x, p1.y + 0.5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('1', p1.x, p1.y + 0.5);
+    }
+
+    // 校准已完成两点（实线连接）
+    if (calibratePoints.length === 2) {
+        const p1 = calibratePoints[0];
+        const p2 = calibratePoints[1];
+        ctx.strokeStyle = '#FF9800';
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+
+        // 第二点
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 152, 0, 0.15)';
+        ctx.fill();
+        ctx.strokeStyle = '#FF9800';
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, pointRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#FF9800';
+        ctx.fill();
+
+        ctx.font = `bold ${labelSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5 / Math.max(zoom, 0.01);
+        ctx.strokeText('2', p2.x, p2.y + 0.5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('2', p2.x, p2.y + 0.5);
+    }
+
+    ctx.restore();
+}
+
+// 绘制端点捕捉指示器（绿色方框 + 十字）
+function drawSnapHint(ctx, x, y) {
+    const s = 10 / zoom;
+    ctx.save();
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.strokeStyle = '#00C853';
+    ctx.fillStyle = 'rgba(0, 200, 83, 0.15)';
+    ctx.beginPath();
+    ctx.rect(x - s, y - s, s * 2, s * 2);
+    ctx.fill();
+    ctx.stroke();
+    // 十字
+    ctx.beginPath();
+    ctx.moveTo(x - s * 1.6, y); ctx.lineTo(x + s * 1.6, y);
+    ctx.moveTo(x, y - s * 1.6); ctx.lineTo(x, y + s * 1.6);
+    ctx.stroke();
     ctx.restore();
 }
 
@@ -108,13 +244,65 @@ function drawMarker(ctx, m) {
     ctx.restore();
 }
 
-function drawPolyline(ctx, points, isCompleted) {
+// 多边形斜线填充：用 clip 限定区域，再绘制等间距斜线
+function fillHatch(ctx, points, opts) {
+    if (!points || points.length < 3) return;
+    const spacing = Math.max(2, opts.spacing || 8);
+    const opacity = Math.max(0, Math.min(1, opts.opacity != null ? opts.opacity : 0.35));
+    const rgb = opts.color || '25, 118, 210';
+
+    // 计算包围盒
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    }
+    const w = maxX - minX;
+    const h = maxY - minY;
+    if (w <= 0 || h <= 0) return;
+
+    ctx.save();
+    // 裁剪到多边形
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.closePath();
+    ctx.clip();
+
+    // 45° 斜线：沿对角线方向等间距绘制
+    ctx.strokeStyle = `rgba(${rgb}, ${opacity})`;
+    ctx.lineWidth = 1 / Math.max(zoom, 0.01);
+    ctx.beginPath();
+    // 从左下到右上扫描，步长 = spacing
+    const diag = w + h;
+    for (let d = -h; d <= w; d += spacing) {
+        // 斜线两端点：(minX + d, minY) → (minX + d + h, minY + h) 限制在包围盒内
+        const x1 = minX + d;
+        const y1 = minY;
+        const x2 = x1 + h;
+        const y2 = minY + h;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawPolyline(ctx, points, isCompleted, segmentLabel) {
     if (!points || points.length === 0) return;
 
     ctx.save();
 
-    const pointRadius = 6 / Math.max(zoom, 0.01);
-    const outerRadius = 10 / Math.max(zoom, 0.01);
+    // 以数字字号为基准统一计算，保证外圈/内圈/数字同步缩放
+    // 标注字号可由设置面板调整
+    const baseLabelSize = settings.measureLabelFontSize || 13;
+    const labelSize = Math.max(9, baseLabelSize / zoom);
+    const pointRadius = labelSize * 0.55;
+    const outerRadius = labelSize * 0.95;
     const lineWidth = 3 / Math.max(zoom, 0.01);
 
     if (points.length >= 2) {
@@ -127,10 +315,33 @@ function drawPolyline(ctx, points, isCompleted) {
             ctx.setLineDash([]);
         }
 
+        if (points.length >= 3) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = isCompleted ? 'rgba(25, 118, 210, 0.12)' : 'rgba(229, 57, 53, 0.10)';
+            ctx.fill();
+
+            // 斜线填充表示面积（仅完成态，且设置开启时）
+            if (isCompleted && settings.measureShowHatch !== false) {
+                fillHatch(ctx, points, {
+                    spacing: (settings.measureHatchSpacing || 8) / zoom,
+                    opacity: settings.measureHatchOpacity != null ? settings.measureHatchOpacity : 0.35,
+                    color: isCompleted ? '25, 118, 210' : '229, 57, 53',
+                });
+            }
+        }
+
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < points.length; i++) {
             ctx.lineTo(points[i].x, points[i].y);
+        }
+        if (points.length >= 3 && isCompleted) {
+            ctx.closePath();
         }
         ctx.stroke();
     }
@@ -138,12 +349,12 @@ function drawPolyline(ctx, points, isCompleted) {
     points.forEach((point, index) => {
         drawMeasurePoint(ctx, point.x, point.y,
                         pointRadius, outerRadius, lineWidth,
-                        String(index + 1));
+                        String(index + 1), labelSize);
     });
 
-    if (points.length >= 2) {
+    if (points.length >= 2 && settings.measureShowSegmentLen !== false) {
         const segments = getSegmentDistances(points);
-        
+
         segments.forEach((seg, idx) => {
             const fromIdx = seg.from - 1;
             const toIdx = seg.to - 1;
@@ -158,10 +369,10 @@ function drawPolyline(ctx, points, isCompleted) {
             const offsetX = Math.cos(perpAngle) * offsetDistance;
             const offsetY = Math.sin(perpAngle) * offsetDistance;
 
-            const segFontSize = Math.max(11, 13 / zoom);
+            const segFontSize = Math.max(11, (settings.measureLabelFontSize || 13) / zoom);
             ctx.font = `bold ${segFontSize}px Arial, sans-serif`;
 
-            const segText = seg.distanceMM + ' mm';
+            const segText = seg.distanceText + ' ' + seg.unit;
             const segMetrics = ctx.measureText(segText);
             const segPad = 8 / zoom;
             const labelX = midX + offsetX;
@@ -186,73 +397,124 @@ function drawPolyline(ctx, points, isCompleted) {
             ctx.fillStyle = isCompleted ? '#1976D2' : '#D32F2F';
             ctx.fillText(segText, labelX, labelY);
         });
+    }
 
-        const totalMM = calculatePolylineTotalLength(points);
+    if (points.length >= 2) {
+        const totalLen = calculatePolylineTotalLength(points);
+        const areaFmt = points.length >= 3 ? calculatePolylineArea(points) : null;
 
         let sumX = 0, sumY = 0;
         points.forEach(p => { sumX += p.x; sumY += p.y; });
         const centerX = sumX / points.length;
-        const centerY = sumY / points.length;
+        let centerY = sumY / points.length;
 
-        const totalFontSize = Math.max(16, 18 / zoom);
+        const totalFontSize = Math.max(16, (settings.measureLabelFontSize || 13) * 1.38 / zoom);
         ctx.font = `bold ${totalFontSize}px Arial, sans-serif`;
 
         let totalText = '';
         if (points.length === 2) {
-            totalText = `Σ ${totalMM} mm`;
+            totalText = `Σ ${totalLen.text} ${totalLen.unit}`;
         } else {
-            totalText = `Σ ${totalMM} mm (${points.length}段)`;
+            totalText = `Σ ${totalLen.text} ${totalLen.unit} (${points.length}段)`;
         }
 
         const totalMetrics = ctx.measureText(totalText);
         const totalPad = 10 / zoom;
+        const lineGap = 4 / zoom;
+
+        let areaText = null;
+        let areaMetrics = null;
+        let totalBoxHeight = totalFontSize + totalPad * 2;
+        const showAreaText = areaFmt !== null && settings.measureShowArea !== false;
+
+        if (showAreaText) {
+            areaText = `▣ ${areaFmt.text} ${areaFmt.unit}`;
+            areaMetrics = ctx.measureText(areaText);
+            totalBoxHeight = totalFontSize * 2 + lineGap + totalPad * 2;
+        }
+
+        const totalBoxWidth = Math.max(
+            totalMetrics.width + totalPad * 2,
+            areaMetrics ? areaMetrics.width + totalPad * 2 : 0
+        );
+        const totalBoxX = centerX - totalBoxWidth / 2;
+        const totalBoxY = centerY - totalBoxHeight / 2;
 
         ctx.fillStyle = isCompleted ? 'rgba(25, 118, 210, 0.95)' : 'rgba(211, 47, 47, 0.95)';
-        roundRect(ctx, centerX - totalMetrics.width/2 - totalPad,
-                 centerY - totalFontSize/2 - totalPad,
-                 totalMetrics.width + totalPad*2,
-                 totalFontSize + totalPad*2,
-                 4 / zoom);
+        roundRect(ctx, totalBoxX, totalBoxY, totalBoxWidth, totalBoxHeight, 4 / zoom);
         ctx.fill();
 
         ctx.strokeStyle = isCompleted ? '#1565C0' : '#C62828';
         ctx.lineWidth = 1.5 / Math.max(zoom, 0.01);
-        strokeRoundRect(ctx, centerX - totalMetrics.width/2 - totalPad,
-                       centerY - totalFontSize/2 - totalPad,
-                       totalMetrics.width + totalPad*2,
-                       totalFontSize + totalPad*2,
-                       4 / zoom);
+        strokeRoundRect(ctx, totalBoxX, totalBoxY, totalBoxWidth, totalBoxHeight, 4 / zoom);
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(totalText, centerX, centerY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (showAreaText) {
+            const lengthY = totalBoxY + totalPad + totalFontSize / 2;
+            const areaY = lengthY + totalFontSize / 2 + lineGap + totalFontSize / 2;
+            ctx.fillText(totalText, centerX, lengthY);
+            ctx.fillText(areaText, centerX, areaY);
+        } else {
+            ctx.fillText(totalText, centerX, centerY);
+        }
+    }
+
+    // 段编号标签（M1/M2/...）：放在第一个点上方
+    if (segmentLabel && points.length > 0 && settings.measureShowSegLabel !== false) {
+        const firstPt = points[0];
+        const segLabelSize = Math.max(11, (settings.measureLabelFontSize || 13) / zoom);
+        ctx.font = `bold ${segLabelSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const segMetrics = ctx.measureText(segmentLabel);
+        const segPad = 5 / zoom;
+        const boxW = segMetrics.width + segPad * 2;
+        const boxH = segLabelSize + segPad * 2;
+        const boxX = firstPt.x - boxW / 2;
+        const boxY = firstPt.y - outerRadius - boxH - 4 / zoom;
+
+        ctx.fillStyle = isCompleted ? '#1976D2' : '#E53935';
+        roundRect(ctx, boxX, boxY, boxW, boxH, 3 / zoom);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(segmentLabel, firstPt.x, boxY + boxH / 2);
     }
 
     ctx.setLineDash([]);
     ctx.restore();
 }
 
-function drawMeasurePoint(ctx, x, y, radius, outerRadius, lineWidth, label) {
+function drawMeasurePoint(ctx, x, y, radius, outerRadius, lineWidth, label, labelSize) {
+    // 外圈光晕（淡红色）
     ctx.beginPath();
     ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(229, 57, 53, 0.15)';
     ctx.fill();
 
+    // 外圈描边
     ctx.beginPath();
     ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
     ctx.strokeStyle = '#e53935';
     ctx.lineWidth = lineWidth;
     ctx.stroke();
 
+    // 内圈实心圆（白色背景，突出红色数字）
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#e53935';
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
 
-    const labelSize = Math.max(9, 11 / zoom);
     ctx.font = `bold ${labelSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
+    // 红色数字 + 浅描边增强对比
+    ctx.strokeStyle = 'rgba(229, 57, 53, 0.35)';
+    ctx.lineWidth = 2 / Math.max(zoom, 0.01);
+    ctx.strokeText(label, x, y + 0.5);
+    ctx.fillStyle = '#d32f2f';
     ctx.fillText(label, x, y + 0.5);
 }
 

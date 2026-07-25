@@ -18,6 +18,21 @@ let polylineMode = false;
 let currentPolylinePoints = [];
 let isPolylineComplete = false;
 
+// 多段测量：已完成的测量段数组
+// 每个元素: { id, points, totalLenPixels, areaPixels|null }
+let measurements = [];
+
+let measureMode = settings.measureMode || 'drawing';
+let measureScale = settings.measureScale || 530;
+
+let snapHint = null; // 当前鼠标附近的捕捉点 {x,y} 或 null
+
+// 测量阶段：'calibrate'(校准) | 'measure'(测量)
+let measurePhase = 'calibrate';
+let calibratePoints = []; // 校准用的两点
+let calibratePreview = null; // 校准时鼠标正交投影点 {x,y}
+let measureRawScale = null; // 用户测量得到的原始比例（未自动校准前的值）
+
 function getUsedSet(typeId) {
     if (!usedNumbersByType.has(typeId)) usedNumbersByType.set(typeId, new Set());
     return usedNumbersByType.get(typeId);

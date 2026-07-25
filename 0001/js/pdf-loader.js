@@ -41,6 +41,9 @@ async function importPDF(files) {
 
                 const img = await createImageBitmap(offCanvas);
 
+                // 解析矢量端点（用于测量时的端点捕捉）
+                const endpoints = await extractEndpoints(pdfjs, page, rv.transform, baseVy);
+
                 const pageData = {
                     docId,
                     pageIndex: i,
@@ -52,6 +55,8 @@ async function importPDF(files) {
                     origHeight,
                     vTransform: rv.transform,
                     img,
+                    endpoints,
+                    snapGrid: buildSnapGrid(endpoints),
                 };
 
                 pages.push(pageData);
@@ -163,4 +168,95 @@ function fitToContent() {
 
     panX = -(minX + contentW / 2) * zoom;
     panY = -(minY + contentH / 2) * zoom;
+}
+
+// ===== PDF 矢量端点提取（用于 CAD 式端点捕捉）=====
+
+function matMul(m1, m2) {
+    return [
+        m1[0] * m2[0] + m1[2] * m2[1],
+        m1[1] * m2[0] + m1[3] * m2[1],
+        m1[0] * m2[2] + m1[2] * m2[3],
+        m1[1] * m2[2] + m1[3] * m2[3],
+        m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+        m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+    ];
+}
+
+function applyMat(m, x, y) {
+    return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+}
+
+// 解析 operator list，提取所有路径端点，转换为虚拟坐标
+async function extractEndpoints(pdfjs, page, vTransform, pageVy) {
+    try {
+        const OPS = pdfjs.OPS;
+        const opList = await page.getOperatorList();
+        const fnArray = opList.fnArray;
+        const argsArray = opList.argsArray;
+
+        let ctm = [1, 0, 0, 1, 0, 0];
+        const stack = [];
+        const rawPts = [];
+        const t = vTransform; // [a,b,c,d,e,f] 映射 用户空间 -> 渲染像素
+
+        const pushPt = (x, y) => {
+            const u = applyMat(ctm, x, y);
+            const px = t[0] * u[0] + t[2] * u[1] + t[4];
+            const py = t[1] * u[0] + t[3] * u[1] + t[5];
+            rawPts.push({ x: px, y: pageVy + py });
+        };
+
+        for (let k = 0; k < fnArray.length; k++) {
+            const fn = fnArray[k];
+            const args = argsArray[k];
+            if (fn === OPS.transform) {
+                ctm = matMul(ctm, args);
+            } else if (fn === OPS.save) {
+                stack.push(ctm.slice());
+            } else if (fn === OPS.restore) {
+                if (stack.length) ctm = stack.pop();
+            } else if (fn === OPS.moveTo || fn === OPS.lineTo) {
+                pushPt(args[0], args[1]);
+            } else if (fn === OPS.rectangle) {
+                pushPt(args[0], args[1]);
+                pushPt(args[0] + args[2], args[1]);
+                pushPt(args[0] + args[2], args[1] + args[3]);
+                pushPt(args[0], args[1] + args[3]);
+            } else if (fn === OPS.curveTo) {
+                pushPt(args[4], args[5]);
+            } else if (fn === OPS.curveTo2 || fn === OPS.curveTo3) {
+                pushPt(args[2], args[3]);
+            }
+        }
+
+        // 去重（相近点合并）
+        const seen = new Set();
+        const out = [];
+        for (const p of rawPts) {
+            const key = Math.round(p.x) + ',' + Math.round(p.y);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(p);
+            if (out.length >= 60000) break;
+        }
+        return out;
+    } catch (e) {
+        console.warn('端点解析失败，捕捉功能将不可用', e);
+        return [];
+    }
+}
+
+// 构建空间网格索引，cellSize 为虚拟像素
+function buildSnapGrid(endpoints) {
+    const cellSize = 40;
+    const grid = new Map();
+    for (const p of endpoints) {
+        const cx = Math.floor(p.x / cellSize);
+        const cy = Math.floor(p.y / cellSize);
+        const key = cx + ',' + cy;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push(p);
+    }
+    return { cellSize, grid };
 }

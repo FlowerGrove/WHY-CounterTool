@@ -97,6 +97,34 @@ function screenToVirtual(sx, sy) {
     };
 }
 
+// 在虚拟坐标 (vx,vy) 附近搜索 PDF 端点，返回最近的捕捉点或 null
+function findSnapPoint(vx, vy) {
+    const threshold = Math.max(12 / zoom, 6); // 屏幕约 12px 捕捉半径
+    let best = null;
+    let bestDist = threshold;
+    for (const p of pages) {
+        if (!p.snapGrid) continue;
+        const { cellSize, grid } = p.snapGrid;
+        const r = Math.ceil(threshold / cellSize);
+        const cx = Math.floor(vx / cellSize);
+        const cy = Math.floor(vy / cellSize);
+        for (let gx = cx - r; gx <= cx + r; gx++) {
+            for (let gy = cy - r; gy <= cy + r; gy++) {
+                const cell = grid.get(gx + ',' + gy);
+                if (!cell) continue;
+                for (const pt of cell) {
+                    const d = Math.hypot(pt.x - vx, pt.y - vy);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = pt;
+                    }
+                }
+            }
+        }
+    }
+    return best;
+}
+
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
@@ -133,22 +161,47 @@ function calculateDistance(p1, p2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-function convertPixelsToMM(pixels) {
+function pixelsToDrawingMM(pixels) {
     if (pages.length > 0 && pages[0].width > 0) {
         const renderScale = pages[0].origWidth / pages[0].width;
-        const pdfPoints = pixels * renderScale;
-        return (pdfPoints / 72 * 25.4).toFixed(2);
+        return pixels * renderScale / 72 * 25.4;
     }
-    return (pixels / 72 * 25.4).toFixed(2);
+    return pixels / 72 * 25.4;
+}
+
+function formatLength(pixels) {
+    const drawingMM = pixelsToDrawingMM(pixels);
+    if (measureMode === 'real') {
+        const realM = drawingMM * measureScale / 1000;
+        return { text: realM.toFixed(3), unit: 'm' };
+    }
+    return { text: drawingMM.toFixed(2), unit: 'mm' };
+}
+
+function pixelsToDrawingMM2(pixelArea) {
+    if (pages.length > 0 && pages[0].width > 0) {
+        const renderScale = pages[0].origWidth / pages[0].width;
+        return pixelArea * renderScale * renderScale / (72 * 72) * (25.4 * 25.4);
+    }
+    return pixelArea / (72 * 72) * (25.4 * 25.4);
+}
+
+function formatArea(pixelArea) {
+    const drawingMM2 = pixelsToDrawingMM2(pixelArea);
+    if (measureMode === 'real') {
+        const realM2 = drawingMM2 * measureScale * measureScale / 1e6;
+        return { text: realM2.toFixed(3), unit: 'm²' };
+    }
+    return { text: drawingMM2.toFixed(0), unit: 'mm²' };
 }
 
 function calculatePolylineTotalLength(points) {
-    if (!points || points.length < 2) return '0.00';
+    if (!points || points.length < 2) return { text: '0.00', unit: 'mm' };
     let totalPixels = 0;
     for (let i = 0; i < points.length - 1; i++) {
         totalPixels += calculateDistance(points[i], points[i + 1]);
     }
-    return convertPixelsToMM(totalPixels);
+    return formatLength(totalPixels);
 }
 
 function getSegmentDistances(points) {
@@ -156,10 +209,12 @@ function getSegmentDistances(points) {
     if (!points || points.length < 2) return segments;
     for (let i = 0; i < points.length - 1; i++) {
         const dist = calculateDistance(points[i], points[i + 1]);
+        const f = formatLength(dist);
         segments.push({
             from: i + 1,
             to: i + 2,
-            distanceMM: convertPixelsToMM(dist)
+            distanceText: f.text,
+            unit: f.unit
         });
     }
     return segments;
@@ -178,6 +233,24 @@ async function runExportTask(buttons, taskFn, busyMsg, doneMsg, failMsg) {
     } finally {
         for (const b of buttons) if (b) b.disabled = false;
     }
+}
+
+function calculatePolygonArea(points) {
+    if (!points || points.length < 3) return 0;
+    let area = 0;
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+    }
+    return Math.abs(area) / 2;
+}
+
+function calculatePolylineArea(points) {
+    if (!points || points.length < 3) return null;
+    const pixelArea = calculatePolygonArea(points);
+    return formatArea(pixelArea);
 }
 
 function calculateLabelPosition(points) {

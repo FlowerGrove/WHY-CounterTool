@@ -33,3 +33,8 @@
 #fileInput {
     display: none;
 }
+
+/* 测量模式下隐藏底部导出工具栏（Excel/PDF 属于仪表统计导出） */
+body.measure-active .bottom-bar {
+    display: none !important;
+}

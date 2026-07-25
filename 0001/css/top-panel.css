@@ -155,3 +155,73 @@ canvas.erase-mode {
     flex-shrink: 0;
     margin: 0 2px;
 }
+
+/* 测量/校准模式：智能隐藏标记相关控件 */
+body.measure-active .marker-tool {
+    display: none !important;
+}
+
+/* 测量模式下隐藏统计窗口和统计按钮 */
+body.measure-active .stats-toggle,
+body.measure-active .stats-panel {
+    display: none !important;
+}
+
+/* 测量撤回按钮：默认隐藏，仅测量阶段显示 */
+.measure-undo {
+    display: none !important;
+}
+.measure-undo.visible {
+    display: inline-flex !important;
+}
+
+/* 测量专属控件（比例尺显示、重新校准）：仅测量模式显示 */
+.measure-only {
+    display: none !important;
+}
+body.measure-active .measure-only {
+    display: inline-flex !important;
+}
+
+/* 校准比例尺显示标签（上下两行布局） */
+.measure-scale-display {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 8px;
+    min-width: 80px;
+    background: rgba(25, 118, 210, 0.10);
+    border: 1px solid rgba(25, 118, 210, 0.30);
+    border-radius: 6px;
+    cursor: default;
+    user-select: none;
+}
+.measure-scale-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+}
+.measure-scale-label {
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.45);
+    font-weight: 500;
+}
+.measure-scale-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1976D2;
+}
+/* 校准阶段（未完成校准）时高亮提醒 */
+.measure-scale-display.unset {
+    background: rgba(255, 152, 0, 0.12);
+    border-color: rgba(255, 152, 0, 0.45);
+}
+.measure-scale-display.unset .measure-scale-value {
+    color: #F57C00;
+}
+/* 自动校准状态：校准值与原值不同时，校准值高亮 */
+.measure-scale-display.auto-calibrated .measure-scale-value:last-child {
+    color: #2E7D32;
+}

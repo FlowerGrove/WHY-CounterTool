@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="css/toast.css" />
     <link rel="stylesheet" href="css/session-banner.css" />
     <link rel="stylesheet" href="css/stats-panel.css" />
+    <link rel="stylesheet" href="css/measure-panel.css" />
     <link rel="stylesheet" href="css/settings.css" />
     <link rel="stylesheet" href="css/responsive.css" />
 </head>
@@ -35,7 +36,7 @@
     </div>
 
     <!-- 左侧类型浮动栏 -->
-    <aside class="type-dock" id="typeDock">
+    <aside class="type-dock marker-tool" id="typeDock">
         <div class="type-dock__header">
             <button class="btn-add-type" id="addTypeBtn" title="添加自定义类型">+</button>
         </div>
@@ -45,26 +46,39 @@
 
     <!-- 顶部工具栏 -->
     <div class="top-panel" id="topPanel">
-        <div class="number-input-group">
+        <div class="number-input-group marker-tool">
             <label for="numberInput"><i class="fa-solid fa-hashtag" style="font-size:11px; color:#888;"></i></label>
             <input type="text" id="numberInput" class="number-input" value="001" inputmode="numeric" maxlength="4" />
         </div>
-        <div class="divider"></div>
-        <div class="control-group">
+        <div class="divider marker-tool"></div>
+        <div class="control-group marker-tool">
             <label for="radiusSlider"><i class="fa-regular fa-circle" style="font-size:11px; color:#888;"></i></label>
             <input type="range" id="radiusSlider" class="size-slider" min="6" max="60" value="26" step="0.5" />
             <span class="size-value" id="radiusValue">26</span>
         </div>
-        <div class="control-group">
+        <div class="control-group marker-tool">
             <label for="fontSizeSlider"><i class="fa-solid fa-font" style="font-size:11px; color:#888;"></i></label>
             <input type="range" id="fontSizeSlider" class="size-slider" min="5" max="45" value="12" step="0.5" />
             <span class="size-value" id="fontSizeValue">12</span>
         </div>
-        <div class="divider"></div>
-        <button class="btn-icon" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
-        <button class="btn-icon" id="redoBtn" title="重做 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span class="tooltip">重做</span></button>
-        <button class="btn-icon" id="eraserBtn" title="点击已有标记可删除"><i class="fa-solid fa-eraser"></i><span class="tooltip">删除标记</span></button>
-        <button class="btn-icon" id="measureBtn" title="折线测量（连续点击添加节点，双击结束）"><i class="fa-solid fa-draw-polygon"></i><span class="tooltip">折线测量</span></button>
+        <div class="divider marker-tool"></div>
+        <button class="btn-icon marker-tool" id="undoBtn" title="撤销 (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤销</span></button>
+        <button class="btn-icon marker-tool" id="redoBtn" title="重做 (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span class="tooltip">重做</span></button>
+        <button class="btn-icon marker-tool" id="eraserBtn" title="点击已有标记可删除"><i class="fa-solid fa-eraser"></i><span class="tooltip">删除标记</span></button>
+        <button class="btn-icon" id="measureBtn" title="折线测量（连续点击添加节点，右键结束）"><i class="fa-solid fa-draw-polygon"></i><span class="tooltip">折线测量</span></button>
+        <div class="measure-scale-display measure-only" id="measureScaleDisplay" title="当前校准比例尺（图纸1mm = 实物多少mm）">
+            <div class="measure-scale-row" id="measureScaleRaw">
+                <span class="measure-scale-label">原值</span>
+                <span class="measure-scale-value">1:—</span>
+            </div>
+            <div class="measure-scale-row" id="measureScaleCalibrated">
+                <span class="measure-scale-label">校准</span>
+                <span class="measure-scale-value">1:—</span>
+            </div>
+        </div>
+        <button class="btn-icon measure-only" id="recalibrateBtn" title="重新校准比例尺"><i class="fa-solid fa-crosshairs"></i><span class="tooltip">重新校准</span></button>
+        <button class="btn-icon measure-undo" id="measureUndoBtn" title="撤回上一个测量点"><i class="fa-solid fa-rotate-left"></i><span class="tooltip">撤回测点</span></button>
+        <button class="btn-icon measure-only danger" id="clearMeasureBtn" title="清空所有测量标记"><i class="fa-solid fa-broom"></i><span class="tooltip">清空测量</span></button>
         <button class="btn-icon danger" id="clearBtn" title="清空所有数据"><i class="fa-solid fa-trash-can"></i><span class="tooltip">清空</span></button>
         <button class="btn-icon" id="importBtn" title="导入PDF"><i class="fa-solid fa-folder-open"></i><span class="tooltip">导入</span></button>
         <button class="btn-icon" id="settingsBtn" title="设置"><i class="fa-solid fa-gear"></i><span class="tooltip">设置</span></button>
@@ -94,9 +108,87 @@
                 <label>页脚显示尺寸</label>
                 <input type="checkbox" id="settingCaptionSize" checked />
             </div>
+            <div class="settings-row">
+                <label>测量模式<small>图纸尺寸 / 实物尺寸</small></label>
+                <select id="settingMeasureMode">
+                    <option value="drawing">图纸测量 (mm)</option>
+                    <option value="real">实物测量 (m)</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label>实物比例尺<small>图纸1mm = 实物多少mm</small></label>
+                <input type="number" id="settingMeasureScale" min="1" step="1" value="530" />
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-row" style="font-weight:600;color:#1976D2;font-size:13px;padding:4px 0;">
+                <span>测量标注样式</span>
+            </div>
+            <div class="settings-row">
+                <label>显示线段距离</label>
+                <input type="checkbox" id="settingMeasureShowSegmentLen" checked />
+            </div>
+            <div class="settings-row">
+                <label>显示面积数值</label>
+                <input type="checkbox" id="settingMeasureShowArea" checked />
+            </div>
+            <div class="settings-row">
+                <label>显示段编号 (M1/M2)</label>
+                <input type="checkbox" id="settingMeasureShowSegLabel" checked />
+            </div>
+            <div class="settings-row">
+                <label>面积内斜线填充</label>
+                <input type="checkbox" id="settingMeasureShowHatch" checked />
+            </div>
+            <div class="settings-row">
+                <label>标注字号<small>11–24 px</small></label>
+                <input type="range" id="settingMeasureLabelFontSize" min="11" max="24" step="1" value="13" />
+            </div>
+            <div class="settings-row">
+                <label>斜线间距<small>4–20 px（越小越密）</small></label>
+                <input type="range" id="settingMeasureHatchSpacing" min="4" max="20" step="1" value="8" />
+            </div>
+            <div class="settings-row">
+                <label>斜线透明度<small>0.1–0.6</small></label>
+                <input type="range" id="settingMeasureHatchOpacity" min="0.1" max="0.6" step="0.05" value="0.35" />
+            </div>
             <div class="settings-actions">
                 <button type="button" class="btn-secondary" id="settingsCancelBtn">取消</button>
                 <button type="button" class="btn-primary" id="settingsSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-backdrop" id="calibrateBackdrop">
+        <div class="settings-modal" role="dialog" aria-label="校准比例尺">
+            <h3>🎯 校准比例尺 <button type="button" id="calibrateCloseBtn" title="关闭">×</button></h3>
+            <p style="font-size:13px;color:#666;margin:4px 0 12px;">以两轴网值为校准值，输入两点之间的真实距离，系统自动计算比例尺。</p>
+            <div class="settings-row">
+                <label>测得图纸距离</label>
+                <span id="calibrateMeasured" style="font-weight:600;color:#1976D2;">—</span>
+            </div>
+            <div class="settings-row">
+                <label>真实距离</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="calibrateRealValue" min="0" step="any" placeholder="输入已知距离" style="flex:1;" />
+                    <select id="calibrateUnit" style="width:90px;">
+                        <option value="mm" selected>mm</option>
+                        <option value="m">m</option>
+                    </select>
+                </div>
+            </div>
+            <div class="calibrate-result">
+                <div class="calibrate-result-row">
+                    <span class="calibrate-result-label">原校准值</span>
+                    <span id="calibrateRawScale" class="calibrate-result-value">1:—</span>
+                </div>
+                <div class="calibrate-result-row" id="calibrateAutoRow" style="display:none;">
+                    <span class="calibrate-result-label">自动校准至<small style="display:block;color:#999;font-weight:normal;margin-top:2px;">误差 ≤ ±3% 自动采用工程比例</small></span>
+                    <span id="calibrateAutoScale" class="calibrate-result-value" style="color:#2E7D32;">1:—</span>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="button" class="btn-secondary" id="calibrateCancelBtn">取消</button>
+                <button type="button" class="btn-primary" id="calibrateSaveBtn">应用校准</button>
             </div>
         </div>
     </div>
@@ -108,6 +200,21 @@
         <div class="stats-actions">
             <button type="button" id="exportExcelBtn">导出 Excel</button>
             <button type="button" class="secondary" id="exportPdfFromStatsBtn">导出 PDF</button>
+        </div>
+    </aside>
+
+    <!-- 测量统计侧边面板 -->
+    <aside class="measure-panel" id="measurePanel">
+        <div class="measure-panel__header">
+            <span><i class="fa-solid fa-ruler-combined"></i> 测量统计</span>
+            <span class="count-badge" id="measureCountBadge">0 段</span>
+        </div>
+        <div id="measureList"></div>
+        <div class="measure-panel__current" id="measureCurrentHint" style="display:none;">编辑中…</div>
+        <div class="measure-panel__total" id="measureTotal" style="display:none;"></div>
+        <div class="measure-panel__actions">
+            <button type="button" id="exportMeasureExcelBtn"><i class="fa-solid fa-file-excel"></i> 导出 Excel</button>
+            <button type="button" class="secondary" id="exportMeasurePdfBtn"><i class="fa-solid fa-file-arrow-down"></i> 导出 PDF</button>
         </div>
     </aside>
 
@@ -134,6 +241,7 @@
     <script src="js/pdf-loader.js"></script>
     <script src="js/export-pdf.js"></script>
     <script src="js/export-excel.js"></script>
+    <script src="js/export-measure.js"></script>
     <script src="js/main.js"></script>
     <script src="js/events.js"></script>
 </body>

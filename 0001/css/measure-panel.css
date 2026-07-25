@@ -1,0 +1,213 @@
+/* 测量统计侧边面板 */
+.measure-panel {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    z-index: 25;
+    width: 260px;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    padding: 14px 14px 12px;
+    font-size: 12px;
+    color: #333;
+    display: none;
+}
+.measure-panel.visible {
+    display: block;
+}
+
+/* 面板标题 */
+.measure-panel__header {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #222;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(25, 118, 210, 0.15);
+}
+.measure-panel__header .count-badge {
+    font-weight: 600;
+    color: #1976D2;
+    font-size: 11px;
+    background: rgba(25, 118, 210, 0.10);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* 空状态 */
+.measure-panel__empty {
+    color: #999;
+    text-align: center;
+    padding: 22px 0 14px;
+    font-size: 12px;
+}
+.measure-panel__empty i {
+    display: block;
+    font-size: 28px;
+    color: #ccc;
+    margin-bottom: 8px;
+}
+
+/* 单段卡片（一行紧凑显示） */
+.measure-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(25, 118, 210, 0.04);
+    border: 1px solid rgba(25, 118, 210, 0.12);
+    border-left: 3px solid #1976D2;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    transition: background 0.15s;
+    font-variant-numeric: tabular-nums;
+}
+.measure-card:last-child {
+    margin-bottom: 0;
+}
+.measure-card:hover {
+    background: rgba(25, 118, 210, 0.08);
+}
+.measure-card__label {
+    font-weight: 700;
+    color: #1976D2;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.measure-card__type {
+    font-size: 10px;
+    color: #666;
+    font-weight: 500;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 1px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.measure-card__stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    font-size: 11px;
+    min-width: 0;
+}
+.measure-card__stat-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+.measure-card__stat-item .label {
+    color: #888;
+    font-size: 10px;
+}
+.measure-card__stat-item .value {
+    font-weight: 600;
+    color: #222;
+}
+.measure-card__stat-item.area .value {
+    color: #2E7D32;
+}
+.measure-card__delete {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.measure-card__delete:hover {
+    background: rgba(229, 57, 53, 0.12);
+    color: #D32F2F;
+}
+
+/* 底部汇总 */
+.measure-panel__total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+}
+.measure-panel__total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+.measure-panel__total-row .label {
+    color: #555;
+    font-weight: 500;
+}
+.measure-panel__total-row .value {
+    font-weight: 700;
+    color: #1976D2;
+}
+.measure-panel__total-row.area .value {
+    color: #2E7D32;
+}
+
+/* 当前进行中段提示 */
+.measure-panel__current {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(229, 57, 53, 0.08);
+    border: 1px dashed rgba(229, 57, 53, 0.35);
+    border-radius: 6px;
+    font-size: 11px;
+    color: #C62828;
+    text-align: center;
+}
+
+/* 导出按钮区 */
+.measure-panel__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.measure-panel__actions button {
+    flex: 1;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #1976D2;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: filter 0.15s;
+}
+.measure-panel__actions button.secondary {
+    background: rgba(0, 0, 0, 0.06);
+    color: #444;
+}
+.measure-panel__actions button:hover {
+    filter: brightness(1.08);
+}
+.measure-panel__actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
