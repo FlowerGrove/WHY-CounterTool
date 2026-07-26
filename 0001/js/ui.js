@@ -16,6 +16,49 @@ function hideToast() {
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
 }
 
+const globalTooltip = document.getElementById('globalTooltip');
+let tooltipHideTimer = null;
+
+function showTooltip(target) {
+    const tooltipEl = target.querySelector('.tooltip');
+    if (!tooltipEl) return;
+    const text = tooltipEl.textContent.trim();
+    if (!text) return;
+
+    if (tooltipHideTimer) { clearTimeout(tooltipHideTimer); tooltipHideTimer = null; }
+
+    globalTooltip.textContent = text;
+    globalTooltip.classList.add('visible');
+
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = globalTooltip.getBoundingClientRect();
+    const top = rect.bottom + 6;
+    let left = rect.left + rect.width / 2;
+
+    const viewportW = window.innerWidth;
+    const tooltipW = tooltipRect.width;
+    if (left - tooltipW / 2 < 4) left = tooltipW / 2 + 4;
+    if (left + tooltipW / 2 > viewportW - 4) left = viewportW - tooltipW / 2 - 4;
+
+    globalTooltip.style.left = left + 'px';
+    globalTooltip.style.top = top + 'px';
+}
+
+function hideTooltip() {
+    if (tooltipHideTimer) clearTimeout(tooltipHideTimer);
+    tooltipHideTimer = setTimeout(() => {
+        globalTooltip.classList.remove('visible');
+    }, 50);
+}
+
+function initTooltips() {
+    const buttons = document.querySelectorAll('.btn-icon');
+    buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', () => showTooltip(btn));
+        btn.addEventListener('mouseleave', hideTooltip);
+    });
+}
+
 function clearAll() {
     if (pages.length === 0 && markers.length === 0) return;
     if (!confirm('确定要清空所有数据吗？此操作不可撤销。')) return;

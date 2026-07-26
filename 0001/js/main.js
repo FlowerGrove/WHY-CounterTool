@@ -72,4 +72,5 @@ resizeCanvas();
 checkPendingRestore();
 renderTypeChips();
 syncNumberInput();
+initTooltips();
 requestRender();

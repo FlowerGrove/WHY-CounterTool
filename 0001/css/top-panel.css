@@ -129,10 +129,11 @@ canvas.erase-mode {
     cursor: pointer;
 }
 .btn-icon .tooltip {
-    position: absolute;
-    bottom: -26px;
-    left: 50%;
-    transform: translateX(-50%);
+    display: none;
+}
+
+.global-tooltip {
+    position: fixed;
     background: rgba(0, 0, 0, 0.80);
     color: #fff;
     font-size: 10px;
@@ -141,11 +142,13 @@ canvas.erase-mode {
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s;
     font-weight: 400;
     letter-spacing: 0.02em;
+    z-index: 9999;
+    transform: translateX(-50%);
 }
-.btn-icon:hover .tooltip {
+.global-tooltip.visible {
     opacity: 1;
 }
 .divider {
