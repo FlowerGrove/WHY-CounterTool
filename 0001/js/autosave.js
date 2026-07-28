@@ -5,7 +5,7 @@ function serializeMarkersForDoc(docId) {
     const pageMap = new Map(pages.filter(p => p.docId === docId).map(p => [p.pageIndex, p]));
     return markers.filter(m => m.docId === docId).map(m => {
         const pd = pageMap.get(m.pageIndex);
-        return {
+        const obj = {
             pageIndex: m.pageIndex,
             localX: pd ? +(m.vx - pd.vx).toFixed(2) : m.vx,
             localY: pd ? +(m.vy - pd.vy).toFixed(2) : m.vy,
@@ -16,6 +16,8 @@ function serializeMarkersForDoc(docId) {
             typeFullName: m.typeFullName,
             typeAbbr: m.typeAbbr,
         };
+        if (m.note) obj.note = m.note;
+        return obj;
     });
 }
 

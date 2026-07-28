@@ -241,6 +241,21 @@ function drawMarker(ctx, m) {
     ctx.textBaseline = 'middle';
     ctx.fillText(label, 0, 1);
 
+    // 绘制备注（在标记下方）
+    if (m.note) {
+        const noteFontSize = Math.max(8, markerFontSize * 0.75);
+        ctx.font = `${noteFontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const noteY = markerRadius + noteFontSize * 0.6;
+        const noteMetrics = ctx.measureText(m.note);
+        const pad = 2;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(-noteMetrics.width / 2 - pad, noteY - pad, noteMetrics.width + pad * 2, noteFontSize + pad * 2);
+        ctx.fillStyle = '#555';
+        ctx.fillText(m.note, 0, noteY);
+    }
+
     ctx.restore();
 }
 

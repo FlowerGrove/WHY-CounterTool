@@ -25,6 +25,8 @@ function undo() {
         removeMarkerFromArray(last.marker);
     } else if (last.type === 'delete') {
         insertMarkerToArray(last.marker);
+    } else if (last.type === 'update') {
+        last.marker.note = last.oldNote || undefined;
     }
     redoStack.push(last);
     nextMarkerNumber = findNextNumberForType(currentTypeId);
@@ -42,6 +44,8 @@ function redo() {
         insertMarkerToArray(entry.marker);
     } else if (entry.type === 'delete') {
         removeMarkerFromArray(entry.marker);
+    } else if (entry.type === 'update') {
+        entry.marker.note = entry.newNote || undefined;
     }
     history.push(entry);
     nextMarkerNumber = findNextNumberForType(currentTypeId);

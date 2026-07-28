@@ -137,6 +137,7 @@ function restoreMarkers(data) {
                 typeFullName: md.typeFullName || typeMatch.fullName,
                 typeAbbr: typeMatch.abbr,
             };
+            if (md.note) marker.note = md.note;
 
             reserveNumber(num, typeMatch.id);
             markers.push(marker);

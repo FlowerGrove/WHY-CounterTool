@@ -1,20 +1,3 @@
-function applyColorFill(cell, hex) {
-    const rgb = normalizeHexColor(hex);
-    cell.value = '';
-    cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF' + rgb },
-    };
-    cell.border = {
-        top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-        left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-        bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-        right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-    };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-}
-
 function styleHeaderRow(row) {
     row.font = { bold: true, color: { argb: 'FF333333' } };
     row.fill = {
@@ -53,6 +36,27 @@ async function exportExcel() {
     );
 }
 
+async function exportBoth() {
+    if (markers.length === 0) {
+        alert('还没有标记，请先在图纸上点击标注');
+        return;
+    }
+    if (documents.length === 0) {
+        alert('还没有导入PDF文件');
+        return;
+    }
+    showToast('正在同步导出…', true);
+    try {
+        await exportExcelCore();
+        await exportMarkedPDFCore();
+        hideToast();
+        showToast('✅ Excel 和 PDF 导出完成');
+    } catch (e) {
+        hideToast();
+        alert('导出失败：' + (e.message || '未知错误'));
+    }
+}
+
 async function exportExcelCore() {
     const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
@@ -67,7 +71,6 @@ async function exportExcelCore() {
         { header: '类型', key: 'type', width: 10 },
         { header: '说明', key: 'desc', width: 16 },
         { header: '数量', key: 'count', width: 8 },
-        { header: '颜色', key: 'color', width: 10 },
     ];
     styleHeaderRow(wsByFile.getRow(1));
 
@@ -82,7 +85,6 @@ async function exportExcelCore() {
             { header: '类型', key: 'type', width: 12 },
             { header: '说明', key: 'desc', width: 16 },
             { header: '数量', key: 'count', width: 8 },
-            { header: '颜色', key: 'color', width: 10 },
         ];
         styleHeaderRow(wsByFile.getRow(1));
 
@@ -92,7 +94,6 @@ async function exportExcelCore() {
             type: '',
             desc: '',
             count: `共 ${markers.length} 个标记`,
-            color: '',
         });
         titleRow.font = { bold: true, size: 12 };
         titleRow.getCell(4).font = { bold: true, color: { argb: 'FF1A73E8' } };
@@ -115,7 +116,6 @@ async function exportExcelCore() {
                 type: '',
                 desc: '',
                 count: `${pageMarkers.length} 个`,
-                color: '',
             });
             pageHeader.font = { bold: true };
             pageHeader.getCell(1).font = { bold: true, color: { argb: 'FF1A73E8' } };
@@ -127,23 +127,19 @@ async function exportExcelCore() {
                         count: 0,
                         name: m.typeName,
                         fullName: m.typeFullName || '',
-                        color: m.color,
                     });
                 }
                 typeCounts.get(m.typeId).count++;
-                typeCounts.get(m.typeId).color = m.color;
                 if (m.typeFullName) typeCounts.get(m.typeId).fullName = m.typeFullName;
             }
 
             for (const [id, tc] of typeCounts) {
-                const r = wsByFile.addRow({
+                wsByFile.addRow({
                     page: '',
                     type: tc.name,
                     desc: tc.fullName,
                     count: tc.count,
-                    color: '',
                 });
-                applyColorFill(r.getCell(5), tc.color);
             }
 
             wsByFile.addRow({});
@@ -170,12 +166,10 @@ async function exportExcelCore() {
                         count: 0,
                         name: m.typeName,
                         fullName: m.typeFullName || '',
-                        color: m.color,
                     });
                 }
                 const entry = counts.get(key);
                 entry.count++;
-                entry.color = m.color;
                 if (m.typeFullName) entry.fullName = m.typeFullName;
             }
 
@@ -186,7 +180,6 @@ async function exportExcelCore() {
                     name: t.name,
                     fullName: c.fullName || t.fullName || '',
                     count: c.count,
-                    color: c.color || t.color,
                 });
             }
             for (const [id, c] of counts) {
@@ -195,20 +188,17 @@ async function exportExcelCore() {
                         name: c.name || id,
                         fullName: c.fullName || '',
                         count: c.count,
-                        color: c.color,
                     });
                 }
             }
 
             typeRows.forEach((row, idx) => {
-                const r = wsByFile.addRow({
+                wsByFile.addRow({
                     file: idx === 0 ? fileName : '',
                     type: row.name,
                     desc: row.fullName,
                     count: row.count,
-                    color: '',
                 });
-                applyColorFill(r.getCell(5), row.color);
             });
 
             const totalRow = wsByFile.addRow({
@@ -216,7 +206,6 @@ async function exportExcelCore() {
                 type: '小计',
                 desc: '',
                 count: list.length,
-                color: '',
             });
             totalRow.font = { bold: true };
             totalRow.getCell(2).font = { bold: true, color: { argb: 'FF555555' } };
@@ -230,7 +219,6 @@ async function exportExcelCore() {
         type: '',
         desc: '',
         count: markers.length,
-        color: '',
     });
     grand.font = { bold: true };
 
@@ -241,7 +229,6 @@ async function exportExcelCore() {
         { header: '类型', key: 'type', width: 10 },
         { header: '说明', key: 'desc', width: 16 },
         { header: '数量', key: 'count', width: 8 },
-        { header: '颜色', key: 'color', width: 10 },
     ];
     styleHeaderRow(wsType.getRow(1));
 
@@ -253,36 +240,30 @@ async function exportExcelCore() {
                 count: 0,
                 name: m.typeName,
                 fullName: m.typeFullName || '',
-                color: m.color,
             });
         }
         const entry = typeCounts.get(key);
         entry.count++;
-        entry.color = m.color;
         if (m.typeFullName) entry.fullName = m.typeFullName;
     }
     for (const t of markerTypes) {
         const c = typeCounts.get(t.id);
         if (!c) continue;
-        const r = wsType.addRow({
+        wsType.addRow({
             type: t.name,
             desc: c.fullName || t.fullName || '',
             count: c.count,
-            color: '',
         });
-        applyColorFill(r.getCell(4), c.color || t.color);
     }
     for (const [id, c] of typeCounts) {
         if (markerTypes.some(t => t.id === id)) continue;
-        const r = wsType.addRow({
+        wsType.addRow({
             type: c.name || id,
             desc: c.fullName || '',
             count: c.count,
-            color: '',
         });
-        applyColorFill(r.getCell(4), c.color);
     }
-    const typeTotal = wsType.addRow({ type: '合计', desc: '', count: markers.length, color: '' });
+    const typeTotal = wsType.addRow({ type: '合计', desc: '', count: markers.length });
     typeTotal.font = { bold: true };
 
     const wsDetail = wb.addWorksheet('明细清单', {
@@ -296,9 +277,7 @@ async function exportExcelCore() {
         { header: '编号', key: 'num', width: 8 },
         { header: '标记标签', key: 'label', width: 12 },
         { header: '页码', key: 'page', width: 6 },
-        { header: '颜色', key: 'color', width: 10 },
-        { header: 'X(pt)', key: 'x', width: 10 },
-        { header: 'Y(pt)', key: 'y', width: 10 },
+        { header: '备注', key: 'note', width: 14 },
     ];
     styleHeaderRow(wsDetail.getRow(1));
 
@@ -313,8 +292,6 @@ async function exportExcelCore() {
     sorted.forEach((m, i) => {
         const t = getTypeById(m.typeId);
         const pageData = pages.find(p => p.docId === m.docId && p.pageIndex === m.pageIndex);
-        const localX = pageData ? +(m.vx - pageData.vx).toFixed(1) : '';
-        const localY = pageData ? +(m.vy - pageData.vy).toFixed(1) : '';
         const r = wsDetail.addRow({
             idx: i + 1,
             file: getDocFileName(m.docId),
@@ -322,12 +299,9 @@ async function exportExcelCore() {
             desc: m.typeFullName || t.fullName || '',
             num: m.number,
             label: formatMarkerLabel(m),
-            page: m.pageIndex + 1,
-            color: '',
-            x: localX,
-            y: localY,
+            page: m.pageIndex,
+            note: m.note || '',
         });
-        applyColorFill(r.getCell(8), m.color);
     });
 
     const buf = await wb.xlsx.writeBuffer();

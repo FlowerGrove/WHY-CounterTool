@@ -105,6 +105,41 @@ async function exportMarkedPDFCore() {
                     font: font,
                     rotate: PDFLib.degrees(pageRotation),
                 });
+
+                // 绘制备注文字
+                if (m.note) {
+                    const noteFontSize = pdfFontSize * 0.75;
+                    const noteTextWidth = font.widthOfTextAtSize(m.note, noteFontSize);
+                    const noteOffset = pdfRadius + noteFontSize * 0.6;
+
+                    let noteX, noteY;
+                    switch (pageRotation) {
+                        case 90:
+                            noteX = pdfX + noteFontSize / 2;
+                            noteY = pdfY - textWidth / 2 - noteOffset;
+                            break;
+                        case 180:
+                            noteX = pdfX + textWidth / 2 + noteOffset;
+                            noteY = pdfY + drawSize / 2;
+                            break;
+                        case 270:
+                            noteX = pdfX - noteFontSize / 2;
+                            noteY = pdfY + textWidth / 2 + noteOffset;
+                            break;
+                        default:
+                            noteX = pdfX - noteTextWidth / 2;
+                            noteY = pdfY - pdfRadius - noteFontSize * 0.8;
+                    }
+
+                    copiedPage.drawText(m.note, {
+                        x: noteX,
+                        y: noteY,
+                        size: noteFontSize,
+                        color: PDFLib.rgb(0.33, 0.33, 0.33),
+                        font: font,
+                        rotate: PDFLib.degrees(pageRotation),
+                    });
+                }
             }
         }
     }

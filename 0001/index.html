@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/stats-panel.css" />
     <link rel="stylesheet" href="css/measure-panel.css" />
     <link rel="stylesheet" href="css/settings.css" />
+    <link rel="stylesheet" href="css/context-menu.css" />
     <link rel="stylesheet" href="css/responsive.css" />
 </head>
 <body>
@@ -223,6 +224,27 @@
         <span class="page-count" id="pageCount"></span>
         <button class="btn-icon" id="exportExcelBottomBtn" title="导出统计 Excel"><i class="fa-solid fa-file-excel"></i><span class="tooltip">Excel</span></button>
         <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
+        <button class="btn-icon" id="exportBothBtn" title="同步导出 Excel 和 PDF"><i class="fa-solid fa-download"></i><span class="tooltip">同步导出</span></button>
+    </div>
+
+    <div class="marker-context-menu" id="markerContextMenu">
+        <div class="context-menu-item" data-action="note"><i class="fa-solid fa-pen"></i> 备注…</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="pipe-0.5">1/2"</div>
+        <div class="context-menu-item" data-action="pipe-0.75">3/4"</div>
+        <div class="context-menu-item" data-action="pipe-1">1"</div>
+        <div class="context-menu-item" data-action="pipe-1.25">1¼"</div>
+        <div class="context-menu-item" data-action="pipe-1.5">1½"</div>
+        <div class="context-menu-item" data-action="pipe-2">2"</div>
+        <div class="context-menu-item" data-action="pipe-2.5">2½"</div>
+        <div class="context-menu-item" data-action="pipe-3">3"</div>
+        <div class="context-menu-item" data-action="pipe-4">4"</div>
+        <div class="context-menu-item" data-action="pipe-5">5"</div>
+        <div class="context-menu-item" data-action="pipe-6">6"</div>
+        <div class="context-menu-item" data-action="pipe-8">8"</div>
+        <div class="context-menu-item" data-action="pipe-10">10"</div>
+        <div class="context-menu-divider" id="contextMenuClearDivider"></div>
+        <div class="context-menu-item context-menu-danger" data-action="clear" id="contextMenuClear"><i class="fa-solid fa-xmark"></i> 清除备注</div>
     </div>
 
     <div class="toast" id="toast"></div>

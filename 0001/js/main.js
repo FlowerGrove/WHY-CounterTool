@@ -48,6 +48,7 @@ const exportExcelBottomBtn = document.getElementById('exportExcelBottomBtn');
 const exportPdfFromStatsBtn = document.getElementById('exportPdfFromStatsBtn');
 const exportMeasureExcelBtn = document.getElementById('exportMeasureExcelBtn');
 const exportMeasurePdfBtn = document.getElementById('exportMeasurePdfBtn');
+const exportBothBtn = document.getElementById('exportBothBtn');
 
 const currentColor = '#e53935';
 let markerRadius = isMobile ? MOBILE_RADIUS : DESKTOP_RADIUS;

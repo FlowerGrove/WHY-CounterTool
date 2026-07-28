@@ -6,6 +6,26 @@ let dragStartX = 0,
 let dragPanStartX = 0,
     dragPanStartY = 0;
 
+const markerContextMenu = document.getElementById('markerContextMenu');
+let contextMenuTargetMarker = null;
+
+function showMarkerContextMenu(screenX, screenY, marker) {
+    contextMenuTargetMarker = marker;
+    markerContextMenu.style.left = screenX + 'px';
+    markerContextMenu.style.top = screenY + 'px';
+
+    const hasNote = !!marker.note;
+    document.getElementById('contextMenuClearDivider').style.display = hasNote ? 'block' : 'none';
+    document.getElementById('contextMenuClear').style.display = hasNote ? 'flex' : 'none';
+
+    markerContextMenu.classList.add('visible');
+}
+
+function hideMarkerContextMenu() {
+    markerContextMenu.classList.remove('visible');
+    contextMenuTargetMarker = null;
+}
+
 function getEventPos(e) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -350,6 +370,19 @@ canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefaul
 // 右键完成当前测量段（替代双击，避免与 click 添加点冲突）
 canvas.addEventListener('contextmenu', (e) => {
     if (isDragging) { e.preventDefault(); return; }
+
+    // 标记模式下：右键已标记位置弹出备注菜单
+    if (!polylineMode && !eraseMode) {
+        const pos = getEventPos(e);
+        const v = screenToVirtual(pos.x, pos.y);
+        const hit = findMarkerAtVirtual(v.x, v.y);
+        if (hit) {
+            e.preventDefault();
+            showMarkerContextMenu(e.clientX, e.clientY, hit);
+            return;
+        }
+    }
+
     if (polylineMode && measurePhase === 'measure' &&
         !isPolylineComplete && currentPolylinePoints.length >= 2) {
         e.preventDefault();
@@ -357,6 +390,54 @@ canvas.addEventListener('contextmenu', (e) => {
     } else if (polylineMode) {
         // 测量模式下阻止默认右键菜单
         e.preventDefault();
+    }
+});
+
+// 标记右键菜单交互
+markerContextMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-action]');
+    if (!item || !contextMenuTargetMarker) return;
+
+    const action = item.dataset.action;
+    const marker = contextMenuTargetMarker;
+
+    if (action === 'note') {
+        const note = prompt('输入备注：', marker.note || '');
+        if (note !== null) {
+            const oldNote = marker.note || '';
+            const newNote = note.trim();
+            if (oldNote !== newNote) {
+                pushHistory({ type: 'update', marker, oldNote, newNote });
+                marker.note = newNote || undefined;
+                requestRender();
+                scheduleAutosave();
+            }
+        }
+    } else if (action === 'clear') {
+        if (marker.note) {
+            pushHistory({ type: 'update', marker, oldNote: marker.note, newNote: '' });
+            marker.note = undefined;
+            requestRender();
+            scheduleAutosave();
+        }
+    } else if (action.startsWith('pipe-')) {
+        const pipeNote = item.textContent.trim();
+        const oldNote = marker.note || '';
+        if (oldNote !== pipeNote) {
+            pushHistory({ type: 'update', marker, oldNote, newNote: pipeNote });
+            marker.note = pipeNote;
+            requestRender();
+            scheduleAutosave();
+        }
+    }
+
+    hideMarkerContextMenu();
+});
+
+// 点击其他地方关闭菜单
+document.addEventListener('click', (e) => {
+    if (!markerContextMenu.contains(e.target)) {
+        hideMarkerContextMenu();
     }
 });
 
@@ -905,6 +986,7 @@ exportExcelBtn.addEventListener('click', exportExcel);
 exportExcelBottomBtn.addEventListener('click', exportExcel);
 exportBtn.addEventListener('click', exportMarkedPDF);
 exportPdfFromStatsBtn.addEventListener('click', exportMarkedPDF);
+exportBothBtn.addEventListener('click', exportBoth);
 
 // 测量数据导出（独立于仪表标记导出）
 exportMeasureExcelBtn.addEventListener('click', exportMeasureExcel);
