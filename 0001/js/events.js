@@ -401,7 +401,9 @@ markerContextMenu.addEventListener('click', (e) => {
     const action = item.dataset.action;
     const marker = contextMenuTargetMarker;
 
-    if (action === 'note') {
+    if (action === 'cancel') {
+        // 直接关闭菜单
+    } else if (action === 'note') {
         const note = prompt('输入备注：', marker.note || '');
         if (note !== null) {
             const oldNote = marker.note || '';
@@ -818,6 +820,14 @@ document.getElementById('calibrateRealValue').addEventListener('input', updateCa
 document.getElementById('calibrateUnit').addEventListener('change', updateCalibratePreview);
 
 document.addEventListener('keydown', (e) => {
+    if (markerContextMenu.classList.contains('visible')) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            hideMarkerContextMenu();
+        }
+        return;
+    }
+
     if (polylineMode && !isPolylineComplete) {
         if (e.key === 'Enter') {
             e.preventDefault();
