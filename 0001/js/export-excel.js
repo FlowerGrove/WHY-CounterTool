@@ -270,14 +270,17 @@ async function exportExcelCore() {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     wsDetail.columns = [
-        { header: '序号', key: 'idx', width: 6 },
-        { header: '文件名', key: 'file', width: 36 },
-        { header: '类型', key: 'type', width: 10 },
-        { header: '说明', key: 'desc', width: 16 },
-        { header: '编号', key: 'num', width: 8 },
-        { header: '标记标签', key: 'label', width: 12 },
-        { header: '页码', key: 'page', width: 6 },
-        { header: '备注', key: 'note', width: 14 },
+        { header: 'S/N', key: 'idx', width: 6 },
+        { header: 'Tag No.', key: 'label', width: 18 },
+        { header: 'Location', key: 'location', width: 20 },
+        { header: 'Instrument Type', key: 'type', width: 24 },
+        { header: 'Process Connection', key: 'connection', width: 20 },
+        { header: 'Size / Calibration Range', key: 'size', width: 24 },
+        { header: 'Service', key: 'service', width: 16 },
+        { header: 'Product', key: 'product', width: 16 },
+        { header: 'Data Sheet No.', key: 'dataSheet', width: 20 },
+        { header: 'P & ID Dwg No.', key: 'pid', width: 20 },
+        { header: 'Remarks', key: 'note', width: 20 },
     ];
     styleHeaderRow(wsDetail.getRow(1));
 
@@ -291,15 +294,17 @@ async function exportExcelCore() {
 
     sorted.forEach((m, i) => {
         const t = getTypeById(m.typeId);
-        const pageData = pages.find(p => p.docId === m.docId && p.pageIndex === m.pageIndex);
         const r = wsDetail.addRow({
             idx: i + 1,
-            file: getDocFileName(m.docId),
-            type: m.typeName || t.name,
-            desc: m.typeFullName || t.fullName || '',
-            num: m.number,
             label: formatMarkerLabel(m),
-            page: m.pageIndex,
+            location: '',
+            type: m.typeFullName || t.fullName || m.typeName || t.name || '',
+            connection: '',
+            size: '',
+            service: '',
+            product: '',
+            dataSheet: '',
+            pid: '',
             note: m.note || '',
         });
     });
