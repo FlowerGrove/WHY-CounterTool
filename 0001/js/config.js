@@ -37,10 +37,10 @@ const defaultSettings = {
 const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||
     ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-const MOBILE_RADIUS = 28;
-const MOBILE_FONT_SIZE = 14;
-const DESKTOP_RADIUS = 26;
-const DESKTOP_FONT_SIZE = 12;
+const MOBILE_RADIUS = 35;
+const MOBILE_FONT_SIZE = 30;
+const DESKTOP_RADIUS = 35;
+const DESKTOP_FONT_SIZE = 30;
 
 const PDF_RENDER_SCALE = isMobile ? 4.5 : 5.5;
 const RENDER_MAX_DIM = isMobile ? 6000 : 8000;

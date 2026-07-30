@@ -221,7 +221,8 @@ function drawPageCaption(page, dx, dy, dw, dh) {
 
 function drawMarker(ctx, m) {
     const rgb = hexToRgb(m.color);
-    const label = formatMarkerLabel(m);
+    const circleText = m.typeAbbr || getTypeById(m.typeId).abbr;
+    const tn = getMarkerTagNumber(m);
 
     ctx.save();
     ctx.translate(m.vx, m.vy);
@@ -234,26 +235,56 @@ function drawMarker(ctx, m) {
     ctx.strokeStyle = `rgb(${rgb.r * 255},${rgb.g * 255},${rgb.b * 255})`;
     ctx.stroke();
 
-    const fontSize = label.length > 5 ? markerFontSize * 0.68 : (label.length > 4 ? markerFontSize * 0.78 : markerFontSize);
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = `rgb(${rgb.r * 255},${rgb.g * 255},${rgb.b * 255})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, 0, 1);
+    ctx.fillStyle = `rgb(${rgb.r * 255},${rgb.g * 255},${rgb.b * 255})`;
 
-    // 绘制备注（在标记下方）
-    if (m.note) {
-        const noteFontSize = Math.max(8, markerFontSize * 0.75);
+    // 圆圈内：字母 + 仪表编号（编号在字母下方，跟随 markerFontSize 缩放）
+    if (tn) {
+        const abbrSize = markerFontSize * 0.62;
+        const tagSize = markerFontSize * 0.48;
+        ctx.font = `bold ${abbrSize}px sans-serif`;
+        ctx.fillText(circleText, 0, -markerRadius * 0.28);
+        ctx.font = `bold ${tagSize}px sans-serif`;
+        ctx.fillText(tn, 0, markerRadius * 0.38);
+    } else {
+        const fontSize = circleText.length > 5 ? markerFontSize * 0.68 : (circleText.length > 4 ? markerFontSize * 0.78 : markerFontSize);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.fillText(circleText, 0, 1);
+    }
+
+    // 圆圈下方：尺寸编号（固定视觉字号，不随 markerFontSize 缩放，仅按 zoom 反向缩放保持视觉一致）
+    const sizeNote = m.sizeNote ? String(m.sizeNote) : '';
+    if (sizeNote) {
+        const noteFontSize = Math.max(8, 11 / zoom);
         ctx.font = `${noteFontSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        const noteY = markerRadius + noteFontSize * 0.6;
-        const noteMetrics = ctx.measureText(m.note);
-        const pad = 2;
+        const noteY = markerRadius + noteFontSize * 0.4;
+        const noteMetrics = ctx.measureText(sizeNote);
+        const pad = 2 / zoom;
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.fillRect(-noteMetrics.width / 2 - pad, noteY - pad, noteMetrics.width + pad * 2, noteFontSize + pad * 2);
         ctx.fillStyle = '#555';
-        ctx.fillText(m.note, 0, noteY);
+        ctx.fillText(sizeNote, 0, noteY);
+    }
+
+    // 圆圈左上角：通用备注（固定视觉字号，不随 markerFontSize 缩放）
+    const note = m.note ? String(m.note) : '';
+    if (note) {
+        const noteFontSize = Math.max(8, 11 / zoom);
+        ctx.font = `${noteFontSize}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        const noteMetrics = ctx.measureText(note);
+        const pad = 2 / zoom;
+        // 左上角：文字右下角对齐到圆圈左上角附近
+        const cornerX = -markerRadius * 0.72;
+        const cornerY = -markerRadius * 0.72;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(cornerX - noteMetrics.width - pad, cornerY - noteFontSize - pad, noteMetrics.width + pad * 2, noteFontSize + pad * 2);
+        ctx.fillStyle = '#333';
+        ctx.fillText(note, cornerX, cornerY);
     }
 
     ctx.restore();

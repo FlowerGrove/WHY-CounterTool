@@ -64,9 +64,16 @@ function formatMarkerNumber(n) {
     return String(n).padStart(digits, '0');
 }
 
+function getMarkerTagNumber(m) {
+    if (m && typeof m.tagNumber === 'string' && m.tagNumber.length > 0) return m.tagNumber;
+    if (m && typeof m.number === 'number' && !isNaN(m.number)) return formatMarkerNumber(m.number);
+    return '';
+}
+
 function formatMarkerLabel(m) {
     const abbr = m.typeAbbr || getTypeById(m.typeId).abbr;
-    return `${abbr}${formatMarkerNumber(m.number)}`;
+    const tn = getMarkerTagNumber(m);
+    return tn ? `${abbr}${tn}` : abbr;
 }
 
 function pageStackGap(prevDocId, nextDocId) {

@@ -63,9 +63,19 @@ async function exportMarkedPDFCore() {
                 const pdfY = (-b * (localX - e) + a * (localY - f)) / det;
 
                 const rgb = hexToRgb(m.color);
-                const text = formatMarkerLabel(m);
-                const drawSize = text.length > 5 ? pdfFontSize * 0.68 : (text.length > 4 ? pdfFontSize * 0.78 : pdfFontSize);
-                const textWidth = font.widthOfTextAtSize(text, drawSize);
+                const circleText = m.typeAbbr || getTypeById(m.typeId).abbr;
+                const tn = getMarkerTagNumber(m);
+
+                // 圆圈内字母+编号字号（跟随 pdfFontSize 缩放）
+                let abbrSize, tagSize = 0;
+                if (tn) {
+                    abbrSize = pdfFontSize * 0.62;
+                    tagSize = pdfFontSize * 0.48;
+                } else {
+                    abbrSize = circleText.length > 5 ? pdfFontSize * 0.68 : (circleText.length > 4 ? pdfFontSize * 0.78 : pdfFontSize);
+                }
+                const abbrWidth = font.widthOfTextAtSize(circleText, abbrSize);
+                const tagWidth = tn ? font.widthOfTextAtSize(tn, tagSize) : 0;
 
                 copiedPage.drawCircle({
                     x: pdfX,
@@ -76,66 +86,77 @@ async function exportMarkedPDFCore() {
                     borderWidth: Math.max(0.5, 2 / renderScale),
                 });
 
-                // 根据页面旋转角度计算文字左下角坐标，使文字几何中心落在圆心
-                // pdf-lib 的 rotationPoint 不改变文字原点，需直接计算各角度下的 x, y
-                let textX, textY;
-                switch (pageRotation) {
-                    case 90:
-                        textX = pdfX + drawSize / 2;
-                        textY = pdfY - textWidth / 2;
-                        break;
-                    case 180:
-                        textX = pdfX + textWidth / 2;
-                        textY = pdfY + drawSize / 2;
-                        break;
-                    case 270:
-                        textX = pdfX - drawSize / 2;
-                        textY = pdfY + textWidth / 2;
-                        break;
-                    default:
-                        textX = pdfX - textWidth / 2;
-                        textY = pdfY - VISUAL_CENTER_OFFSET * drawSize;
+                // 旋转向量辅助：PDF 坐标系 y 向上，逆时针为正
+                const rotRad = pageRotation * Math.PI / 180;
+                const rotCos = Math.cos(rotRad);
+                const rotSin = Math.sin(rotRad);
+                function rotVec(x, y) {
+                    return { x: x * rotCos - y * rotSin, y: x * rotSin + y * rotCos };
+                }
+                // 由中心点反推 drawText 左下角坐标（视觉中心补偿 VISUAL_CENTER_OFFSET）
+                function posAtCenter(cx, cy, w, sz) {
+                    const off = rotVec(-w / 2, -VISUAL_CENTER_OFFSET * sz);
+                    return { x: cx + off.x, y: cy + off.y };
                 }
 
-                copiedPage.drawText(text, {
-                    x: textX,
-                    y: textY,
-                    size: drawSize,
+                // 圆圈内：字母中心偏移（局部 y+ 为上）；有编号时字母上移、编号在下
+                const abbrLocalY = tn ? pdfRadius * 0.28 : 0;
+                const abbrOff = rotVec(0, abbrLocalY);
+                const abbrPos = posAtCenter(pdfX + abbrOff.x, pdfY + abbrOff.y, abbrWidth, abbrSize);
+                copiedPage.drawText(circleText, {
+                    x: abbrPos.x,
+                    y: abbrPos.y,
+                    size: abbrSize,
                     color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
                     font: font,
                     rotate: PDFLib.degrees(pageRotation),
                 });
 
-                // 绘制备注文字
-                if (m.note) {
-                    const noteFontSize = pdfFontSize * 0.75;
-                    const noteTextWidth = font.widthOfTextAtSize(m.note, noteFontSize);
-                    const noteOffset = pdfRadius + noteFontSize * 0.6;
+                // 圆圈内：编号（在字母下方，跟随缩放）
+                if (tn) {
+                    const tagOff = rotVec(0, -pdfRadius * 0.38);
+                    const tagPos = posAtCenter(pdfX + tagOff.x, pdfY + tagOff.y, tagWidth, tagSize);
+                    copiedPage.drawText(tn, {
+                        x: tagPos.x,
+                        y: tagPos.y,
+                        size: tagSize,
+                        color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                        font: font,
+                        rotate: PDFLib.degrees(pageRotation),
+                    });
+                }
 
-                    let noteX, noteY;
-                    switch (pageRotation) {
-                        case 90:
-                            noteX = pdfX + noteFontSize / 2;
-                            noteY = pdfY - textWidth / 2 - noteOffset;
-                            break;
-                        case 180:
-                            noteX = pdfX + textWidth / 2 + noteOffset;
-                            noteY = pdfY + drawSize / 2;
-                            break;
-                        case 270:
-                            noteX = pdfX - noteFontSize / 2;
-                            noteY = pdfY + textWidth / 2 + noteOffset;
-                            break;
-                        default:
-                            noteX = pdfX - noteTextWidth / 2;
-                            noteY = pdfY - pdfRadius - noteFontSize * 0.8;
-                    }
-
-                    copiedPage.drawText(m.note, {
-                        x: noteX,
-                        y: noteY,
-                        size: noteFontSize,
+                // 圆圈下方：尺寸编号（固定字号 9pt，不跟随 markerFontSize 缩放）
+                const sizeNote = m.sizeNote ? String(m.sizeNote) : '';
+                if (sizeNote) {
+                    const fixedNoteSize = 9;
+                    const noteTextWidth = font.widthOfTextAtSize(sizeNote, fixedNoteSize);
+                    const noteOff = rotVec(0, -(pdfRadius + fixedNoteSize * 0.8));
+                    const notePos = posAtCenter(pdfX + noteOff.x, pdfY + noteOff.y, noteTextWidth, fixedNoteSize);
+                    copiedPage.drawText(sizeNote, {
+                        x: notePos.x,
+                        y: notePos.y,
+                        size: fixedNoteSize,
                         color: PDFLib.rgb(0.33, 0.33, 0.33),
+                        font: font,
+                        rotate: PDFLib.degrees(pageRotation),
+                    });
+                }
+
+                // 圆圈左上角：通用备注（固定字号 9pt，不跟随 markerFontSize 缩放）
+                const note = m.note ? String(m.note) : '';
+                if (note) {
+                    const fixedNoteSize = 9;
+                    const noteTextWidth = font.widthOfTextAtSize(note, fixedNoteSize);
+                    // PDF 坐标系 y 向上：左上角对应局部 x 负、y 正
+                    const noteOff = rotVec(-pdfRadius * 0.72, pdfRadius * 0.72);
+                    // 左上角右对齐：文字右端贴近圆圈左上角
+                    const notePos = posAtCenter(pdfX + noteOff.x - noteTextWidth / 2, pdfY + noteOff.y, noteTextWidth, fixedNoteSize);
+                    copiedPage.drawText(note, {
+                        x: notePos.x,
+                        y: notePos.y,
+                        size: fixedNoteSize,
+                        color: PDFLib.rgb(0.2, 0.2, 0.2),
                         font: font,
                         rotate: PDFLib.degrees(pageRotation),
                     });

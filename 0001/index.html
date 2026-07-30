@@ -230,7 +230,16 @@
     <div class="marker-context-menu" id="markerContextMenu">
         <div class="context-menu-item" data-action="cancel"><i class="fa-solid fa-ban" style="color:#999;"></i> 取消</div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="note"><i class="fa-solid fa-pen"></i> 备注…</div>
+        <div class="context-menu-item context-menu-danger" data-action="delete"><i class="fa-solid fa-trash"></i> 删除标记</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="tagNumber"><i class="fa-solid fa-hashtag"></i> 仪表编号…</div>
+        <div class="context-menu-item context-menu-danger" data-action="clearTag" id="contextMenuClearTag" style="display:none;"><i class="fa-solid fa-xmark"></i> 清除仪表编号</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="sizeNote"><i class="fa-solid fa-ruler-horizontal"></i> 尺寸编号…</div>
+        <div class="context-menu-item context-menu-danger" data-action="clearSize" id="contextMenuClearSize" style="display:none;"><i class="fa-solid fa-xmark"></i> 清除尺寸编号</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="note"><i class="fa-solid fa-pen"></i> 通用备注…</div>
+        <div class="context-menu-item context-menu-danger" data-action="clear" id="contextMenuClear"><i class="fa-solid fa-xmark"></i> 清除备注</div>
         <div class="context-menu-divider"></div>
         <div class="context-menu-item" data-action="pipe-0.5">1/2"</div>
         <div class="context-menu-item" data-action="pipe-0.75">3/4"</div>
@@ -245,8 +254,6 @@
         <div class="context-menu-item" data-action="pipe-6">6"</div>
         <div class="context-menu-item" data-action="pipe-8">8"</div>
         <div class="context-menu-item" data-action="pipe-10">10"</div>
-        <div class="context-menu-divider" id="contextMenuClearDivider"></div>
-        <div class="context-menu-item context-menu-danger" data-action="clear" id="contextMenuClear"><i class="fa-solid fa-xmark"></i> 清除备注</div>
     </div>
 
     <div class="toast" id="toast"></div>

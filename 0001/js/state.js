@@ -10,6 +10,7 @@ let markers = [];
 
 const markerLineWidth = isMobile ? MOBILE_LINE_WIDTH : DESKTOP_LINE_WIDTH;
 
+// 兼容旧自动编号（保留变量，但不再自动分配）
 let nextMarkerNumber = 1;
 const usedNumbersByType = new Map();
 
@@ -38,16 +39,17 @@ function getUsedSet(typeId) {
     return usedNumbersByType.get(typeId);
 }
 
+// 旧函数保留以兼容历史/恢复逻辑，不再强制执行唯一性（用户手动编号时不检查）
 function isNumberUsed(num, typeId = currentTypeId) {
-    return getUsedSet(typeId).has(num);
+    return false;
 }
 
 function reserveNumber(num, typeId = currentTypeId) {
-    getUsedSet(typeId).add(num);
+    // 无操作：不再强制编号
 }
 
 function releaseNumber(num, typeId) {
-    getUsedSet(typeId).delete(num);
+    // 无操作：不再强制编号
 }
 
 function findNextNumberForType(typeId) {

@@ -18,6 +18,21 @@ function pushHistory(entry) {
     updateUndoButtonState();
 }
 
+function applyHistoryUpdate(marker, entry, toOld) {
+    if (entry.field === 'tagNumber') {
+        const v = toOld ? entry.oldValue : entry.newValue;
+        marker.tagNumber = (v && v.length > 0) ? v : undefined;
+    }
+    if (entry.field === 'sizeNote') {
+        const v = toOld ? entry.oldValue : entry.newValue;
+        marker.sizeNote = (v && v.length > 0) ? v : undefined;
+    }
+    if (entry.field === 'note' || typeof entry.oldNote !== 'undefined' || typeof entry.newNote !== 'undefined') {
+        const v = toOld ? entry.oldNote : entry.newNote;
+        marker.note = (v && v.length > 0) ? v : undefined;
+    }
+}
+
 function undo() {
     if (history.length === 0) return;
     const last = history.pop();
@@ -26,7 +41,7 @@ function undo() {
     } else if (last.type === 'delete') {
         insertMarkerToArray(last.marker);
     } else if (last.type === 'update') {
-        last.marker.note = last.oldNote || undefined;
+        applyHistoryUpdate(last.marker, last, true);
     }
     redoStack.push(last);
     nextMarkerNumber = findNextNumberForType(currentTypeId);
@@ -45,7 +60,7 @@ function redo() {
     } else if (entry.type === 'delete') {
         removeMarkerFromArray(entry.marker);
     } else if (entry.type === 'update') {
-        entry.marker.note = entry.newNote || undefined;
+        applyHistoryUpdate(entry.marker, entry, false);
     }
     history.push(entry);
     nextMarkerNumber = findNextNumberForType(currentTypeId);

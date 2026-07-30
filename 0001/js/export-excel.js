@@ -8,6 +8,73 @@ function styleHeaderRow(row) {
     row.alignment = { vertical: 'middle' };
 }
 
+// 估算文本显示宽度（ExcelJS 列宽单位近似等于默认字体下字符宽度）
+// 中文/全角字符按 2 计算，英文/数字按 1 计算
+function measureTextWidth(text) {
+    if (!text) return 0;
+    let w = 0;
+    for (const ch of String(text)) {
+        // 简易判断：CJK 区段或全角符号按 2 字符宽
+        const code = ch.codePointAt(0);
+        const isCJK = (
+            (code >= 0x1100 && code <= 0x115F) ||
+            (code >= 0x2E80 && code <= 0xA4CF) ||
+            (code >= 0xAC00 && code <= 0xD7A3) ||
+            (code >= 0xF900 && code <= 0xFAFF) ||
+            (code >= 0xFE30 && code <= 0xFE4F) ||
+            (code >= 0xFF00 && code <= 0xFF60) ||
+            (code >= 0xFFE0 && code <= 0xFFE6) ||
+            (code >= 0x20000 && code <= 0x2FFFD) ||
+            (code >= 0x30000 && code <= 0x3FFFD)
+        );
+        w += isCJK ? 2 : 1;
+    }
+    return w;
+}
+
+// 自动调整工作表所有列宽：基于表头和单元格内容估算
+function autoFitColumns(ws) {
+    ws.columns.forEach(col => {
+        let maxLen = 0;
+        if (col.header) maxLen = measureTextWidth(String(col.header));
+        col.eachCell({ includeEmpty: false }, cell => {
+            if (cell.value === null || cell.value === undefined) return;
+            let txt;
+            if (typeof cell.value === 'object') {
+                // 处理富文本/超链接对象
+                txt = cell.value.text || cell.value.hyperlink || cell.value.result || '';
+            } else {
+                txt = String(cell.value);
+            }
+            // 多行文本按最长行计算
+            const lines = String(txt).split(/\r?\n/);
+            for (const ln of lines) {
+                const w = measureTextWidth(ln);
+                if (w > maxLen) maxLen = w;
+            }
+        });
+        col.width = Math.min(Math.max(maxLen + 2, 6), 60);
+    });
+}
+
+// 统一应用表格格式：所有单元格居中 + 细边框
+function applyTableFormat(ws) {
+    const border = {
+        top: { style: 'thin', color: { argb: 'FF808080' } },
+        left: { style: 'thin', color: { argb: 'FF808080' } },
+        bottom: { style: 'thin', color: { argb: 'FF808080' } },
+        right: { style: 'thin', color: { argb: 'FF808080' } },
+    };
+    const colCount = ws.columns.length;
+    ws.eachRow({ includeEmpty: true }, row => {
+        for (let i = 1; i <= colCount; i++) {
+            const cell = row.getCell(i);
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = border;
+        }
+    });
+}
+
 async function downloadExcelBuffer(buffer, filename) {
     const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -294,12 +361,18 @@ async function exportExcelCore() {
 
     sorted.forEach((m, i) => {
         const t = getTypeById(m.typeId);
+        // Process Connection：sizeNote 已含 ANSI 则原样输出，否则自动拼接 " ANSI 150# RF"
+        let connection = '';
+        if (m.sizeNote) {
+            const s = String(m.sizeNote);
+            connection = /ANSI/i.test(s) ? s : (s + ' ANSI 150# RF');
+        }
         const r = wsDetail.addRow({
             idx: i + 1,
             label: formatMarkerLabel(m),
             location: '',
             type: m.typeFullName || t.fullName || m.typeName || t.name || '',
-            connection: '',
+            connection: connection,
             size: '',
             service: '',
             product: '',
@@ -308,6 +381,16 @@ async function exportExcelCore() {
             note: m.note || '',
         });
     });
+
+    // 自动适应列宽（覆盖初始预设宽度，按实际内容估算）
+    autoFitColumns(wsByFile);
+    autoFitColumns(wsType);
+    autoFitColumns(wsDetail);
+
+    // 统一格式：全部居中 + 细边框
+    applyTableFormat(wsByFile);
+    applyTableFormat(wsType);
+    applyTableFormat(wsDetail);
 
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `仪表统计_${new Date().toISOString().slice(0, 10)}.xlsx`);

@@ -16,6 +16,8 @@ function serializeMarkersForDoc(docId) {
             typeFullName: m.typeFullName,
             typeAbbr: m.typeAbbr,
         };
+        if (m.tagNumber && m.tagNumber.length > 0) obj.tagNumber = m.tagNumber;
+        if (m.sizeNote && m.sizeNote.length > 0) obj.sizeNote = m.sizeNote;
         if (m.note) obj.note = m.note;
         return obj;
     });

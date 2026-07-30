@@ -15,8 +15,16 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     markerContextMenu.style.top = screenY + 'px';
 
     const hasNote = !!marker.note;
-    document.getElementById('contextMenuClearDivider').style.display = hasNote ? 'block' : 'none';
-    document.getElementById('contextMenuClear').style.display = hasNote ? 'flex' : 'none';
+    const clearEl = document.getElementById('contextMenuClear');
+    if (clearEl) clearEl.style.display = hasNote ? 'flex' : 'none';
+
+    const hasTag = !!(marker.tagNumber && marker.tagNumber.length > 0);
+    const clearTagEl = document.getElementById('contextMenuClearTag');
+    if (clearTagEl) clearTagEl.style.display = hasTag ? 'flex' : 'none';
+
+    const hasSize = !!(marker.sizeNote && marker.sizeNote.length > 0);
+    const clearSizeEl = document.getElementById('contextMenuClearSize');
+    if (clearSizeEl) clearSizeEl.style.display = hasSize ? 'flex' : 'none';
 
     markerContextMenu.classList.add('visible');
 }
@@ -403,13 +411,53 @@ markerContextMenu.addEventListener('click', (e) => {
 
     if (action === 'cancel') {
         // 直接关闭菜单
+    } else if (action === 'tagNumber') {
+        const curTag = marker.tagNumber || '';
+        const tag = prompt('输入仪表编号（例：001 或 0101 或 0201）', curTag);
+        if (tag !== null) {
+            const oldTag = marker.tagNumber || '';
+            const newTag = tag.trim();
+            if (oldTag !== newTag) {
+                pushHistory({ type: 'update', marker, field: 'tagNumber', oldValue: oldTag, newValue: newTag });
+                marker.tagNumber = newTag || undefined;
+                requestRender();
+                scheduleAutosave();
+            }
+        }
+    } else if (action === 'clearTag') {
+        if (marker.tagNumber) {
+            pushHistory({ type: 'update', marker, field: 'tagNumber', oldValue: marker.tagNumber, newValue: '' });
+            marker.tagNumber = undefined;
+            requestRender();
+            scheduleAutosave();
+        }
+    } else if (action === 'sizeNote') {
+        const curSize = marker.sizeNote || '';
+        const size = prompt('输入尺寸编号（例：3" 或 3" ANSI 300# RF），仅尺寸将自动拼接 ANSI 150# RF', curSize);
+        if (size !== null) {
+            const oldSize = marker.sizeNote || '';
+            const newSize = size.trim();
+            if (oldSize !== newSize) {
+                pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: oldSize, newValue: newSize });
+                marker.sizeNote = newSize || undefined;
+                requestRender();
+                scheduleAutosave();
+            }
+        }
+    } else if (action === 'clearSize') {
+        if (marker.sizeNote) {
+            pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: marker.sizeNote, newValue: '' });
+            marker.sizeNote = undefined;
+            requestRender();
+            scheduleAutosave();
+        }
     } else if (action === 'note') {
-        const note = prompt('输入备注：', marker.note || '');
+        const note = prompt('输入通用备注', marker.note || '');
         if (note !== null) {
             const oldNote = marker.note || '';
             const newNote = note.trim();
             if (oldNote !== newNote) {
-                pushHistory({ type: 'update', marker, oldNote, newNote });
+                pushHistory({ type: 'update', marker, field: 'note', oldNote, newNote });
                 marker.note = newNote || undefined;
                 requestRender();
                 scheduleAutosave();
@@ -417,20 +465,25 @@ markerContextMenu.addEventListener('click', (e) => {
         }
     } else if (action === 'clear') {
         if (marker.note) {
-            pushHistory({ type: 'update', marker, oldNote: marker.note, newNote: '' });
+            pushHistory({ type: 'update', marker, field: 'note', oldNote: marker.note, newNote: '' });
             marker.note = undefined;
             requestRender();
             scheduleAutosave();
         }
     } else if (action.startsWith('pipe-')) {
-        const pipeNote = item.textContent.trim();
-        const oldNote = marker.note || '';
-        if (oldNote !== pipeNote) {
-            pushHistory({ type: 'update', marker, oldNote, newNote: pipeNote });
-            marker.note = pipeNote;
+        // 常用尺寸快捷点击：仅存纯尺寸（如 3"），Excel 导出时再拼接 ANSI 150# RF
+        const pipeSize = item.textContent.trim();
+        const oldSize = marker.sizeNote || '';
+        if (oldSize !== pipeSize) {
+            pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: oldSize, newValue: pipeSize });
+            marker.sizeNote = pipeSize;
             requestRender();
             scheduleAutosave();
         }
+    } else if (action === 'delete') {
+        hideMarkerContextMenu();
+        deleteMarker(marker);
+        return;
     }
 
     hideMarkerContextMenu();

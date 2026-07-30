@@ -1,14 +1,5 @@
 function addMarker(vx, vy) {
     const t = getCurrentType();
-    const num = parseInt(numberInput.value, 10);
-    if (isNaN(num) || num < 1 || num > MAX_MARKER_NUMBER) {
-        showToast(`编号无效，请输入 1-${MAX_MARKER_NUMBER}`);
-        return;
-    }
-    if (isNumberUsed(num)) {
-        showToast(`编号 ${formatMarkerNumber(num)} 已被使用`);
-        return;
-    }
 
     for (const m of markers) {
         const dx = vx - m.vx, dy = vy - m.vy;
@@ -24,7 +15,7 @@ function addMarker(vx, vy) {
         pageIndex: 0,
         vx,
         vy,
-        number: num,
+        number: 0,
         color: currentColor,
         typeId: t.id,
         typeCode: t.code,
@@ -44,8 +35,6 @@ function addMarker(vx, vy) {
 
     insertMarkerToArray(marker);
     pushHistory({ type: 'add', marker });
-    nextMarkerNumber = findNextNumberForType(currentTypeId);
-    syncNumberInput();
     requestRender();
     updateUI();
     scheduleAutosave();

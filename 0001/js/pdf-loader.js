@@ -120,26 +120,28 @@ function restoreMarkers(data) {
 
             const typeMatch = markerTypes.find(t => t.code === md.typeCode) || markerTypes[0];
 
-            const num = typeof md.number === 'number' ? md.number : findNextNumberForType(typeMatch.id);
-            if (num > MAX_MARKER_NUMBER || isNumberUsed(num, typeMatch.id)) continue;
-
             const marker = {
                 id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
                 docId: doc.id,
                 pageIndex: md.pageIndex,
                 vx: pageData.vx + (md.localX || 0),
                 vy: pageData.vy + (md.localY || 0),
-                number: num,
+                number: typeof md.number === 'number' ? md.number : 0,
                 color: md.color || typeMatch.color,
                 typeId: typeMatch.id,
                 typeCode: typeMatch.code,
-                typeName: typeMatch.name,
+                typeName: md.typeName || typeMatch.name,
                 typeFullName: md.typeFullName || typeMatch.fullName,
-                typeAbbr: typeMatch.abbr,
+                typeAbbr: md.typeAbbr || typeMatch.abbr,
             };
+            if (typeof md.tagNumber === 'string' && md.tagNumber.length > 0) {
+                marker.tagNumber = md.tagNumber;
+            }
+            if (typeof md.sizeNote === 'string' && md.sizeNote.length > 0) {
+                marker.sizeNote = md.sizeNote;
+            }
             if (md.note) marker.note = md.note;
 
-            reserveNumber(num, typeMatch.id);
             markers.push(marker);
         }
     }
