@@ -20,7 +20,8 @@ async function exportMarkedPDFCore() {
     await loadPdfLib();
     const PDFLib = window.PDFLib;
     const mergedDoc = await PDFLib.PDFDocument.create();
-    const font = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const boldFont = await mergedDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const regularFont = await mergedDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
     const VISUAL_CENTER_OFFSET = 0.38;
     const radius = markerRadius;
@@ -74,8 +75,8 @@ async function exportMarkedPDFCore() {
                 } else {
                     abbrSize = circleText.length > 5 ? pdfFontSize * 0.68 : (circleText.length > 4 ? pdfFontSize * 0.78 : pdfFontSize);
                 }
-                const abbrWidth = font.widthOfTextAtSize(circleText, abbrSize);
-                const tagWidth = tn ? font.widthOfTextAtSize(tn, tagSize) : 0;
+                const abbrWidth = boldFont.widthOfTextAtSize(circleText, abbrSize);
+                const tagWidth = tn ? boldFont.widthOfTextAtSize(tn, tagSize) : 0;
 
                 copiedPage.drawCircle({
                     x: pdfX,
@@ -108,7 +109,7 @@ async function exportMarkedPDFCore() {
                     y: abbrPos.y,
                     size: abbrSize,
                     color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                    font: font,
+                    font: boldFont,
                     rotate: PDFLib.degrees(pageRotation),
                 });
 
@@ -121,43 +122,46 @@ async function exportMarkedPDFCore() {
                         y: tagPos.y,
                         size: tagSize,
                         color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-                        font: font,
+                        font: boldFont,
                         rotate: PDFLib.degrees(pageRotation),
                     });
                 }
 
-                // 圆圈下方：尺寸编号（固定字号 9pt，不跟随 markerFontSize 缩放）
+                // 圆圈外：尺寸编号 & 通用备注（常规字重，字号按 Canvas 相对比例换算）
+                // Canvas 中备注字号 = max(8, 11/zoom)，按圆圈半径比例换算到 PDF
+                const canvasNoteSize = Math.max(8, 11 / zoom);
+                const noteSize = pdfRadius * (canvasNoteSize / markerRadius);
+
+                // 圆圈下方：尺寸编号
                 const sizeNote = m.sizeNote ? String(m.sizeNote) : '';
                 if (sizeNote) {
-                    const fixedNoteSize = 9;
-                    const noteTextWidth = font.widthOfTextAtSize(sizeNote, fixedNoteSize);
-                    const noteOff = rotVec(0, -(pdfRadius + fixedNoteSize * 0.8));
-                    const notePos = posAtCenter(pdfX + noteOff.x, pdfY + noteOff.y, noteTextWidth, fixedNoteSize);
+                    const noteTextWidth = regularFont.widthOfTextAtSize(sizeNote, noteSize);
+                    const noteOff = rotVec(0, -(pdfRadius + noteSize * 0.4));
+                    const notePos = posAtCenter(pdfX + noteOff.x, pdfY + noteOff.y, noteTextWidth, noteSize);
                     copiedPage.drawText(sizeNote, {
                         x: notePos.x,
                         y: notePos.y,
-                        size: fixedNoteSize,
+                        size: noteSize,
                         color: PDFLib.rgb(0.33, 0.33, 0.33),
-                        font: font,
+                        font: regularFont,
                         rotate: PDFLib.degrees(pageRotation),
                     });
                 }
 
-                // 圆圈左上角：通用备注（固定字号 9pt，不跟随 markerFontSize 缩放）
+                // 圆圈左上角：通用备注
                 const note = m.note ? String(m.note) : '';
                 if (note) {
-                    const fixedNoteSize = 9;
-                    const noteTextWidth = font.widthOfTextAtSize(note, fixedNoteSize);
+                    const noteTextWidth = regularFont.widthOfTextAtSize(note, noteSize);
                     // PDF 坐标系 y 向上：左上角对应局部 x 负、y 正
                     const noteOff = rotVec(-pdfRadius * 0.72, pdfRadius * 0.72);
                     // 左上角右对齐：文字右端贴近圆圈左上角
-                    const notePos = posAtCenter(pdfX + noteOff.x - noteTextWidth / 2, pdfY + noteOff.y, noteTextWidth, fixedNoteSize);
+                    const notePos = posAtCenter(pdfX + noteOff.x - noteTextWidth / 2, pdfY + noteOff.y, noteTextWidth, noteSize);
                     copiedPage.drawText(note, {
                         x: notePos.x,
                         y: notePos.y,
-                        size: fixedNoteSize,
+                        size: noteSize,
                         color: PDFLib.rgb(0.2, 0.2, 0.2),
-                        font: font,
+                        font: regularFont,
                         rotate: PDFLib.degrees(pageRotation),
                     });
                 }

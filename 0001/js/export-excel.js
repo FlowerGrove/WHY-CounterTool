@@ -361,11 +361,21 @@ async function exportExcelCore() {
 
     sorted.forEach((m, i) => {
         const t = getTypeById(m.typeId);
-        // Process Connection：sizeNote 已含 ANSI 则原样输出，否则自动拼接 " ANSI 150# RF"
+        // Process Connection 拼接规则（统一走资源库 INSTRUMENT_RESOURCES）：
+        // - sizeNote 已含 ANSI/NPT/FLANGED/THREADED/SW 等关键字 → 原样输出
+        // - 其他 → 按仪表代号从 SIZE_CONNECTIONS 查找后缀，找不到用默认 ANSI 150# RF
         let connection = '';
         if (m.sizeNote) {
             const s = String(m.sizeNote);
-            connection = /ANSI/i.test(s) ? s : (s + ' ANSI 150# RF');
+            const res = window.INSTRUMENT_RESOURCES;
+            if (res && res.hasConnectionKeyword(s)) {
+                connection = s;
+            } else if (res) {
+                const abbr = m.typeAbbr || t.abbr || '';
+                connection = s + ' ' + res.getConnectionSuffix(abbr);
+            } else {
+                connection = s;
+            }
         }
         const r = wsDetail.addRow({
             idx: i + 1,

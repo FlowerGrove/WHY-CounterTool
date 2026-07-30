@@ -13,6 +13,7 @@
     -webkit-backdrop-filter: blur(20px);
     border-radius: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+    /* dock 自身高度由内容决定，最多不超过视口；主列表+自定义列表分别独立滚动 */
     max-height: calc(100vh - 100px);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.6);
@@ -66,33 +67,28 @@
     user-select: none;
 }
 
-/* --- Chip list (scrollable) --- */
+/* --- Chip list (固定高度容器，超过 15 项时内部滚动) --- */
 .type-chips {
     display: flex;
     flex-direction: column;
     gap: 3px;
     padding: 6px 8px 10px;
+    /* 单个 chip 高度约 30px + gap 3px，15 项约 15*33+16 ≈ 511px */
+    max-height: 511px;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: calc(100vh - 200px);
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.10) transparent;
+    flex-shrink: 1;
+    /* 隐藏滚动条但保留滚动能力 */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .type-chips::-webkit-scrollbar {
-    width: 4px;
-}
-.type-chips::-webkit-scrollbar-track {
-    background: transparent;
-}
-.type-chips::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.10);
-    border-radius: 4px;
-}
-.type-chips::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.20);
+    width: 0;
+    height: 0;
+    display: none;
 }
 
-/* --- Individual chip --- */
+/* --- Individual chip (固定尺寸，禁止压缩) --- */
 .type-chip {
     border: none;
     border-radius: 12px;
@@ -109,6 +105,9 @@
     position: relative;
     overflow: hidden;
     color: #333;
+    /* 关键：固定高度不压缩，超出由容器滚动处理 */
+    flex-shrink: 0;
+    min-height: 30px;
 }
 
 .type-chip__label {
@@ -120,6 +119,41 @@
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: 0.02em;
+}
+
+/* --- 自定义类型删除按钮 --- */
+.type-chip__delete {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    width: 14px;
+    height: 14px;
+    line-height: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+.type-chip--custom:hover .type-chip__delete,
+.type-chip:hover .type-chip__delete {
+    opacity: 1;
+}
+.type-chip__delete:hover {
+    background: rgba(220, 20, 20, 0.15);
+    color: #c62828;
+}
+/* 选中态时删除按钮颜色反转 */
+.type-chip.active .type-chip__delete {
+    color: rgba(255, 255, 255, 0.7);
+}
+.type-chip.active .type-chip__delete:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
 }
 
 /* --- Hover state --- */
