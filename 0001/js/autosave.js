@@ -35,7 +35,9 @@ function buildAutosavePayload() {
             if (!docsPayload.some(x => x.fileName === d.fileName)) docsPayload.push(d);
         }
     }
-    return { v: 1, savedAt: Date.now(), customTypes, docs: docsPayload };
+    // IO List 选中的类型 ID（null=全选，数组=指定类型）
+    const ioListSelected = ioListSelectedIds === null ? null : Array.from(ioListSelectedIds);
+    return { v: 1, savedAt: Date.now(), customTypes, docs: docsPayload, ioListSelected };
 }
 
 function scheduleAutosave() {

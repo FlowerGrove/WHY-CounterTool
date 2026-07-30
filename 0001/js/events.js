@@ -1040,6 +1040,10 @@ settingsBackdrop.addEventListener('click', (e) => {
 
 addTypeBtn.addEventListener('click', addCustomType);
 
+// IO List 类型选择按钮
+const ioSelectBtn = document.getElementById('ioSelectBtn');
+if (ioSelectBtn) ioSelectBtn.addEventListener('click', openIOSelectModal);
+
 statsToggle.addEventListener('click', () => {
     const visible = statsPanel.classList.toggle('visible');
     statsToggle.classList.toggle('active', visible);

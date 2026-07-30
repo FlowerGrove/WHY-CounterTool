@@ -276,9 +276,33 @@ function applyIOListHeaderBorders(ws, colCount) {
     }
 }
 
-// 填充 IO List 标记数据
+// 根据仪表代号推断 IO 信号默认值
+function getIOListSignalDefaults(typeCode) {
+    const code = String(typeCode || '').toUpperCase();
+    // 电磁阀 / 电动阀 / 开关阀
+    if (/^(SV|SC|MOV|SDV|BDV|SOL|XV)\d*$/.test(code)) {
+        return { ioType: 'DO', signalType: '24VDC', power: '24VDC' };
+    }
+    // 控制阀
+    if (/^(PCV|FCV|LCV|TCV|ACV|CV|HV|HCV|GV|BV|NB|DBV|HBV|RV|CKV|BVV|WCV)\d*$/.test(code)) {
+        return { ioType: 'AO', signalType: '4~20mA', power: 'Loop Powered' };
+    }
+    // 开关类
+    if (/^(PS|TS|FS|LS|AS|ZS|XS|XY|ZSO|ZSC|ZSH|ZSL)\w*$/.test(code)) {
+        return { ioType: 'DI', signalType: 'dry contact', power: '24VDC' };
+    }
+    // 模拟量仪表（PI, TI, FI, LI, AI, PT, TT, FT, LT, PIT, TIT 等）
+    if (/^[PTFLAXQ]([A-Z]*[ITRC]|E|G)\d*$/.test(code)) {
+        return { ioType: 'AI', signalType: '4~20mA', power: 'Loop Powered' };
+    }
+    return { ioType: '', signalType: '', power: '' };
+}
+
+// 填充 IO List 标记数据（仅包含勾选导出的类型）
 function populateIOListData(ws, startRow, remarksCol) {
-    const sorted = [...markers].sort((a, b) => {
+    // 过滤：只导出 IO List 勾选的类型
+    const filtered = markers.filter(m => isTypeInIOList(m.typeId));
+    const sorted = [...filtered].sort((a, b) => {
         const fa = getDocFileName(a.docId);
         const fb = getDocFileName(b.docId);
         if (fa !== fb) return fa.localeCompare(fb, 'zh');
@@ -303,6 +327,12 @@ function populateIOListData(ws, startRow, remarksCol) {
         row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No.
         row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description
         row.getCell(remarksCol).value = m.note || '';                    // Remarks
+
+        // 根据仪表类型自动填写 IO Type / Signal Type / Power
+        const defs = getIOListSignalDefaults(m.typeCode);
+        row.getCell(9).value = defs.ioType;      // IO Type
+        row.getCell(10).value = defs.signalType; // Signal Type
+        row.getCell(11).value = defs.power;      // Power
 
         for (let c = 1; c <= remarksCol; c++) {
             const cell = row.getCell(c);
@@ -615,6 +645,7 @@ async function exportExcelCore() {
         { header: 'Data Sheet No.', key: 'dataSheet', width: 20 },
         { header: 'P & ID Dwg No.', key: 'pid', width: 20 },
         { header: 'Remarks', key: 'note', width: 20 },
+        { header: 'List', key: 'list', width: 6 },
     ];
     styleHeaderRow(wsDetail.getRow(1));
 
@@ -628,6 +659,8 @@ async function exportExcelCore() {
 
     sorted.forEach((m, i) => {
         const t = getTypeById(m.typeId);
+        // List 标识：IO = 勾选导出到 IO List，INS = 未勾选（仅 INS List）
+        const listType = isTypeInIOList(m.typeId) ? 'IO' : 'INS';
         // Process Connection 拼接规则（统一走资源库 INSTRUMENT_RESOURCES）：
         // - sizeNote 已含 ANSI/NPT/FLANGED/THREADED/SW 等关键字 → 原样输出
         // - 其他 → 按仪表代号从 SIZE_CONNECTIONS 查找后缀，找不到用默认 ANSI 150# RF
@@ -656,6 +689,7 @@ async function exportExcelCore() {
             dataSheet: '',
             pid: '',
             note: m.note || '',
+            list: listType,
         });
     });
 
@@ -674,6 +708,61 @@ async function exportExcelCore() {
         addIOListFromTemplate(wb, templateWs);
     } else {
         addIOListManual(wb);
+    }
+
+    // Sheet 5: INS List（结构与明细清单一致，仅未勾选导出到 IO List 的标记）
+    const insMarkers = sorted.filter(m => !isTypeInIOList(m.typeId));
+    if (insMarkers.length > 0) {
+        const wsIns = wb.addWorksheet('INS List', {
+            views: [{ state: 'frozen', ySplit: 1 }],
+        });
+        wsIns.columns = [
+            { header: 'S/N', key: 'idx', width: 6 },
+            { header: 'Tag No.', key: 'label', width: 18 },
+            { header: 'Location', key: 'location', width: 20 },
+            { header: 'Instrument Type', key: 'type', width: 24 },
+            { header: 'Process Connection', key: 'connection', width: 20 },
+            { header: 'Size / Calibration Range', key: 'size', width: 24 },
+            { header: 'Service', key: 'service', width: 16 },
+            { header: 'Product', key: 'product', width: 16 },
+            { header: 'Data Sheet No.', key: 'dataSheet', width: 20 },
+            { header: 'P & ID Dwg No.', key: 'pid', width: 20 },
+            { header: 'Remarks', key: 'note', width: 20 },
+        ];
+        styleHeaderRow(wsIns.getRow(1));
+
+        insMarkers.forEach((m, i) => {
+            const t = getTypeById(m.typeId);
+            let connection = '';
+            if (m.sizeNote) {
+                const s = String(m.sizeNote);
+                const res = window.INSTRUMENT_RESOURCES;
+                if (res && res.hasConnectionKeyword(s)) {
+                    connection = s;
+                } else if (res) {
+                    const abbr = m.typeAbbr || t.abbr || '';
+                    connection = s + ' ' + res.getConnectionSuffix(abbr);
+                } else {
+                    connection = s;
+                }
+            }
+            wsIns.addRow({
+                idx: i + 1,
+                label: formatMarkerLabel(m),
+                location: '',
+                type: m.typeFullName || t.fullName || m.typeName || t.name || '',
+                connection: connection,
+                size: '',
+                service: '',
+                product: '',
+                dataSheet: '',
+                pid: '',
+                note: m.note || '',
+            });
+        });
+
+        autoFitColumns(wsIns);
+        applyTableFormat(wsIns);
     }
 
     const buf = await wb.xlsx.writeBuffer();

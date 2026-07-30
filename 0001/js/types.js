@@ -161,3 +161,85 @@ function addCustomType() {
     });
     selectType(id);
 }
+
+// ===== IO List 类型选择 =====
+// null = 全部导出（默认）；Set = 仅导出集合中的类型
+let ioListSelectedIds = null;
+
+// 判断某类型是否被勾选导出到 IO List
+function isTypeInIOList(typeId) {
+    if (ioListSelectedIds === null) return true;
+    return ioListSelectedIds.has(typeId);
+}
+
+// 打开 IO List 类型选择弹窗
+function openIOSelectModal() {
+    const modal = document.getElementById('ioSelectModal');
+    const listEl = document.getElementById('ioSelectList');
+
+    // 临时集合：null = 全选，Set = 显式选定
+    let temp = ioListSelectedIds === null ? null : new Set(ioListSelectedIds);
+
+    function isChecked(id) {
+        return temp === null || temp.has(id);
+    }
+
+    function renderList() {
+        listEl.innerHTML = '';
+        for (const t of markerTypes) {
+            const item = document.createElement('div');
+            item.className = 'io-select-item' + (isChecked(t.id) ? ' io-select-item--checked' : '');
+            item.innerHTML = `
+                <div class="io-select-item__checkbox"></div>
+                <span class="io-select-item__code">${t.name}</span>
+                <span class="io-select-item__name">${t.fullName || ''}</span>
+            `;
+            item.addEventListener('click', () => {
+                if (temp === null) {
+                    // 当前全选 → 切换为显式集合（排除点击项）
+                    temp = new Set();
+                    for (const mt of markerTypes) {
+                        if (mt.id !== t.id) temp.add(mt.id);
+                    }
+                } else if (temp.has(t.id)) {
+                    temp.delete(t.id);
+                    if (temp.size === 0) {
+                        // 全部取消 → 回到全选
+                        temp = null;
+                    }
+                } else {
+                    temp.add(t.id);
+                }
+                renderList();
+            });
+            listEl.appendChild(item);
+        }
+    }
+
+    renderList();
+
+    // 全选 = null
+    document.getElementById('ioSelectAll').onclick = () => {
+        temp = null;
+        renderList();
+    };
+    // 清空 = 空集合（不导出任何类型）
+    document.getElementById('ioSelectNone').onclick = () => {
+        temp = new Set();
+        renderList();
+    };
+
+    // 关闭/确定
+    function closeModal() {
+        modal.hidden = true;
+    }
+    document.getElementById('ioSelectClose').onclick = closeModal;
+    document.querySelector('.io-select-modal__backdrop').onclick = closeModal;
+    document.getElementById('ioSelectConfirm').onclick = () => {
+        ioListSelectedIds = temp;
+        closeModal();
+        scheduleAutosave();
+    };
+
+    modal.hidden = false;
+}

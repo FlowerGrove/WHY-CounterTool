@@ -39,11 +39,34 @@
     <!-- 左侧类型浮动栏 -->
     <aside class="type-dock marker-tool" id="typeDock">
         <div class="type-dock__header">
+            <button class="btn-io-select" id="ioSelectBtn" title="选择 IO List 导出类型">
+                <i class="fa-solid fa-list-check" style="font-size:12px;"></i>
+            </button>
             <button class="btn-add-type" id="addTypeBtn" title="添加自定义类型">+</button>
         </div>
         <div class="type-dock__title">仪表</div>
         <div class="type-chips" id="typeChips"></div>
     </aside>
+
+    <!-- IO List 类型选择弹窗 -->
+    <div class="io-select-modal" id="ioSelectModal" hidden>
+        <div class="io-select-modal__backdrop"></div>
+        <div class="io-select-modal__panel">
+            <div class="io-select-modal__header">
+                <span class="io-select-modal__title">选择 IO List 导出类型</span>
+                <button class="io-select-modal__close" id="ioSelectClose">&times;</button>
+            </div>
+            <div class="io-select-modal__toolbar">
+                <button class="io-select-modal__btn" id="ioSelectAll">全选</button>
+                <button class="io-select-modal__btn" id="ioSelectNone">清空</button>
+                <span class="io-select-modal__hint">勾选的类型将导出到 IO List 工作表</span>
+            </div>
+            <div class="io-select-modal__list" id="ioSelectList"></div>
+            <div class="io-select-modal__footer">
+                <button class="io-select-modal__confirm" id="ioSelectConfirm">确定</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 顶部工具栏 -->
     <div class="top-panel" id="topPanel">

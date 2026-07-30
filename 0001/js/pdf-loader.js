@@ -148,6 +148,13 @@ function restoreMarkers(data) {
 
     nextMarkerNumber = findNextNumberForType(currentTypeId);
     syncNumberInput();
+
+    // 恢复 IO List 类型选择
+    if (data.ioListSelected === null) {
+        ioListSelectedIds = null;
+    } else if (Array.isArray(data.ioListSelected)) {
+        ioListSelectedIds = new Set(data.ioListSelected);
+    }
 }
 
 function fitToContent() {
