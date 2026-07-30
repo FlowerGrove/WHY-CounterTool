@@ -19,6 +19,7 @@ const INSTRUMENT_TYPES = [
     { abbr: 'PGI',  fullName: 'Pressure Gauge Indicator',            color: '#e53935', alwaysVisible: false },
     { abbr: 'PDS',  fullName: 'Differential Pressure Switch',        color: '#e53935', alwaysVisible: false },
     { abbr: 'PDA',  fullName: 'Differential Pressure Alarm',         color: '#e53935', alwaysVisible: false },
+    { abbr: 'PS',   fullName: 'Pressure Switch',                     color: '#e53935', alwaysVisible: false },
     { abbr: 'PSH',  fullName: 'Pressure Switch High',                color: '#e53935', alwaysVisible: false },
     { abbr: 'PSL',  fullName: 'Pressure Switch Low',                 color: '#e53935', alwaysVisible: false },
     { abbr: 'PSHH', fullName: 'Pressure Switch High-High',           color: '#e53935', alwaysVisible: false },
@@ -86,6 +87,7 @@ const INSTRUMENT_TYPES = [
     { abbr: 'LIT',  fullName: 'Level Indicating Transmitter',        color: '#e53935', alwaysVisible: true  },
     { abbr: 'LG',   fullName: 'Level Glass',                         color: '#e53935', alwaysVisible: false },
     { abbr: 'LE',   fullName: 'Level Element',                       color: '#e53935', alwaysVisible: false },
+    { abbr: 'LS',   fullName: 'Level Switch',                        color: '#e53935', alwaysVisible: false },
     { abbr: 'LSH',  fullName: 'Level Switch High',                   color: '#e53935', alwaysVisible: false },
     { abbr: 'LSL',  fullName: 'Level Switch Low',                    color: '#e53935', alwaysVisible: false },
     { abbr: 'LSHH', fullName: 'Level Switch High-High',              color: '#e53935', alwaysVisible: false },
@@ -110,6 +112,8 @@ const INSTRUMENT_TYPES = [
     { abbr: 'AY',   fullName: 'Analyzer Relay',                      color: '#e53935', alwaysVisible: false },
     { abbr: 'ASH',  fullName: 'Analyzer Switch High',                color: '#e53935', alwaysVisible: false },
     { abbr: 'ASL',  fullName: 'Analyzer Switch Low',                 color: '#e53935', alwaysVisible: false },
+    { abbr: 'XA',   fullName: 'Analyzer Alarm',                      color: '#e53935', alwaysVisible: false },
+    { abbr: 'XI',   fullName: 'Analyzer Indicator',                  color: '#e53935', alwaysVisible: false },
     { abbr: 'QI',   fullName: 'Quantity Indicator',                  color: '#e53935', alwaysVisible: false },
     { abbr: 'QT',   fullName: 'Quantity Transmitter',                color: '#e53935', alwaysVisible: false },
     { abbr: 'QIT',  fullName: 'Quantity Indicating Transmitter',     color: '#e53935', alwaysVisible: false },
@@ -130,6 +134,11 @@ const INSTRUMENT_TYPES = [
     { abbr: 'RV',   fullName: 'Relief Valve',                        color: '#e53935', alwaysVisible: false },
     { abbr: 'CKV',  fullName: 'Check Valve',                         color: '#e53935', alwaysVisible: false },
     { abbr: 'BVV',  fullName: 'Ball Valve',                          color: '#e53935', alwaysVisible: false },
+    { abbr: 'MOV',  fullName: 'Motor Operated Valve',                color: '#e53935', alwaysVisible: false },
+    { abbr: 'WCV',  fullName: 'Water Control Valve',                 color: '#e53935', alwaysVisible: false },
+    { abbr: 'PL',   fullName: 'Pilot Light',                         color: '#e53935', alwaysVisible: false },
+    { abbr: 'PLR',  fullName: 'Pilot Light with Relay',              color: '#e53935', alwaysVisible: false },
+    { abbr: 'SC',   fullName: 'Solenoid Coil',                       color: '#e53935', alwaysVisible: false },
 
     // ===== 位置/运动类 Position/Motion =====
     { abbr: 'ZI',   fullName: 'Position Indicator',                  color: '#e53935', alwaysVisible: false },
@@ -138,7 +147,11 @@ const INSTRUMENT_TYPES = [
     { abbr: 'ZSL',  fullName: 'Position Switch Low',                 color: '#e53935', alwaysVisible: false },
     { abbr: 'ZSO',  fullName: 'Position Switch Open',                color: '#e53935', alwaysVisible: false },
     { abbr: 'ZSC',  fullName: 'Position Switch Closed',              color: '#e53935', alwaysVisible: false },
+    { abbr: 'ZO',   fullName: 'Position Switch Open',                color: '#e53935', alwaysVisible: false },
+    { abbr: 'ZLH',  fullName: 'Position Limit Switch High',          color: '#e53935', alwaysVisible: false },
+    { abbr: 'ZLL',  fullName: 'Position Limit Switch Low',           color: '#e53935', alwaysVisible: false },
     { abbr: 'ZV',   fullName: 'Position Valve',                      color: '#e53935', alwaysVisible: false },
+    { abbr: 'ZC',   fullName: 'Position Controller',                 color: '#e53935', alwaysVisible: false },
     { abbr: 'HS',   fullName: 'Hand Switch',                         color: '#e53935', alwaysVisible: false },
 
     // ===== 速度/振动/重量/电气类 =====
@@ -152,6 +165,22 @@ const INSTRUMENT_TYPES = [
     { abbr: 'WT',   fullName: 'Weight Transmitter',                  color: '#e53935', alwaysVisible: false },
     { abbr: 'EI',   fullName: 'Electrical Indicator',                color: '#e53935', alwaysVisible: false },
     { abbr: 'ET',   fullName: 'Electrical Transmitter',              color: '#e53935', alwaysVisible: false },
+
+    // ===== 报警/安全/接地设备类 Safety/Grounding/Alarm =====
+    { abbr: 'AVA',  fullName: 'Audible and Visual Alarm',            color: '#e53935', alwaysVisible: false },
+    { abbr: 'HORN', fullName: 'Horn Alarm',                          color: '#e53935', alwaysVisible: false },
+    { abbr: 'PIL',  fullName: 'Indicator Light',                     color: '#e53935', alwaysVisible: false },
+    { abbr: 'ED',   fullName: 'Grounding Device',                    color: '#e53935', alwaysVisible: false },
+    { abbr: 'EST',  fullName: 'Emergency Stop Button',               color: '#e53935', alwaysVisible: false },
+    { abbr: 'ESD',  fullName: 'Emergency Shutdown Device',           color: '#e53935', alwaysVisible: false },
+    { abbr: 'FGS',  fullName: 'Fire and Gas System',                 color: '#e53935', alwaysVisible: false },
+    { abbr: 'TLA',  fullName: 'Truck Loading Arm',                   color: '#e53935', alwaysVisible: false },
+    { abbr: 'TLB',  fullName: 'Truck Loading Arm B',                 color: '#e53935', alwaysVisible: false },
+
+    // ===== IO 信号类 I/O Signals =====
+    { abbr: 'AO',   fullName: 'Analog Output',                       color: '#1e88e5', alwaysVisible: false },
+    { abbr: 'DI',   fullName: 'Digital Input',                       color: '#1e88e5', alwaysVisible: false },
+    { abbr: 'DO',   fullName: 'Digital Output',                      color: '#1e88e5', alwaysVisible: false },
 
     // ===== 其他 =====
     { abbr: 'X',    fullName: 'Other Instrument',                    color: '#e53935', alwaysVisible: true  },
@@ -172,6 +201,18 @@ const SIZE_CONNECTIONS = {
     'PRV':  { suffix: 'ANSI 300# RF' }, // 卸压阀：高压法兰
     'RV':   { suffix: 'ANSI 300# RF' }, // 缓冲阀：高压法兰
     'BDV':  { suffix: 'ANSI 300# RF' }, // 放空阀：高压法兰
+    'MOV':  { suffix: 'ANSI 150# RF' }, // 电动阀：法兰
+    'WCV':  { suffix: 'ANSI 150# RF' }, // 水阀：法兰
+    'PL':   { suffix: 'NPT' },          // 指示灯：螺纹
+    'PLR':  { suffix: 'NPT' },          // 带继电器指示灯：螺纹
+    'SC':   { suffix: 'NPT' },          // 电磁线圈：螺纹
+    'ED':   { suffix: 'NPT' },          // 接地设备：螺纹
+    'AVA':  { suffix: 'NPT' },          // 声光报警：螺纹
+    'HORN': { suffix: 'NPT' },          // 报警喇叭：螺纹
+    'PIL':  { suffix: 'NPT' },          // 指示灯：螺纹
+    'EST':  { suffix: 'NPT' },          // 急停按钮：螺纹
+    'ESD':  { suffix: 'ANSI 150# RF' }, // 紧急切断阀：法兰
+    'FGS':  { suffix: 'NPT' },          // 火气系统：螺纹
 };
 
 // 检测 sizeNote 是否已包含完整连接方式（避免重复拼接）

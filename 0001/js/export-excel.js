@@ -75,6 +75,264 @@ function applyTableFormat(ws) {
     });
 }
 
+// IO List 统一字体：Arial 10 号
+const IO_LIST_FONT = { name: 'Arial', size: 10 };
+const IO_LIST_FONT_BOLD = { name: 'Arial', size: 10, bold: true };
+
+// ===== IO List 工作表（第 4 个表）=====
+
+// IO List 模板列头定义（共 24 列）
+// col: 列号 (1-based)
+// row1: 第一行文字（主标题）
+// row2: 第二行文字（子标题），若为空则与 row1 合并
+// row1Span: 第一行合并的列数（默认 1），用于分组标题（如 Alarm Setting 跨 4 列）
+const IO_LIST_COLUMNS = [
+    { col: 1,  row1: 'S/N',                      row2: 'S/N' },
+    { col: 2,  row1: 'Revision No.',             row2: 'Revision No.' },
+    { col: 3,  row1: 'DCS Tag Number',           row2: 'DCS Tag Number' },
+    { col: 4,  row1: 'Instrument Tag No.',       row2: 'Instrument Tag No.' },
+    { col: 5,  row1: 'Signal Description',       row2: 'Signal Description' },
+    { col: 6,  row1: 'Equipment',                row2: 'Equipment' },
+    { col: 7,  row1: 'P & ID Dwg No.',           row2: 'P & ID Dwg No.' },
+    { col: 8,  row1: 'P&ID Revision No.',        row2: 'P&ID Revision No.' },
+    { col: 9,  row1: 'IO Type',                  row2: 'IO Type' },
+    { col: 10, row1: 'Signal Type',              row2: 'Signal Type' },
+    { col: 11, row1: 'Power',                   row2: 'Power' },
+    { col: 12, row1: 'Zero Stauts',              row2: 'Zero Stauts' },
+    { col: 13, row1: 'One Stauts',               row2: 'One Stauts' },
+    { col: 14, row1: 'Alarm Setting',            row2: 'LL',  row1Span: 4 },
+    { col: 15, row1: '',                         row2: 'L' },
+    { col: 16, row1: '',                         row2: 'H' },
+    { col: 17, row1: '',                         row2: 'HH' },
+    { col: 18, row1: 'Range',                    row2: '0%',  row1Span: 2 },
+    { col: 19, row1: '',                         row2: '100%' },
+    { col: 20, row1: 'Unit',                     row2: 'Unit' },
+    { col: 21, row1: 'RIO Panel No.',            row2: 'RIO Panel No.' },
+    { col: 22, row1: 'Slot Number',              row2: 'Slot Number' },
+    { col: 23, row1: 'Channel Number',           row2: 'Channel Number' },
+    { col: 24, row1: 'Remarks',                  row2: 'Remarks' },
+];
+
+const IO_LIST_TOTAL_COLS = IO_LIST_COLUMNS.length;
+const IO_LIST_DATA_START_COL = 1;
+const IO_LIST_SN_COL = 1;
+const IO_LIST_TAG_COL = 4;
+const IO_LIST_DESC_COL = 5;
+const IO_LIST_REMARKS_COL = 24;
+
+// 尝试加载 IOList.xlsx 模板工作表
+async function loadIOListTemplateSheet(ExcelJS) {
+    try {
+        const resp = await fetch('Template/IOList/IOList.xlsx');
+        if (!resp.ok) return null;
+        const buf = await resp.arrayBuffer();
+        const tplWb = new ExcelJS.Workbook();
+        await tplWb.xlsx.load(buf);
+        return tplWb.getWorksheet(1) || null;
+    } catch (e) {
+        console.warn('[IO List] 模板加载失败，使用手动创建', e);
+        return null;
+    }
+}
+
+// 写入 IO List 表头：支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列）
+function writeIOListHeader(ws) {
+    // 设置列 key
+    IO_LIST_COLUMNS.forEach((col) => {
+        ws.getColumn(col.col).key = 'c' + col.col;
+    });
+
+    const row1 = ws.getRow(1);
+    const row2 = ws.getRow(2);
+
+    // 写入 Row 1 和 Row 2 内容
+    IO_LIST_COLUMNS.forEach((col) => {
+        // Row 1
+        if (col.row1) {
+            const c1 = row1.getCell(col.col);
+            c1.value = col.row1;
+            c1.font = IO_LIST_FONT_BOLD;
+            c1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+        // Row 2
+        if (col.row2) {
+            const c2 = row2.getCell(col.col);
+            c2.value = col.row2;
+            c2.font = IO_LIST_FONT_BOLD;
+            c2.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+    });
+
+    // 填充背景色（表头统一浅灰色）
+    const fillColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F3F4' } };
+    for (let c = 1; c <= IO_LIST_TOTAL_COLS; c++) {
+        const cell1 = row1.getCell(c);
+        const cell2 = row2.getCell(c);
+        if (!cell1.fill || !cell1.fill.type) cell1.fill = fillColor;
+        if (!cell2.fill || !cell2.fill.type) cell2.fill = fillColor;
+    }
+
+    // 行高：每个单元格 20，表头共两行
+    row1.height = 20;
+    row2.height = 20;
+
+    // 合并逻辑
+    // 1. 对于分组合并列（row1Span > 1），Row 1 横向合并，Row 1 和 Row 2 之间不纵向合并
+    // 2. 对于普通列（row1Span = 1），Row 1 和 Row 2 纵向合并
+    IO_LIST_COLUMNS.forEach((col) => {
+        const span = col.row1Span || 1;
+        if (span > 1) {
+            // 横向合并 Row 1：col.col 到 col.col + span - 1
+            try { ws.mergeCells(1, col.col, 1, col.col + span - 1); } catch (e) {}
+        } else {
+            // 纵向合并 Row 1 和 Row 2
+            try { ws.mergeCells(1, col.col, 2, col.col); } catch (e) {}
+        }
+    });
+
+    // 第 3 行：区段标题
+    const sectionTitle = documents.length === 1
+        ? `INSTRUMENT I/O FOR ${documents[0].fileName.replace(/\.pdf$/i, '').toUpperCase()}`
+        : 'INSTRUMENT I/O FOR ALL DOCUMENTS';
+    const titleCell = ws.getRow(3).getCell(1);
+    titleCell.value = sectionTitle;
+    titleCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF333333' } };
+    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    ws.getRow(3).height = 24;
+}
+
+// 从模板复制 IO List 工作表到导出工作簿
+function addIOListFromTemplate(wb, templateWs) {
+    const ws = wb.addWorksheet('IO List');
+
+    // 统一写入表头（分组合并结构）
+    writeIOListHeader(ws);
+
+    // 填充标记数据
+    populateIOListData(ws, 4, IO_LIST_REMARKS_COL);
+
+    // 给表头行也加边框
+    applyIOListHeaderBorders(ws, IO_LIST_TOTAL_COLS);
+
+    // 自适应列宽（与明细表一致）
+    autoFitColumns(ws);
+    // S/N 列不受标题行影响，固定窄宽
+    ws.getColumn(IO_LIST_SN_COL).width = 6;
+    // LL/L/H/HH 列宽与 0%/100% 保持一致
+    const alarmRangeWidth = ws.getColumn(18).width || 8;
+    for (let c = 14; c <= 19; c++) {
+        ws.getColumn(c).width = alarmRangeWidth;
+    }
+    return ws;
+}
+
+// 手动创建 IO List 工作表（模板加载失败的回退方案）
+function addIOListManual(wb) {
+    const ws = wb.addWorksheet('IO List', {
+        views: [{ state: 'frozen', ySplit: 2 }],
+    });
+
+    // 统一写入表头（分组合并结构）
+    writeIOListHeader(ws);
+
+    // 填充标记数据
+    populateIOListData(ws, 4, IO_LIST_REMARKS_COL);
+
+    // 给表头行也加边框
+    applyIOListHeaderBorders(ws, IO_LIST_TOTAL_COLS);
+
+    // 自适应列宽（与明细表一致）
+    autoFitColumns(ws);
+    // S/N 列不受标题行影响，固定窄宽
+    ws.getColumn(IO_LIST_SN_COL).width = 6;
+    // LL/L/H/HH 列宽与 0%/100% 保持一致
+    const alarmRangeWidth = ws.getColumn(18).width || 8;
+    for (let c = 14; c <= 19; c++) {
+        ws.getColumn(c).width = alarmRangeWidth;
+    }
+    return ws;
+}
+
+// 给 IO List 表头行加边框（与数据行保持一致的细边框）
+function applyIOListHeaderBorders(ws, colCount) {
+    const border = {
+        top: { style: 'thin', color: { argb: 'FF808080' } },
+        left: { style: 'thin', color: { argb: 'FF808080' } },
+        bottom: { style: 'thin', color: { argb: 'FF808080' } },
+        right: { style: 'thin', color: { argb: 'FF808080' } },
+    };
+    // 获取实际有内容的最大行号（表头+标题行）
+    const headerEndRow = ws.actualRowCount || 3;
+    for (let r = 1; r <= headerEndRow; r++) {
+        const row = ws.getRow(r);
+        for (let c = 1; c <= colCount; c++) {
+            const cell = row.getCell(c);
+            cell.border = border;
+            // 表头行统一居中 + 自动换行
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+        // 表头行高保持 20
+        if (r <= 2) row.height = 20;
+    }
+}
+
+// 填充 IO List 标记数据
+function populateIOListData(ws, startRow, remarksCol) {
+    const sorted = [...markers].sort((a, b) => {
+        const fa = getDocFileName(a.docId);
+        const fb = getDocFileName(b.docId);
+        if (fa !== fb) return fa.localeCompare(fb, 'zh');
+        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
+        return a.number - b.number;
+    });
+
+    const border = {
+        top: { style: 'thin', color: { argb: 'FF808080' } },
+        left: { style: 'thin', color: { argb: 'FF808080' } },
+        bottom: { style: 'thin', color: { argb: 'FF808080' } },
+        right: { style: 'thin', color: { argb: 'FF808080' } },
+    };
+
+    let rowIdx = startRow;
+    for (let i = 0; i < sorted.length; i++) {
+        const m = sorted[i];
+        const t = getTypeById(m.typeId);
+        const row = ws.getRow(rowIdx);
+
+        row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N
+        row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No.
+        row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description
+        row.getCell(remarksCol).value = m.note || '';                    // Remarks
+
+        for (let c = 1; c <= remarksCol; c++) {
+            const cell = row.getCell(c);
+            cell.font = IO_LIST_FONT;
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = border;
+        }
+
+        // 根据内容长度估算行高：取各列所需行数的最大值 × 15（单行约 15px）
+        let maxLines = 1;
+        for (let c = 1; c <= remarksCol; c++) {
+            const val = row.getCell(c).value;
+            if (val === null || val === undefined) continue;
+            const text = String(typeof val === 'object' ? (val.text || val.result || '') : val);
+            const colWidth = ws.getColumn(c).width || 10;
+            // 估算每行可容纳字符数（中文按 2 计，列宽单位约等于字符数）
+            const charPerLine = Math.max(2, Math.floor(colWidth / 1.1));
+            // 计算文本所需行数
+            let lines = 0;
+            for (const ln of text.split(/\r?\n/)) {
+                lines += Math.max(1, Math.ceil(measureTextWidth(ln) / charPerLine));
+            }
+            if (lines > maxLines) maxLines = lines;
+        }
+        row.height = Math.max(22, maxLines * 15);
+
+        rowIdx++;
+    }
+}
+
 async function downloadExcelBuffer(buffer, filename) {
     const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -126,6 +384,15 @@ async function exportBoth() {
 
 async function exportExcelCore() {
     const ExcelJS = await loadExcelJS();
+
+    // 尝试加载 IOList 模板
+    let templateWs = null;
+    try {
+        templateWs = await loadIOListTemplateSheet(ExcelJS);
+    } catch (e) {
+        console.warn('[IO List] 模板加载异常', e);
+    }
+
     const wb = new ExcelJS.Workbook();
     wb.creator = '电气PDF标注';
     wb.created = new Date();
@@ -401,6 +668,13 @@ async function exportExcelCore() {
     applyTableFormat(wsByFile);
     applyTableFormat(wsType);
     applyTableFormat(wsDetail);
+
+    // Sheet 4: IO List（基于 IOList.xlsx 模板或手动创建）
+    if (templateWs) {
+        addIOListFromTemplate(wb, templateWs);
+    } else {
+        addIOListManual(wb);
+    }
 
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `仪表统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
