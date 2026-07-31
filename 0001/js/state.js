@@ -39,18 +39,7 @@ function getUsedSet(typeId) {
     return usedNumbersByType.get(typeId);
 }
 
-// 旧函数保留以兼容历史/恢复逻辑，不再强制执行唯一性（用户手动编号时不检查）
-function isNumberUsed(num, typeId = currentTypeId) {
-    return false;
-}
-
-function reserveNumber(num, typeId = currentTypeId) {
-    // 无操作：不再强制编号
-}
-
-function releaseNumber(num, typeId) {
-    // 无操作：不再强制编号
-}
+// 编号管理已改为手动输入，不再强制唯一性检查
 
 function findNextNumberForType(typeId) {
     let n = 1;

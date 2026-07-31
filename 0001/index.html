@@ -19,12 +19,6 @@
     <link rel="stylesheet" href="css/context-menu.css" />
     <link rel="stylesheet" href="css/responsive.css" />
     <link rel="stylesheet" href="css/preview.css" />
-    <style>
-        .number-input-group,
-        .number-input-group + .divider.marker-tool {
-            display: none !important;
-        }
-    </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -563,6 +557,10 @@
     <script src="js/export-measure.js"></script>
     <script src="js/preview.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/events.js"></script>
+    <!-- events 模块拆分为 4 个子模块 -->
+    <script src="js/events/context-menu.js"></script>
+    <script src="js/events/canvas.js"></script>
+    <script src="js/events/measure.js"></script>
+    <script src="js/events/settings.js"></script>
 </body>
 </html>
