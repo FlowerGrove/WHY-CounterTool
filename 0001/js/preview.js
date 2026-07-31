@@ -26,19 +26,8 @@ function pvRow(cells, cls) {
     return `<tr class="${cls || ''}">${cells}</tr>`;
 }
 
-// Process Connection 拼接（与 export-excel.js 一致）
-function pvBuildConnection(m) {
-    if (!m.sizeNote) return '';
-    const s = formatSizeNote(m.sizeNote);
-    const res = window.INSTRUMENT_RESOURCES;
-    if (res && res.hasConnectionKeyword(s)) return s;
-    if (res) {
-        const t = getTypeById(m.typeId);
-        const abbr = m.typeAbbr || (t && t.abbr) || '';
-        return s + ' ' + res.getConnectionSuffix(abbr);
-    }
-    return s;
-}
+// Process Connection 拼接：复用 utils.js 的 buildProcessConnection，保证与 Excel 导出一致
+const pvBuildConnection = buildProcessConnection;
 
 // ===== Sheet 1: By File =====
 function pvRenderByFile() {

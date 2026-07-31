@@ -90,6 +90,23 @@ function formatSizeNote(s) {
     return parts.map(p => p ? `${p}"` : '').join('x');
 }
 
+// Process Connection 拼接规则（Detail List / INS List / 预览 共用）：
+// - sizeNote 经 formatSizeNote 渲染为 '2"' / '2"x3"' 显示格式
+// - 已含 ANSI/NPT/FLANGED 等关键字 → 原样输出
+// - 其他 → 按仪表代号从 INSTRUMENT_RESOURCES 查找后缀，找不到用默认 ANSI 150# RF
+function buildProcessConnection(m) {
+    if (!m.sizeNote) return '';
+    const s = formatSizeNote(m.sizeNote);
+    const res = window.INSTRUMENT_RESOURCES;
+    if (res && res.hasConnectionKeyword(s)) return s;
+    if (res) {
+        const t = getTypeById(m.typeId);
+        const abbr = m.typeAbbr || (t && t.abbr) || '';
+        return s + ' ' + res.getConnectionSuffix(abbr);
+    }
+    return s;
+}
+
 function pageStackGap(prevDocId, nextDocId) {
     const caption = PAGE_CAPTION_H;
     return (prevDocId !== nextDocId ? DOC_GAP : PAGE_GAP) + caption;

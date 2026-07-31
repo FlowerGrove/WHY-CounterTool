@@ -127,21 +127,6 @@ const IO_LIST_TAG_COL = 4;
 const IO_LIST_DESC_COL = 5;
 const IO_LIST_REMARKS_COL = 24;
 
-// 尝试加载 IOList.xlsx 模板工作表
-async function loadIOListTemplateSheet(ExcelJS) {
-    try {
-        const resp = await fetch('Template/IOList/IOList.xlsx');
-        if (!resp.ok) return null;
-        const buf = await resp.arrayBuffer();
-        const tplWb = new ExcelJS.Workbook();
-        await tplWb.xlsx.load(buf);
-        return tplWb.getWorksheet(1) || null;
-    } catch (e) {
-        console.warn('[IO List] 模板加载失败，使用手动创建', e);
-        return null;
-    }
-}
-
 // 写入 IO List 表头：支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列）
 function writeIOListHeader(ws) {
     // 设置列 key
@@ -197,7 +182,7 @@ function writeIOListHeader(ws) {
         }
     });
 
-    // 第 3 行：区段标题
+    // 第 3 行：区段标题（合并 A3:X3，跨所有列）
     const sectionTitle = documents.length === 1
         ? `INSTRUMENT I/O FOR ${documents[0].fileName.replace(/\.pdf$/i, '').toUpperCase()}`
         : 'INSTRUMENT I/O FOR ALL DOCUMENTS';
@@ -206,35 +191,12 @@ function writeIOListHeader(ws) {
     titleCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF333333' } };
     titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
     ws.getRow(3).height = 24;
+    // 合并第 3 行所有列（A3:X3）
+    try { ws.mergeCells(3, 1, 3, IO_LIST_TOTAL_COLS); } catch (e) {}
 }
 
-// 从模板复制 IO List 工作表到导出工作簿
-function addIOListFromTemplate(wb, templateWs) {
-    const ws = wb.addWorksheet('IO List');
-
-    // 统一写入表头（分组合并结构）
-    writeIOListHeader(ws);
-
-    // 填充标记数据
-    populateIOListData(ws, 4, IO_LIST_REMARKS_COL);
-
-    // 给表头行也加边框
-    applyIOListHeaderBorders(ws, IO_LIST_TOTAL_COLS);
-
-    // 自适应列宽（与明细表一致）
-    autoFitColumns(ws);
-    // S/N 列不受标题行影响，固定窄宽
-    ws.getColumn(IO_LIST_SN_COL).width = 6;
-    // LL/L/H/HH 列宽与 0%/100% 保持一致
-    const alarmRangeWidth = ws.getColumn(18).width || 8;
-    for (let c = 14; c <= 19; c++) {
-        ws.getColumn(c).width = alarmRangeWidth;
-    }
-    return ws;
-}
-
-// 手动创建 IO List 工作表（模板加载失败的回退方案）
-function addIOListManual(wb) {
+// 创建 IO List 工作表（统一入口，原模板加载逻辑已移除）
+function addIOList(wb) {
     const ws = wb.addWorksheet('IO List', {
         views: [{ state: 'frozen', ySplit: 2 }],
     });
@@ -446,14 +408,6 @@ async function exportBoth() {
 
 async function exportExcelCore() {
     const ExcelJS = await loadExcelJS();
-
-    // 尝试加载 IOList 模板
-    let templateWs = null;
-    try {
-        templateWs = await loadIOListTemplateSheet(ExcelJS);
-    } catch (e) {
-        console.warn('[IO List] 模板加载异常', e);
-    }
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'PDF Annotator';
@@ -693,29 +647,12 @@ async function exportExcelCore() {
         const t = getTypeById(m.typeId);
         // List 标识：IO = 勾选导出到 IO List，INS = 未勾选（仅 INS List）
         const listType = isTypeInIOList(m.typeId) ? 'IO' : 'INS';
-        // Process Connection 拼接规则：
-        // - sizeNote 经 formatSizeNote 渲染为 '2"' / '2"x3"' 显示格式
-        // - 已含 ANSI/NPT/FLANGED 等关键字 → 原样输出
-        // - 其他 → 按仪表代号从 SIZE_CONNECTIONS 查找后缀，找不到用默认 ANSI 150# RF
-        let connection = '';
-        if (m.sizeNote) {
-            const s = formatSizeNote(m.sizeNote);
-            const res = window.INSTRUMENT_RESOURCES;
-            if (res && res.hasConnectionKeyword(s)) {
-                connection = s;
-            } else if (res) {
-                const abbr = m.typeAbbr || t.abbr || '';
-                connection = s + ' ' + res.getConnectionSuffix(abbr);
-            } else {
-                connection = s;
-            }
-        }
         const r = wsDetail.addRow({
             idx: i + 1,
             label: qExcel(formatMarkerLabel(m)),
             location: qExcel(m.location || ''),
             type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
-            connection: qExcel(connection),
+            connection: qExcel(buildProcessConnection(m)),
             size: qExcel(m.range || ''),
             service: qExcel(m.service || ''),
             product: qExcel(m.product || ''),
@@ -736,12 +673,8 @@ async function exportExcelCore() {
     applyTableFormat(wsType);
     applyTableFormat(wsDetail);
 
-    // Sheet 4: IO List（基于 IOList.xlsx 模板或手动创建）
-    if (templateWs) {
-        addIOListFromTemplate(wb, templateWs);
-    } else {
-        addIOListManual(wb);
-    }
+    // Sheet 4: IO List
+    addIOList(wb);
 
     // Sheet 5: INS List（结构与明细清单一致，仅未勾选导出到 IO List 的标记）
     const insMarkers = sorted.filter(m => !isTypeInIOList(m.typeId));
@@ -766,25 +699,12 @@ async function exportExcelCore() {
 
         insMarkers.forEach((m, i) => {
             const t = getTypeById(m.typeId);
-            let connection = '';
-            if (m.sizeNote) {
-                const s = formatSizeNote(m.sizeNote);
-                const res = window.INSTRUMENT_RESOURCES;
-                if (res && res.hasConnectionKeyword(s)) {
-                    connection = s;
-                } else if (res) {
-                    const abbr = m.typeAbbr || t.abbr || '';
-                    connection = s + ' ' + res.getConnectionSuffix(abbr);
-                } else {
-                    connection = s;
-                }
-            }
             wsIns.addRow({
                 idx: i + 1,
                 label: qExcel(formatMarkerLabel(m)),
                 location: qExcel(m.location || ''),
                 type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
-                connection: qExcel(connection),
+                connection: qExcel(buildProcessConnection(m)),
                 size: qExcel(m.range || ''),
                 service: qExcel(m.service || ''),
                 product: qExcel(m.product || ''),
