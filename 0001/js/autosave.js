@@ -1,6 +1,15 @@
 let pendingRestore = null;
 let autosaveTimer = null;
 
+// marker 上可持久化的可选字段（值为空则不写入 autosave）
+const MARKER_OPTIONAL_FIELDS = [
+    'tagNumber', 'sizeNote', 'note',
+    'location', 'range', 'unit', 'service', 'product', 'dataSheet', 'pid',
+    'dcsTag', 'pidRev', 'ioType', 'signalType', 'power',
+    'zeroStatus', 'oneStatus', 'alarmLL', 'alarmL', 'alarmH', 'alarmHH',
+    'range0', 'range100', 'rioPanel', 'slotNumber', 'channelNumber',
+];
+
 function serializeMarkersForDoc(docId) {
     const pageMap = new Map(pages.filter(p => p.docId === docId).map(p => [p.pageIndex, p]));
     return markers.filter(m => m.docId === docId).map(m => {
@@ -16,9 +25,10 @@ function serializeMarkersForDoc(docId) {
             typeFullName: m.typeFullName,
             typeAbbr: m.typeAbbr,
         };
-        if (m.tagNumber && m.tagNumber.length > 0) obj.tagNumber = m.tagNumber;
-        if (m.sizeNote && m.sizeNote.length > 0) obj.sizeNote = m.sizeNote;
-        if (m.note) obj.note = m.note;
+        for (const f of MARKER_OPTIONAL_FIELDS) {
+            const v = m[f];
+            if (v !== undefined && v !== null && String(v).length > 0) obj[f] = v;
+        }
         return obj;
     });
 }

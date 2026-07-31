@@ -16,6 +16,25 @@
 .marker-context-menu.visible {
     display: flex;
 }
+/* IO List 菜单：横向加宽 + 3 列网格，减少纵向高度 */
+.marker-context-menu.menu-io {
+    min-width: 460px;
+    max-width: 520px;
+}
+.marker-context-menu.menu-io .mcm-body {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+/* INS 菜单：横向加宽 + 3 列网格，wide 字段恢复单格 */
+.marker-context-menu.menu-ins {
+    min-width: 460px;
+    max-width: 520px;
+}
+.marker-context-menu.menu-ins .mcm-body {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+.marker-context-menu.menu-ins .mcm-field--wide {
+    grid-column: auto;
+}
 
 /* Header */
 .mcm-header {
@@ -159,4 +178,47 @@
 .mcm-btn-primary:hover {
     background: #1557b0;
     border-color: #1557b0;
+}
+
+/* IO List 下拉框（全宽，覆盖 .mcm-select 的固定宽度） */
+.mcm-select--full {
+    width: 100%;
+    cursor: pointer;
+}
+
+/* Alarm Setting 四列网格（LL / L / H / HH） */
+.mcm-alarm-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+}
+.mcm-alarm-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.mcm-alarm-item span {
+    font-size: 9px;
+    color: #999;
+    text-align: center;
+    line-height: 1;
+}
+.mcm-alarm-item input {
+    height: 22px;
+    padding: 0 4px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 11px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    transition: all 0.12s;
+    font-family: inherit;
+    color: #333;
+}
+.mcm-alarm-item input:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
 }

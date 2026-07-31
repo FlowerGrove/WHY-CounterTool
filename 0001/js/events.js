@@ -19,9 +19,22 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     const numberLabel = marker.number ? `-${padWithFormat(marker.number)}` : '';
     document.getElementById('mcmTitle').textContent = `标记属性：${typeLabel}${numberLabel}`;
 
-    // 填充各字段
+    // 根据是否进入 IO List 切换字段集：io=IO List 表格字段，ins=明细清单字段
+    const isIO = isTypeInIOList(marker.typeId);
+    markerContextMenu.classList.toggle('menu-io', isIO);
+    markerContextMenu.classList.toggle('menu-ins', !isIO);
+    markerContextMenu.querySelectorAll('[data-menu]').forEach(el => {
+        const menu = el.dataset.menu;
+        el.style.display = (menu === 'both' || menu === (isIO ? 'io' : 'ins')) ? '' : 'none';
+    });
+
+    // ===== 公共字段 =====
     document.getElementById('mcmTagNumber').value = marker.tagNumber || '';
     document.getElementById('mcmLocation').value = marker.location || '';
+    document.getElementById('mcmPid').value = marker.pid || '';
+    document.getElementById('mcmNote').value = marker.note || '';
+
+    // ===== INS 专属字段（明细清单） =====
     // 尺寸：优先匹配下拉项，否则填入自定义输入框
     const s = marker.sizeNote || '';
     const sizeSel = document.getElementById('mcmSize');
@@ -40,20 +53,48 @@ function showMarkerContextMenu(screenX, screenY, marker) {
         sizeInput.value = s;
     }
     document.getElementById('mcmRange').value = marker.range || '';
-    document.getElementById('mcmUnit').value = marker.unit || '';
     document.getElementById('mcmService').value = marker.service || '';
     document.getElementById('mcmProduct').value = marker.product || '';
     document.getElementById('mcmDataSheet').value = marker.dataSheet || '';
-    document.getElementById('mcmPid').value = marker.pid || '';
-    document.getElementById('mcmNote').value = marker.note || '';
+
+    // ===== IO 专属字段（IO List 表格字段） =====
+    document.getElementById('mcmDcsTag').value = marker.dcsTag || '';
+    document.getElementById('mcmPidRev').value = marker.pidRev || '';
+    document.getElementById('mcmZeroStatus').value = marker.zeroStatus || '';
+    document.getElementById('mcmOneStatus').value = marker.oneStatus || '';
+    document.getElementById('mcmAlarmLL').value = marker.alarmLL || '';
+    document.getElementById('mcmAlarmL').value = marker.alarmL || '';
+    document.getElementById('mcmAlarmH').value = marker.alarmH || '';
+    document.getElementById('mcmAlarmHH').value = marker.alarmHH || '';
+    document.getElementById('mcmRange0').value = marker.range0 || '';
+    document.getElementById('mcmRange100').value = marker.range100 || '';
+    document.getElementById('mcmUnit').value = marker.unit || '';
+    document.getElementById('mcmRioPanel').value = marker.rioPanel || '';
+    document.getElementById('mcmSlotNumber').value = marker.slotNumber || '';
+    document.getElementById('mcmChannelNumber').value = marker.channelNumber || '';
+
+    // IO Type / Signal Type / Power：空值=自动推断，下拉首项显示当前推断值
+    const defs = (typeof getIOListSignalDefaults === 'function')
+        ? getIOListSignalDefaults(marker.typeCode)
+        : { ioType: '', signalType: '', power: '' };
+    const ioTypeSel = document.getElementById('mcmIoType');
+    const signalTypeSel = document.getElementById('mcmSignalType');
+    const powerSel = document.getElementById('mcmPower');
+    ioTypeSel.options[0].textContent = defs.ioType ? `自动推断 (${defs.ioType})` : '自动推断';
+    signalTypeSel.options[0].textContent = defs.signalType ? `自动推断 (${defs.signalType})` : '自动推断';
+    powerSel.options[0].textContent = defs.power ? `自动推断 (${defs.power})` : '自动推断';
+    ioTypeSel.value = marker.ioType || '';
+    signalTypeSel.value = marker.signalType || '';
+    powerSel.value = marker.power || '';
 
     // 位置：优先出现在鼠标点击点，超出视口则回推
+    const menuW = 520;
     const rect = markerContextMenu.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     let x = screenX;
     let y = screenY;
-    if (x + 340 > vw) x = Math.max(4, vw - 340);
+    if (x + menuW > vw) x = Math.max(4, vw - menuW);
     if (y + 10 > vh) y = Math.max(4, vh - 10);
     markerContextMenu.style.left = x + 'px';
     markerContextMenu.style.top = y + 'px';
@@ -470,6 +511,24 @@ function saveMarkerContextMenu() {
     apply('dataSheet', document.getElementById('mcmDataSheet').value);
     apply('pid', document.getElementById('mcmPid').value);
     apply('note', document.getElementById('mcmNote').value);
+
+    // ===== IO List 专属字段 =====
+    apply('dcsTag', document.getElementById('mcmDcsTag').value);
+    apply('pidRev', document.getElementById('mcmPidRev').value);
+    apply('ioType', document.getElementById('mcmIoType').value);
+    apply('signalType', document.getElementById('mcmSignalType').value);
+    apply('power', document.getElementById('mcmPower').value);
+    apply('zeroStatus', document.getElementById('mcmZeroStatus').value);
+    apply('oneStatus', document.getElementById('mcmOneStatus').value);
+    apply('alarmLL', document.getElementById('mcmAlarmLL').value);
+    apply('alarmL', document.getElementById('mcmAlarmL').value);
+    apply('alarmH', document.getElementById('mcmAlarmH').value);
+    apply('alarmHH', document.getElementById('mcmAlarmHH').value);
+    apply('range0', document.getElementById('mcmRange0').value);
+    apply('range100', document.getElementById('mcmRange100').value);
+    apply('rioPanel', document.getElementById('mcmRioPanel').value);
+    apply('slotNumber', document.getElementById('mcmSlotNumber').value);
+    apply('channelNumber', document.getElementById('mcmChannelNumber').value);
 
     if (updates.length > 0) {
         // 合并为一条 history 记录（用 oldValue/newValue 记录所有变更）

@@ -323,28 +323,41 @@ function populateIOListData(ws, startRow, remarksCol) {
         const t = getTypeById(m.typeId);
         const row = ws.getRow(rowIdx);
 
-        row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N
-        row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No.
-        row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description
-        row.getCell(6).value = m.location || '';                    // Equipment = Location
-        row.getCell(7).value = m.pid || '';                         // P & ID Dwg No.
-        // Range: 0% / 100%（range 字段按 "~" 或 "-" 拆分，否则 0% 留空）
-        if (m.range) {
+        row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N (1)
+        row.getCell(3).value = m.dcsTag || '';                                        // DCS Tag Number (3)
+        row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No. (4)
+        row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description (5)
+        row.getCell(6).value = m.location || '';                    // Equipment (6)
+        row.getCell(7).value = m.pid || '';                         // P & ID Dwg No. (7)
+        row.getCell(8).value = m.pidRev || '';                      // P&ID Revision No. (8)
+        // IO Type / Signal Type / Power：优先用用户填写值，空则自动推断
+        const defs = getIOListSignalDefaults(m.typeCode);
+        row.getCell(9).value = m.ioType || defs.ioType;             // IO Type (9)
+        row.getCell(10).value = m.signalType || defs.signalType;    // Signal Type (10)
+        row.getCell(11).value = m.power || defs.power;              // Power (11)
+        row.getCell(12).value = m.zeroStatus || '';                 // Zero Status (12)
+        row.getCell(13).value = m.oneStatus || '';                  // One Status (13)
+        row.getCell(14).value = m.alarmLL || '';                    // Alarm LL (14)
+        row.getCell(15).value = m.alarmL || '';                     // Alarm L (15)
+        row.getCell(16).value = m.alarmH || '';                     // Alarm H (16)
+        row.getCell(17).value = m.alarmHH || '';                    // Alarm HH (17)
+        // Range 0% / 100%：优先用 range0/range100，空则从 range 拆分（兼容旧数据）
+        if (m.range0 || m.range100) {
+            row.getCell(18).value = m.range0 || '';                 // Range 0% (18)
+            row.getCell(19).value = m.range100 || '';               // Range 100% (19)
+        } else if (m.range) {
             const parts = String(m.range).split(/[~\-–—]/).map(s => s.trim());
-            row.getCell(18).value = parts[0] || '';                // Range 0%
-            row.getCell(19).value = parts[1] || parts[0] || '';     // Range 100%
+            row.getCell(18).value = parts[0] || '';
+            row.getCell(19).value = parts[1] || parts[0] || '';
         } else {
             row.getCell(18).value = '';
             row.getCell(19).value = '';
         }
-        row.getCell(20).value = m.unit || '';                       // Unit
-        row.getCell(remarksCol).value = m.note || '';                    // Remarks
-
-        // 根据仪表类型自动填写 IO Type / Signal Type / Power
-        const defs = getIOListSignalDefaults(m.typeCode);
-        row.getCell(9).value = defs.ioType;      // IO Type
-        row.getCell(10).value = defs.signalType; // Signal Type
-        row.getCell(11).value = defs.power;      // Power
+        row.getCell(20).value = m.unit || '';                       // Unit (20)
+        row.getCell(21).value = m.rioPanel || '';                   // RIO Panel No. (21)
+        row.getCell(22).value = m.slotNumber || '';                 // Slot Number (22)
+        row.getCell(23).value = m.channelNumber || '';              // Channel Number (23)
+        row.getCell(remarksCol).value = m.note || '';                    // Remarks (24)
 
         for (let c = 1; c <= remarksCol; c++) {
             const cell = row.getCell(c);

@@ -134,13 +134,12 @@ function restoreMarkers(data) {
                 typeFullName: md.typeFullName || typeMatch.fullName,
                 typeAbbr: md.typeAbbr || typeMatch.abbr,
             };
-            if (typeof md.tagNumber === 'string' && md.tagNumber.length > 0) {
-                marker.tagNumber = md.tagNumber;
+            for (const f of MARKER_OPTIONAL_FIELDS) {
+                const v = md[f];
+                if (v !== undefined && v !== null && String(v).length > 0) {
+                    marker[f] = v;
+                }
             }
-            if (typeof md.sizeNote === 'string' && md.sizeNote.length > 0) {
-                marker.sizeNote = md.sizeNote;
-            }
-            if (md.note) marker.note = md.note;
 
             markers.push(marker);
         }
