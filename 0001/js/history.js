@@ -4,9 +4,11 @@ const redoStack = [];
 function removeMarkerFromArray(marker) {
     const idx = markers.indexOf(marker);
     if (idx !== -1) markers.splice(idx, 1);
+    releaseNumber(marker.number, marker.typeId);
 }
 
 function insertMarkerToArray(marker) {
+    reserveNumber(marker.number, marker.typeId);
     markers.push(marker);
 }
 
