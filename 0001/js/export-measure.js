@@ -18,21 +18,21 @@ async function exportMeasureExcel() {
 async function exportMeasureExcelCore() {
     const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
-    wb.creator = '电气PDF标注·测量';
+    wb.creator = 'PDF Annotator - Measure';
     wb.created = new Date();
 
     // 工作表1：测量段汇总
-    const ws = wb.addWorksheet('测量汇总', {
+    const ws = wb.addWorksheet('Measurements', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     ws.columns = [
-        { header: '编号', key: 'id', width: 8 },
-        { header: '类型', key: 'type', width: 12 },
-        { header: '点数', key: 'points', width: 8 },
-        { header: '总长', key: 'length', width: 14 },
-        { header: '面积', key: 'area', width: 14 },
-        { header: '所属文件', key: 'file', width: 32 },
-        { header: '页码', key: 'page', width: 8 },
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Type', key: 'type', width: 12 },
+        { header: 'Points', key: 'points', width: 8 },
+        { header: 'Length', key: 'length', width: 14 },
+        { header: 'Area', key: 'area', width: 14 },
+        { header: 'File', key: 'file', width: 32 },
+        { header: 'Page', key: 'page', width: 8 },
     ];
     styleHeaderRow(ws.getRow(1));
 
@@ -43,7 +43,7 @@ async function exportMeasureExcelCore() {
     measurements.forEach(m => {
         const lenFmt = formatLength(m.totalLenPixels);
         const pointCount = m.points.length;
-        const typeText = pointCount === 2 ? '线段' : '多边形';
+        const typeText = pointCount === 2 ? 'Line' : 'Polygon';
         const areaFmt = (m.areaPixels !== null && m.areaPixels > 0)
             ? formatArea(m.areaPixels)
             : null;
@@ -71,8 +71,8 @@ async function exportMeasureExcelCore() {
     // 合计行
     const totalLenFmt = formatLength(totalLenPixels);
     const totalRow = ws.addRow({
-        id: '合计',
-        type: `${measurements.length} 段`,
+        id: 'Total',
+        type: `${measurements.length} segs`,
         points: '',
         length: `${totalLenFmt.text} ${totalLenFmt.unit}`,
         area: hasArea ? `${formatArea(totalAreaPixels).text} ${formatArea(totalAreaPixels).unit}` : '—',
@@ -90,16 +90,16 @@ async function exportMeasureExcelCore() {
     totalRow.getCell(5).font = { bold: true, color: { argb: 'FF2E7D32' } };
 
     // 工作表2：每段明细（每个点到下一点的距离）
-    const wsDetail = wb.addWorksheet('分段明细', {
+    const wsDetail = wb.addWorksheet('Segment Detail', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     wsDetail.columns = [
-        { header: '段编号', key: 'seg', width: 10 },
-        { header: '起点', key: 'from', width: 8 },
-        { header: '终点', key: 'to', width: 8 },
-        { header: '距离', key: 'dist', width: 14 },
-        { header: '所属文件', key: 'file', width: 32 },
-        { header: '页码', key: 'page', width: 8 },
+        { header: 'Seg', key: 'seg', width: 10 },
+        { header: 'From', key: 'from', width: 8 },
+        { header: 'To', key: 'to', width: 8 },
+        { header: 'Distance', key: 'dist', width: 14 },
+        { header: 'File', key: 'file', width: 32 },
+        { header: 'Page', key: 'page', width: 8 },
     ];
     styleHeaderRow(wsDetail.getRow(1));
 
@@ -121,23 +121,31 @@ async function exportMeasureExcelCore() {
     });
 
     // 工作表3：比例尺信息
-    const wsInfo = wb.addWorksheet('比例尺信息');
+    const wsInfo = wb.addWorksheet('Scale Info');
     wsInfo.columns = [
-        { header: '项目', key: 'key', width: 24 },
-        { header: '值', key: 'val', width: 24 },
+        { header: 'Item', key: 'key', width: 24 },
+        { header: 'Value', key: 'val', width: 24 },
     ];
     styleHeaderRow(wsInfo.getRow(1));
-    const modeText = measureMode === 'real' ? '实物尺寸 (m)' : '图纸尺寸 (mm)';
+    const modeText = measureMode === 'real' ? 'Real Size (m)' : 'Drawing Size (mm)';
     const scaleText = measureMode === 'real' ? `1:${measureScale}` : '1:1';
     const rawScaleText = measureRawScale !== null ? `1:${measureRawScale}` : '—';
-    wsInfo.addRow({ key: '测量模式', val: modeText });
-    wsInfo.addRow({ key: '校准比例尺', val: scaleText });
-    wsInfo.addRow({ key: '原始测量值', val: rawScaleText });
-    wsInfo.addRow({ key: '测量段数', val: `${measurements.length} 段` });
-    wsInfo.addRow({ key: '导出时间', val: new Date().toLocaleString('zh-CN') });
+    wsInfo.addRow({ key: 'Measure Mode', val: modeText });
+    wsInfo.addRow({ key: 'Calibrated Scale', val: scaleText });
+    wsInfo.addRow({ key: 'Raw Scale', val: rawScaleText });
+    wsInfo.addRow({ key: 'Segments', val: `${measurements.length} segs` });
+    wsInfo.addRow({ key: 'Export Time', val: new Date().toLocaleString('en-US') });
+
+    // 统一格式：Arial 字体 + 居中 + 边框（与仪表导出一致）
+    autoFitColumns(ws);
+    autoFitColumns(wsDetail);
+    autoFitColumns(wsInfo);
+    applyTableFormat(ws);
+    applyTableFormat(wsDetail);
+    applyTableFormat(wsInfo);
 
     const buf = await wb.xlsx.writeBuffer();
-    await downloadExcelBuffer(buf, `测量统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await downloadExcelBuffer(buf, `Measurements_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 // ===== PDF 导出 =====

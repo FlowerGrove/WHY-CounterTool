@@ -102,6 +102,12 @@ function deleteType(typeId) {
 
     markerTypes.splice(idx, 1);
 
+    // 同步清理 IO List 选择集合，避免残留已删除类型的 id
+    if (ioListSelectedIds !== null) {
+        ioListSelectedIds.delete(typeId);
+        // 集合空时不强制回到 null，保留"什么都不导出"的语义
+    }
+
     // 若删除的是当前选中类型，切回第一个
     if (currentTypeId === typeId) {
         currentTypeId = markerTypes[0].id;
@@ -122,9 +128,18 @@ function selectType(typeId) {
     renderTypeChips();
 }
 
+// 将中文双引号统一转为英文双引号（自定义类型强制使用英文符号）
+function normalizeQuotes(s) {
+    return String(s == null ? '' : s)
+        .replace(/[\u201C\u201D]/g, '"')   // “ ” → "
+        .replace(/[\u2018\u2019]/g, "'");  // ‘ ’ → '
+}
+
 function addCustomType() {
-    const name = prompt('输入新仪表类型代号（如：PSH、AI、HCV）', '');
+    let name = prompt('输入新仪表类型代号（如：PSH、AI、HCV）', '');
     if (!name) return;
+    // 自定义类型强制英文符号：中文双引号/单引号 → 英文
+    name = normalizeQuotes(name);
     const trimmed = name.trim().slice(0, 12);
     if (!trimmed) return;
     if (markerTypes.some(t => t.name === trimmed)) {
@@ -163,8 +178,16 @@ function addCustomType() {
 }
 
 // ===== IO List 类型选择 =====
-// null = 全部导出（默认）；Set = 仅导出集合中的类型
-let ioListSelectedIds = null;
+// null = 全部导出；Set = 仅导出集合中的类型
+// 默认仅勾选 PI / TI / FI / LI 进入 IO List
+let ioListSelectedIds = (() => {
+    const targetAbbrs = new Set(['PI', 'TI', 'FI', 'LI']);
+    const selected = new Set();
+    for (const t of markerTypes) {
+        if (targetAbbrs.has(t.abbr)) selected.add(t.id);
+    }
+    return selected;
+})();
 
 // 判断某类型是否被勾选导出到 IO List
 function isTypeInIOList(typeId) {
@@ -202,11 +225,8 @@ function openIOSelectModal() {
                         if (mt.id !== t.id) temp.add(mt.id);
                     }
                 } else if (temp.has(t.id)) {
+                    // 取消勾选：空集合 = 什么都不导出，与"清空"按钮一致
                     temp.delete(t.id);
-                    if (temp.size === 0) {
-                        // 全部取消 → 回到全选
-                        temp = null;
-                    }
                 } else {
                     temp.add(t.id);
                 }

@@ -8,6 +8,10 @@ function styleHeaderRow(row) {
     row.alignment = { vertical: 'middle' };
 }
 
+// Excel 输出统一转英文双引号/单引号（与自定义类型 normalizeQuotes 规则一致）
+// 传入任意值，返回已转换的字符串；null/undefined → 空串
+const qExcel = (s) => normalizeQuotes(s == null ? '' : String(s));
+
 // 估算文本显示宽度（ExcelJS 列宽单位近似等于默认字体下字符宽度）
 // 中文/全角字符按 2 计算，英文/数字按 1 计算
 function measureTextWidth(text) {
@@ -57,7 +61,7 @@ function autoFitColumns(ws) {
     });
 }
 
-// 统一应用表格格式：所有单元格居中 + 细边框
+// 统一应用表格格式：所有单元格 Arial 字体 + 居中 + 细边框
 function applyTableFormat(ws) {
     const border = {
         top: { style: 'thin', color: { argb: 'FF808080' } },
@@ -71,6 +75,9 @@ function applyTableFormat(ws) {
             const cell = row.getCell(i);
             cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             cell.border = border;
+            // 强制 Arial 字体，保留原有 bold/color/size 属性
+            const f = cell.font || {};
+            cell.font = { ...f, name: 'Arial', size: f.size || 10 };
         }
     });
 }
@@ -324,40 +331,40 @@ function populateIOListData(ws, startRow, remarksCol) {
         const row = ws.getRow(rowIdx);
 
         row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N (1)
-        row.getCell(3).value = m.dcsTag || '';                                        // DCS Tag Number (3)
-        row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No. (4)
-        row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description (5)
-        row.getCell(6).value = m.location || '';                    // Equipment (6)
-        row.getCell(7).value = m.pid || '';                         // P & ID Dwg No. (7)
-        row.getCell(8).value = m.pidRev || '';                      // P&ID Revision No. (8)
+        row.getCell(3).value = qExcel(m.dcsTag || '');                                        // DCS Tag Number (3)
+        row.getCell(IO_LIST_TAG_COL).value = qExcel(formatMarkerLabel(m));                     // Instrument Tag No. (4)
+        row.getCell(IO_LIST_DESC_COL).value = qExcel(m.typeFullName || t.fullName || m.typeName || ''); // Signal Description (5)
+        row.getCell(6).value = qExcel(m.location || '');                    // Equipment (6)
+        row.getCell(7).value = qExcel(m.pid || '');                         // P & ID Dwg No. (7)
+        row.getCell(8).value = qExcel(m.pidRev || '');                      // P&ID Revision No. (8)
         // IO Type / Signal Type / Power：优先用用户填写值，空则自动推断
         const defs = getIOListSignalDefaults(m.typeCode);
-        row.getCell(9).value = m.ioType || defs.ioType;             // IO Type (9)
-        row.getCell(10).value = m.signalType || defs.signalType;    // Signal Type (10)
-        row.getCell(11).value = m.power || defs.power;              // Power (11)
-        row.getCell(12).value = m.zeroStatus || '';                 // Zero Status (12)
-        row.getCell(13).value = m.oneStatus || '';                  // One Status (13)
-        row.getCell(14).value = m.alarmLL || '';                    // Alarm LL (14)
-        row.getCell(15).value = m.alarmL || '';                     // Alarm L (15)
-        row.getCell(16).value = m.alarmH || '';                     // Alarm H (16)
-        row.getCell(17).value = m.alarmHH || '';                    // Alarm HH (17)
+        row.getCell(9).value = qExcel(m.ioType || defs.ioType);             // IO Type (9)
+        row.getCell(10).value = qExcel(m.signalType || defs.signalType);    // Signal Type (10)
+        row.getCell(11).value = qExcel(m.power || defs.power);              // Power (11)
+        row.getCell(12).value = qExcel(m.zeroStatus || '');                 // Zero Status (12)
+        row.getCell(13).value = qExcel(m.oneStatus || '');                  // One Status (13)
+        row.getCell(14).value = qExcel(m.alarmLL || '');                    // Alarm LL (14)
+        row.getCell(15).value = qExcel(m.alarmL || '');                     // Alarm L (15)
+        row.getCell(16).value = qExcel(m.alarmH || '');                     // Alarm H (16)
+        row.getCell(17).value = qExcel(m.alarmHH || '');                    // Alarm HH (17)
         // Range 0% / 100%：优先用 range0/range100，空则从 range 拆分（兼容旧数据）
         if (m.range0 || m.range100) {
-            row.getCell(18).value = m.range0 || '';                 // Range 0% (18)
-            row.getCell(19).value = m.range100 || '';               // Range 100% (19)
+            row.getCell(18).value = qExcel(m.range0 || '');                 // Range 0% (18)
+            row.getCell(19).value = qExcel(m.range100 || '');               // Range 100% (19)
         } else if (m.range) {
             const parts = String(m.range).split(/[~\-–—]/).map(s => s.trim());
-            row.getCell(18).value = parts[0] || '';
-            row.getCell(19).value = parts[1] || parts[0] || '';
+            row.getCell(18).value = qExcel(parts[0] || '');
+            row.getCell(19).value = qExcel(parts[1] || parts[0] || '');
         } else {
             row.getCell(18).value = '';
             row.getCell(19).value = '';
         }
-        row.getCell(20).value = m.unit || '';                       // Unit (20)
-        row.getCell(21).value = m.rioPanel || '';                   // RIO Panel No. (21)
-        row.getCell(22).value = m.slotNumber || '';                 // Slot Number (22)
-        row.getCell(23).value = m.channelNumber || '';              // Channel Number (23)
-        row.getCell(remarksCol).value = m.note || '';                    // Remarks (24)
+        row.getCell(20).value = qExcel(m.unit || '');                       // Unit (20)
+        row.getCell(21).value = qExcel(m.rioPanel || '');                   // RIO Panel No. (21)
+        row.getCell(22).value = qExcel(m.slotNumber || '');                 // Slot Number (22)
+        row.getCell(23).value = qExcel(m.channelNumber || '');              // Channel Number (23)
+        row.getCell(remarksCol).value = qExcel(m.note || '');                    // Remarks (24)
 
         for (let c = 1; c <= remarksCol; c++) {
             const cell = row.getCell(c);
@@ -449,17 +456,17 @@ async function exportExcelCore() {
     }
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = '电气PDF标注';
+    wb.creator = 'PDF Annotator';
     wb.created = new Date();
 
-    const wsByFile = wb.addWorksheet('按文件汇总', {
+    const wsByFile = wb.addWorksheet('By File', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     wsByFile.columns = [
-        { header: '文件名', key: 'file', width: 36 },
-        { header: '类型', key: 'type', width: 10 },
-        { header: '说明', key: 'desc', width: 16 },
-        { header: '数量', key: 'count', width: 8 },
+        { header: 'File', key: 'file', width: 36 },
+        { header: 'Type', key: 'type', width: 10 },
+        { header: 'Description', key: 'desc', width: 16 },
+        { header: 'Count', key: 'count', width: 8 },
     ];
     styleHeaderRow(wsByFile.getRow(1));
 
@@ -470,10 +477,10 @@ async function exportExcelCore() {
 
     if (isSingleMultiPageDoc) {
         wsByFile.columns = [
-            { header: '页码', key: 'page', width: 10 },
-            { header: '类型', key: 'type', width: 12 },
-            { header: '说明', key: 'desc', width: 16 },
-            { header: '数量', key: 'count', width: 8 },
+            { header: 'Page', key: 'page', width: 10 },
+            { header: 'Type', key: 'type', width: 12 },
+            { header: 'Description', key: 'desc', width: 16 },
+            { header: 'Count', key: 'count', width: 8 },
         ];
         styleHeaderRow(wsByFile.getRow(1));
 
@@ -482,7 +489,7 @@ async function exportExcelCore() {
             page: `📄 ${doc.fileName}`,
             type: '',
             desc: '',
-            count: `共 ${markers.length} 个标记`,
+            count: `${markers.length} markers`,
         });
         titleRow.font = { bold: true, size: 12 };
         titleRow.getCell(4).font = { bold: true, color: { argb: 'FF1A73E8' } };
@@ -501,10 +508,10 @@ async function exportExcelCore() {
             const pageMarkers = byPage.get(pageIndex);
 
             const pageHeader = wsByFile.addRow({
-                page: `第 ${pageIndex} 页`,
+                page: `Page ${pageIndex}`,
                 type: '',
                 desc: '',
-                count: `${pageMarkers.length} 个`,
+                count: `${pageMarkers.length}`,
             });
             pageHeader.font = { bold: true };
             pageHeader.getCell(1).font = { bold: true, color: { argb: 'FF1A73E8' } };
@@ -592,7 +599,7 @@ async function exportExcelCore() {
 
             const totalRow = wsByFile.addRow({
                 file: '',
-                type: '小计',
+                type: 'Subtotal',
                 desc: '',
                 count: list.length,
             });
@@ -604,20 +611,20 @@ async function exportExcelCore() {
     }
 
     const grand = wsByFile.addRow({
-        file: '全部合计',
+        file: 'Grand Total',
         type: '',
         desc: '',
         count: markers.length,
     });
     grand.font = { bold: true };
 
-    const wsType = wb.addWorksheet('类型总汇', {
+    const wsType = wb.addWorksheet('Type Summary', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     wsType.columns = [
-        { header: '类型', key: 'type', width: 10 },
-        { header: '说明', key: 'desc', width: 16 },
-        { header: '数量', key: 'count', width: 8 },
+        { header: 'Type', key: 'type', width: 10 },
+        { header: 'Description', key: 'desc', width: 16 },
+        { header: 'Count', key: 'count', width: 8 },
     ];
     styleHeaderRow(wsType.getRow(1));
 
@@ -652,10 +659,10 @@ async function exportExcelCore() {
             count: c.count,
         });
     }
-    const typeTotal = wsType.addRow({ type: '合计', desc: '', count: markers.length });
+    const typeTotal = wsType.addRow({ type: 'Total', desc: '', count: markers.length });
     typeTotal.font = { bold: true };
 
-    const wsDetail = wb.addWorksheet('明细清单', {
+    const wsDetail = wb.addWorksheet('Detail List', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
     wsDetail.columns = [
@@ -704,16 +711,16 @@ async function exportExcelCore() {
         }
         const r = wsDetail.addRow({
             idx: i + 1,
-            label: formatMarkerLabel(m),
-            location: m.location || '',
-            type: m.typeFullName || t.fullName || m.typeName || t.name || '',
-            connection: connection,
-            size: m.range || '',
-            service: m.service || '',
-            product: m.product || '',
-            dataSheet: m.dataSheet || '',
-            pid: m.pid || '',
-            note: m.note || '',
+            label: qExcel(formatMarkerLabel(m)),
+            location: qExcel(m.location || ''),
+            type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
+            connection: qExcel(connection),
+            size: qExcel(m.range || ''),
+            service: qExcel(m.service || ''),
+            product: qExcel(m.product || ''),
+            dataSheet: qExcel(m.dataSheet || ''),
+            pid: qExcel(m.pid || ''),
+            note: qExcel(m.note || ''),
             list: listType,
         });
     });
@@ -773,16 +780,16 @@ async function exportExcelCore() {
             }
             wsIns.addRow({
                 idx: i + 1,
-                label: formatMarkerLabel(m),
-                location: m.location || '',
-                type: m.typeFullName || t.fullName || m.typeName || t.name || '',
-                connection: connection,
-                size: m.range || '',
-                service: m.service || '',
-                product: m.product || '',
-                dataSheet: m.dataSheet || '',
-                pid: m.pid || '',
-                note: m.note || '',
+                label: qExcel(formatMarkerLabel(m)),
+                location: qExcel(m.location || ''),
+                type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
+                connection: qExcel(connection),
+                size: qExcel(m.range || ''),
+                service: qExcel(m.service || ''),
+                product: qExcel(m.product || ''),
+                dataSheet: qExcel(m.dataSheet || ''),
+                pid: qExcel(m.pid || ''),
+                note: qExcel(m.note || ''),
             });
         });
 
@@ -791,5 +798,5 @@ async function exportExcelCore() {
     }
 
     const buf = await wb.xlsx.writeBuffer();
-    await downloadExcelBuffer(buf, `仪表统计_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await downloadExcelBuffer(buf, `Instruments_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
