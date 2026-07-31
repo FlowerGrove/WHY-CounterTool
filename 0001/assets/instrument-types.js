@@ -183,7 +183,7 @@ const INSTRUMENT_TYPES = [
     { abbr: 'DO',   fullName: 'Digital Output',                      color: '#1e88e5', alwaysVisible: false },
 
     // ===== 其他 =====
-    { abbr: 'X',    fullName: 'Other Instrument',                    color: '#e53935', alwaysVisible: true  },
+    { abbr: 'X',    fullName: 'Other Instrument',                    color: '#e53935', alwaysVisible: false },
 ];
 
 // 尺寸连接方式映射

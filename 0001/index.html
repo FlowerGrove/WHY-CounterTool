@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>个人标注工具</title>
     <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/FlowerGrove" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="lib/fontawesome/all.min.css" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/drop-hint.css" />
     <link rel="stylesheet" href="css/top-panel.css" />
@@ -21,6 +18,12 @@
     <link rel="stylesheet" href="css/settings.css" />
     <link rel="stylesheet" href="css/context-menu.css" />
     <link rel="stylesheet" href="css/responsive.css" />
+    <style>
+        .number-input-group,
+        .number-input-group + .divider.marker-tool {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -265,7 +268,7 @@
         <div class="mcm-body">
             <!-- ===== 公共字段（两个菜单都显示） ===== -->
             <div class="mcm-field" data-menu="both">
-                <label class="mcm-label">仪表编号</label>
+                <label class="mcm-label">Tag No.</label>
                 <input type="text" class="mcm-input" id="mcmTagNumber" />
             </div>
             <!-- IO 专属：DCS Tag Number -->
@@ -274,12 +277,12 @@
                 <input type="text" class="mcm-input" id="mcmDcsTag" />
             </div>
             <div class="mcm-field" data-menu="both">
-                <label class="mcm-label">位置 Location</label>
+                <label class="mcm-label">Location</label>
                 <input type="text" class="mcm-input" id="mcmLocation" />
             </div>
             <!-- ===== INS 专属字段（明细清单） ===== -->
             <div class="mcm-field" data-menu="ins" id="mcmSizeField">
-                <label class="mcm-label">口径 Connection</label>
+                <label class="mcm-label">Process Connection</label>
                 <div class="mcm-input-wrap">
                     <select class="mcm-input mcm-select--full" id="mcmSize">
                         <option value="1/2">1/2"</option>
@@ -327,25 +330,25 @@
                 </div>
             </div>
             <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">服务 Service</label>
+                <label class="mcm-label">Service</label>
                 <input type="text" class="mcm-input" id="mcmService" />
             </div>
             <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">产品 Product</label>
+                <label class="mcm-label">Product</label>
                 <input type="text" class="mcm-input" id="mcmProduct" />
             </div>
             <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">数据表 Data Sheet</label>
+                <label class="mcm-label">Data Sheet No.</label>
                 <input type="text" class="mcm-input" id="mcmDataSheet" />
             </div>
             <!-- ===== 公共字段 ===== -->
             <div class="mcm-field mcm-field--wide" data-menu="both">
-                <label class="mcm-label">P&amp;ID 图号</label>
+                <label class="mcm-label">P&amp;ID Dwg No.</label>
                 <input type="text" class="mcm-input" id="mcmPid" />
             </div>
             <!-- ===== IO 专属字段（IO List 表格字段） ===== -->
             <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">P&amp;ID 修订号</label>
+                <label class="mcm-label">P&amp;ID Revision No.</label>
                 <input type="text" class="mcm-input" id="mcmPidRev" />
             </div>
             <div class="mcm-field" data-menu="io">
@@ -411,7 +414,7 @@
                 <input type="text" class="mcm-input" id="mcmRange100" />
             </div>
             <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">单位 Unit</label>
+                <label class="mcm-label">Unit</label>
                 <input type="text" class="mcm-input" id="mcmUnit" />
             </div>
             <div class="mcm-field" data-menu="io">
@@ -428,7 +431,7 @@
             </div>
             <!-- ===== 公共字段 ===== -->
             <div class="mcm-field mcm-field--wide" data-menu="both">
-                <label class="mcm-label">备注</label>
+                <label class="mcm-label">Remarks</label>
                 <input type="text" class="mcm-input" id="mcmNote" />
             </div>
         </div>

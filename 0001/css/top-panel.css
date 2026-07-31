@@ -228,3 +228,7 @@ body.measure-active .measure-only {
 .measure-scale-display.auto-calibrated .measure-scale-value:last-child {
     color: #2E7D32;
 }
+.number-input-group,
+.number-input-group + .divider.marker-tool {
+    display: none !important;
+}

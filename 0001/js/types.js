@@ -202,37 +202,75 @@ function openIOSelectModal() {
 
     // 临时集合：null = 全选，Set = 显式选定
     let temp = ioListSelectedIds === null ? null : new Set(ioListSelectedIds);
+    // 未勾选项默认折叠
+    let uncheckedCollapsed = true;
 
     function isChecked(id) {
         return temp === null || temp.has(id);
     }
 
+    // 创建单个 io-select-item 元素
+    function createItem(t) {
+        const item = document.createElement('div');
+        item.className = 'io-select-item' + (isChecked(t.id) ? ' io-select-item--checked' : '');
+        item.innerHTML = `
+            <div class="io-select-item__checkbox"></div>
+            <span class="io-select-item__code">${t.name}</span>
+            <span class="io-select-item__name">${t.fullName || ''}</span>
+        `;
+        item.addEventListener('click', () => {
+            if (temp === null) {
+                // 当前全选 → 切换为显式集合（排除点击项）
+                temp = new Set();
+                for (const mt of markerTypes) {
+                    if (mt.id !== t.id) temp.add(mt.id);
+                }
+            } else if (temp.has(t.id)) {
+                // 取消勾选：空集合 = 什么都不导出，与"清空"按钮一致
+                temp.delete(t.id);
+            } else {
+                temp.add(t.id);
+            }
+            renderList();
+        });
+        return item;
+    }
+
     function renderList() {
         listEl.innerHTML = '';
+
+        // 分组：已勾选的常驻，未勾选的折叠
+        const checkedTypes = [];
+        const uncheckedTypes = [];
         for (const t of markerTypes) {
-            const item = document.createElement('div');
-            item.className = 'io-select-item' + (isChecked(t.id) ? ' io-select-item--checked' : '');
-            item.innerHTML = `
-                <div class="io-select-item__checkbox"></div>
-                <span class="io-select-item__code">${t.name}</span>
-                <span class="io-select-item__name">${t.fullName || ''}</span>
+            if (isChecked(t.id)) checkedTypes.push(t);
+            else uncheckedTypes.push(t);
+        }
+
+        // 渲染已勾选项
+        for (const t of checkedTypes) {
+            listEl.appendChild(createItem(t));
+        }
+
+        // 渲染未勾选项的折叠区
+        if (uncheckedTypes.length > 0) {
+            const toggle = document.createElement('div');
+            toggle.className = 'io-select-toggle';
+            toggle.innerHTML = `
+                <i class="fa-solid fa-chevron-${uncheckedCollapsed ? 'right' : 'down'}"></i>
+                <span>${uncheckedCollapsed ? '展开' : '折叠'}未勾选 (${uncheckedTypes.length})</span>
             `;
-            item.addEventListener('click', () => {
-                if (temp === null) {
-                    // 当前全选 → 切换为显式集合（排除点击项）
-                    temp = new Set();
-                    for (const mt of markerTypes) {
-                        if (mt.id !== t.id) temp.add(mt.id);
-                    }
-                } else if (temp.has(t.id)) {
-                    // 取消勾选：空集合 = 什么都不导出，与"清空"按钮一致
-                    temp.delete(t.id);
-                } else {
-                    temp.add(t.id);
-                }
+            toggle.addEventListener('click', () => {
+                uncheckedCollapsed = !uncheckedCollapsed;
                 renderList();
             });
-            listEl.appendChild(item);
+            listEl.appendChild(toggle);
+
+            if (!uncheckedCollapsed) {
+                for (const t of uncheckedTypes) {
+                    listEl.appendChild(createItem(t));
+                }
+            }
         }
     }
 
@@ -249,17 +287,15 @@ function openIOSelectModal() {
         renderList();
     };
 
-    // 关闭/确定
-    function closeModal() {
-        modal.hidden = true;
-    }
-    document.getElementById('ioSelectClose').onclick = closeModal;
-    document.querySelector('.io-select-modal__backdrop').onclick = closeModal;
-    document.getElementById('ioSelectConfirm').onclick = () => {
+    // 关闭即保存：弹窗无"取消"按钮，叉号/遮罩/确定均视为确认当前选择
+    function commitAndClose() {
         ioListSelectedIds = temp;
-        closeModal();
+        modal.hidden = true;
         scheduleAutosave();
-    };
+    }
+    document.getElementById('ioSelectClose').onclick = commitAndClose;
+    document.querySelector('.io-select-modal__backdrop').onclick = commitAndClose;
+    document.getElementById('ioSelectConfirm').onclick = commitAndClose;
 
     modal.hidden = false;
 }
