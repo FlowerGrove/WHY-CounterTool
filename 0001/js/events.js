@@ -1283,6 +1283,8 @@ exportBtn.addEventListener('click', exportMarkedPDF);
 exportPdfFromStatsBtn.addEventListener('click', exportMarkedPDF);
 exportBothBtn.addEventListener('click', exportBoth);
 
+// 预览窗口事件绑定已移至 js/preview.js（直接读取内存数据，无需 iframe）
+
 // 测量数据导出（独立于仪表标记导出）
 exportMeasureExcelBtn.addEventListener('click', exportMeasureExcel);
 exportMeasurePdfBtn.addEventListener('click', exportMeasurePdf);

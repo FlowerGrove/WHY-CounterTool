@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/settings.css" />
     <link rel="stylesheet" href="css/context-menu.css" />
     <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/preview.css" />
     <style>
         .number-input-group,
         .number-input-group + .divider.marker-tool {
@@ -251,6 +252,106 @@
         <button class="btn-icon" id="exportExcelBottomBtn" title="导出统计 Excel"><i class="fa-solid fa-file-excel"></i><span class="tooltip">Excel</span></button>
         <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
         <button class="btn-icon" id="exportBothBtn" title="同步导出 Excel 和 PDF"><i class="fa-solid fa-download"></i><span class="tooltip">同步导出</span></button>
+        <button class="btn-icon" id="previewBtn" title="预览标注数据"><i class="fa-solid fa-table-list"></i><span class="tooltip">预览</span></button>
+    </div>
+
+    <!-- 预览窗口：占屏幕 90%，直接渲染内存数据 -->
+    <div class="preview-overlay" id="previewOverlay" hidden>
+        <div class="preview-window">
+            <header class="preview-header">
+                <div class="preview-header__left">
+                    <h1 class="preview-title">
+                        <i class="fa-solid fa-table-list"></i>
+                        标注数据预览
+                    </h1>
+                    <span class="preview-meta" id="pvMeta"></span>
+                </div>
+                <div class="preview-header__right">
+                    <button type="button" class="preview-close" id="previewCloseBtn" title="关闭预览（Esc）">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </header>
+
+            <nav class="preview-tabs">
+                <button class="preview-tab active" data-sheet="byFile">By File</button>
+                <button class="preview-tab" data-sheet="typeSummary">Type Summary</button>
+                <button class="preview-tab" data-sheet="detail">Detail List</button>
+                <button class="preview-tab" data-sheet="ioList">IO List</button>
+                <button class="preview-tab" data-sheet="insList">INS List</button>
+            </nav>
+
+            <main class="preview-body">
+                <div class="preview-empty" id="pvEmpty" hidden>
+                    <i class="fa-solid fa-inbox"></i>
+                    <p>还没有标记，请先在图纸上点击标注</p>
+                </div>
+
+                <section class="preview-sheet" id="pvSheet-byFile">
+                    <div class="preview-scroll">
+                        <table class="preview-table" id="pvTable-byFile"></table>
+                    </div>
+                </section>
+
+                <section class="preview-sheet" id="pvSheet-typeSummary" hidden>
+                    <div class="preview-scroll">
+                        <table class="preview-table" id="pvTable-typeSummary"></table>
+                    </div>
+                </section>
+
+                <section class="preview-sheet" id="pvSheet-detail" hidden>
+                    <div class="preview-scroll">
+                        <table class="preview-table" id="pvTable-detail"></table>
+                    </div>
+                </section>
+
+                <section class="preview-sheet" id="pvSheet-ioList" hidden>
+                    <div class="preview-scroll">
+                        <table class="preview-table io-list-table" id="pvTable-ioList">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">S/N</th>
+                                    <th rowspan="2">Revision No.</th>
+                                    <th rowspan="2">DCS Tag Number</th>
+                                    <th rowspan="2">Instrument Tag No.</th>
+                                    <th rowspan="2">Signal Description</th>
+                                    <th rowspan="2">Equipment</th>
+                                    <th rowspan="2">P &amp; ID Dwg No.</th>
+                                    <th rowspan="2">P&amp;ID Revision No.</th>
+                                    <th rowspan="2">IO Type</th>
+                                    <th rowspan="2">Signal Type</th>
+                                    <th rowspan="2">Power</th>
+                                    <th rowspan="2">Zero Stauts</th>
+                                    <th rowspan="2">One Stauts</th>
+                                    <th colspan="4">Alarm Setting</th>
+                                    <th colspan="2">Range</th>
+                                    <th rowspan="2">Unit</th>
+                                    <th rowspan="2">RIO Panel No.</th>
+                                    <th rowspan="2">Slot Number</th>
+                                    <th rowspan="2">Channel Number</th>
+                                    <th rowspan="2">Remarks</th>
+                                </tr>
+                                <tr>
+                                    <th>LL</th><th>L</th><th>H</th><th>HH</th>
+                                    <th>0%</th><th>100%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pvIoListBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="preview-sheet" id="pvSheet-insList" hidden>
+                    <div class="preview-scroll">
+                        <table class="preview-table" id="pvTable-insList"></table>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="preview-footer">
+                <span id="pvFooter"></span>
+            </footer>
+        </div>
     </div>
 
     <div class="marker-context-menu" id="markerContextMenu">
@@ -460,6 +561,7 @@
     <script src="js/export-pdf.js"></script>
     <script src="js/export-excel.js"></script>
     <script src="js/export-measure.js"></script>
+    <script src="js/preview.js"></script>
     <script src="js/main.js"></script>
     <script src="js/events.js"></script>
 </body>
