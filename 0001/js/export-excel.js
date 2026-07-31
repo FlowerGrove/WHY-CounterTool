@@ -693,12 +693,13 @@ async function exportExcelCore() {
         const t = getTypeById(m.typeId);
         // List 标识：IO = 勾选导出到 IO List，INS = 未勾选（仅 INS List）
         const listType = isTypeInIOList(m.typeId) ? 'IO' : 'INS';
-        // Process Connection 拼接规则（统一走资源库 INSTRUMENT_RESOURCES）：
-        // - sizeNote 已含 ANSI/NPT/FLANGED/THREADED/SW 等关键字 → 原样输出
+        // Process Connection 拼接规则：
+        // - sizeNote 经 formatSizeNote 渲染为 '2"' / '2"x3"' 显示格式
+        // - 已含 ANSI/NPT/FLANGED 等关键字 → 原样输出
         // - 其他 → 按仪表代号从 SIZE_CONNECTIONS 查找后缀，找不到用默认 ANSI 150# RF
         let connection = '';
         if (m.sizeNote) {
-            const s = String(m.sizeNote);
+            const s = formatSizeNote(m.sizeNote);
             const res = window.INSTRUMENT_RESOURCES;
             if (res && res.hasConnectionKeyword(s)) {
                 connection = s;
@@ -767,7 +768,7 @@ async function exportExcelCore() {
             const t = getTypeById(m.typeId);
             let connection = '';
             if (m.sizeNote) {
-                const s = String(m.sizeNote);
+                const s = formatSizeNote(m.sizeNote);
                 const res = window.INSTRUMENT_RESOURCES;
                 if (res && res.hasConnectionKeyword(s)) {
                     connection = s;

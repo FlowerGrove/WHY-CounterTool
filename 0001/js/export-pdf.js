@@ -133,7 +133,7 @@ async function exportMarkedPDFCore() {
                 const noteSize = pdfRadius * (canvasNoteSize / markerRadius);
 
                 // 圆圈下方：尺寸编号
-                const sizeNote = m.sizeNote ? String(m.sizeNote) : '';
+                const sizeNote = m.sizeNote ? formatSizeNote(m.sizeNote) : '';
                 if (sizeNote) {
                     const noteTextWidth = regularFont.widthOfTextAtSize(sizeNote, noteSize);
                     const noteOff = rotVec(0, -(pdfRadius + noteSize * 0.4));

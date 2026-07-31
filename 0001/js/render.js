@@ -254,7 +254,7 @@ function drawMarker(ctx, m) {
     }
 
     // 圆圈下方：尺寸编号（固定视觉字号，不随 markerFontSize 缩放，仅按 zoom 反向缩放保持视觉一致）
-    const sizeNote = m.sizeNote ? String(m.sizeNote) : '';
+    const sizeNote = m.sizeNote ? formatSizeNote(m.sizeNote) : '';
     if (sizeNote) {
         const noteFontSize = Math.max(8, 11 / zoom);
         ctx.font = `${noteFontSize}px sans-serif`;

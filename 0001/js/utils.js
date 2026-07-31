@@ -76,6 +76,20 @@ function formatMarkerLabel(m) {
     return tn ? `${abbr}${tn}` : abbr;
 }
 
+// 口径显示格式化：存储为 '2' 或 '2x3'，输出为 '2"' 或 '2"x3"'
+// - 已含 ANSI/NPT/FLANGED 等连接关键字 → 原样返回（不补引号）
+// - 已含 " 或数字+引号 → 原样返回（兼容旧数据）
+// - 纯数字 / 数字x数字 → 每段补 "
+function formatSizeNote(s) {
+    if (!s) return '';
+    const str = String(s).trim();
+    if (!str) return '';
+    if (/ANSI|NPT|FLANGED|THREADED|SW|RTJ/i.test(str)) return str;
+    if (/[""]/.test(str)) return str;
+    const parts = str.split(/\s*[xX]\s*/);
+    return parts.map(p => p ? `${p}"` : '').join('x');
+}
+
 function pageStackGap(prevDocId, nextDocId) {
     const caption = PAGE_CAPTION_H;
     return (prevDocId !== nextDocId ? DOC_GAP : PAGE_GAP) + caption;

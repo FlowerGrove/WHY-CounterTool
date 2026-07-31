@@ -253,11 +253,11 @@
     <div class="marker-context-menu" id="markerContextMenu">
         <div class="mcm-header">
             <div class="mcm-header-actions">
-                <button class="mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
                 <button class="mcm-btn-close" id="mcmCloseBtn" title="关闭">
                     <i class="fa-solid fa-xmark"></i>
+                </button>
+                <button class="mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
+                    <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
             <span class="mcm-title" id="mcmTitle">标记属性</span>
@@ -278,31 +278,53 @@
                 <input type="text" class="mcm-input" id="mcmLocation" />
             </div>
             <!-- ===== INS 专属字段（明细清单） ===== -->
-            <div class="mcm-field" data-menu="ins">
-                <label class="mcm-label">尺寸</label>
+            <div class="mcm-field" data-menu="ins" id="mcmSizeField">
+                <label class="mcm-label">口径 Connection</label>
                 <div class="mcm-input-wrap">
-                    <select class="mcm-select" id="mcmSize">
-                        <option value="">自定义…</option>
-                        <option value="1/2&quot;">1/2&quot;</option>
-                        <option value="3/4&quot;">3/4&quot;</option>
-                        <option value="1&quot;">1&quot;</option>
-                        <option value="1¼&quot;">1¼&quot;</option>
-                        <option value="1½&quot;">1½&quot;</option>
-                        <option value="2&quot;">2&quot;</option>
-                        <option value="2½&quot;">2½&quot;</option>
-                        <option value="3&quot;">3&quot;</option>
-                        <option value="4&quot;">4&quot;</option>
-                        <option value="5&quot;">5&quot;</option>
-                        <option value="6&quot;">6&quot;</option>
-                        <option value="8&quot;">8&quot;</option>
-                        <option value="10&quot;">10&quot;</option>
+                    <select class="mcm-input mcm-select--full" id="mcmSize">
+                        <option value="1/2">1/2"</option>
+                        <option value="3/4">3/4"</option>
+                        <option value="1">1"</option>
+                        <option value="1¼">1¼"</option>
+                        <option value="1½">1½"</option>
+                        <option value="2">2"</option>
+                        <option value="2½">2½"</option>
+                        <option value="3">3"</option>
+                        <option value="4">4"</option>
+                        <option value="5">5"</option>
+                        <option value="6">6"</option>
+                        <option value="8">8"</option>
+                        <option value="10">10"</option>
+                        <option value="__custom__">自定义…</option>
                     </select>
-                    <input type="text" class="mcm-input mcm-input-inline" id="mcmSizeCustom" />
+                    <div class="mcm-size-custom-row">
+                        <input type="text" class="mcm-input mcm-input-inline" id="mcmSizeCustom" />
+                        <span class="mcm-size-x">×</span>
+                        <input type="text" class="mcm-input mcm-input-inline mcm-size-sec" id="mcmSizeCustom2" />
+                    </div>
                 </div>
             </div>
-            <div class="mcm-field" data-menu="ins">
-                <label class="mcm-label">量程 Range</label>
-                <input type="text" class="mcm-input" id="mcmRange" />
+            <div class="mcm-field" data-menu="ins" id="mcmRangeField">
+                <label class="mcm-label">Range / Set Point</label>
+                <div class="mcm-input-wrap">
+                    <select class="mcm-input mcm-select--full" id="mcmRange">
+                        <option value="0 ~ 10 Barg">0 ~ 10 Barg</option>
+                        <option value="-1 ~ 5 Barg">-1 ~ 5 Barg</option>
+                        <option value="0 ~ 25 Barg">0 ~ 25 Barg</option>
+                        <option value="0 ~ 100℃">0 ~ 100℃</option>
+                        <option value="0 ~ 23 m">0 ~ 23 m</option>
+                        <option value="Set @ 5.7 Barg">Set @ 5.7 Barg</option>
+                        <option value="Set @ 7 Barg">Set @ 7 Barg</option>
+                        <option value="Set @ 7.7 Barg">Set @ 7.7 Barg</option>
+                        <option value="Set @ 12 Barg">Set @ 12 Barg</option>
+                        <option value="Set @ 14 Barg">Set @ 14 Barg</option>
+                        <option value="600mm Sensor Length">600mm Sensor Length</option>
+                        <option value="__custom__">自定义…</option>
+                    </select>
+                    <div class="mcm-range-custom-row">
+                        <input type="text" class="mcm-input mcm-input-inline" id="mcmRangeCustom" />
+                    </div>
+                </div>
             </div>
             <div class="mcm-field mcm-field--wide" data-menu="ins">
                 <label class="mcm-label">服务 Service</label>

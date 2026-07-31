@@ -9,6 +9,22 @@ let dragPanStartX = 0,
 const markerContextMenu = document.getElementById('markerContextMenu');
 let contextMenuTargetMarker = null;
 
+// 口径字段：根据下拉是否“自定义”切换两个输入框的显隐
+function updateSizeCustomVisibility() {
+    const field = document.getElementById('mcmSizeField');
+    const sizeSel = document.getElementById('mcmSize');
+    if (!field || !sizeSel) return;
+    field.classList.toggle('mcm-field--custom-size', sizeSel.value === '__custom__');
+}
+
+// 量程字段：根据下拉是否“自定义”切换输入框的显隐
+function updateRangeCustomVisibility() {
+    const field = document.getElementById('mcmRangeField');
+    const rangeSel = document.getElementById('mcmRange');
+    if (!field || !rangeSel) return;
+    field.classList.toggle('mcm-field--custom-range', rangeSel.value === '__custom__');
+}
+
 // 显示右键属性面板：填充当前标记值到表单
 function showMarkerContextMenu(screenX, screenY, marker) {
     contextMenuTargetMarker = marker;
@@ -35,24 +51,66 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     document.getElementById('mcmNote').value = marker.note || '';
 
     // ===== INS 专属字段（明细清单） =====
-    // 尺寸：优先匹配下拉项，否则填入自定义输入框
-    const s = marker.sizeNote || '';
+    // 口径：解析 sizeNote → 下拉 / 主框 / 次框
+    // 存储格式：'2'（裸数字）或 '2x3'（异径）；旧数据 '2"' / '2"x3"' 也兼容
+    const rawSize = String(marker.sizeNote || '');
     const sizeSel = document.getElementById('mcmSize');
     const sizeInput = document.getElementById('mcmSizeCustom');
-    let matched = false;
-    for (let i = 0; i < sizeSel.options.length; i++) {
-        if (sizeSel.options[i].value && sizeSel.options[i].value === s) {
-            sizeSel.value = s;
-            sizeInput.value = '';
-            matched = true;
-            break;
+    const sizeInput2 = document.getElementById('mcmSizeCustom2');
+    // 去掉引号后按 x/X 拆分为主/次
+    const sizeParts = rawSize.replace(/[""]/g, '').split(/\s*[xX]\s*/);
+    const sizeMain = sizeParts[0] || '';
+    const sizeSec = sizeParts[1] || '';
+    // 优先匹配下拉预设（同径）
+    let sizeMatched = false;
+    if (!sizeSec) {
+        for (let i = 0; i < sizeSel.options.length; i++) {
+            if (sizeSel.options[i].value && sizeSel.options[i].value === sizeMain) {
+                sizeSel.value = sizeMain;
+                sizeInput.value = '';
+                sizeMatched = true;
+                break;
+            }
         }
     }
-    if (!matched) {
-        sizeSel.value = '';
-        sizeInput.value = s;
+    if (!sizeMatched) {
+        if (sizeMain) {
+            // 非空但不匹配任何下拉项 → 自定义
+            sizeSel.value = '__custom__';
+            sizeInput.value = sizeMain;
+        } else {
+            // sizeMain 为空时：下拉保持空选择状态
+            sizeSel.selectedIndex = -1;
+        }
     }
-    document.getElementById('mcmRange').value = marker.range || '';
+    sizeInput2.value = sizeSec;
+    updateSizeCustomVisibility();
+    // Range：匹配预设 → 下拉选中；否则 → 自定义
+    const rangeSel = document.getElementById('mcmRange');
+    const rangeVal = String(marker.range || '');
+    let rangeMatched = false;
+    if (rangeVal) {
+        for (let i = 0; i < rangeSel.options.length; i++) {
+            const optVal = rangeSel.options[i].value;
+            if (optVal && optVal !== '__custom__' && optVal === rangeVal) {
+                rangeSel.value = rangeVal;
+                rangeMatched = true;
+                break;
+            }
+        }
+    }
+    if (!rangeMatched) {
+        if (rangeVal) {
+            rangeSel.value = '__custom__';
+            document.getElementById('mcmRangeCustom').value = rangeVal;
+        } else {
+            rangeSel.selectedIndex = -1;
+            document.getElementById('mcmRangeCustom').value = '';
+        }
+    } else {
+        document.getElementById('mcmRangeCustom').value = '';
+    }
+    updateRangeCustomVisibility();
     document.getElementById('mcmService').value = marker.service || '';
     document.getElementById('mcmProduct').value = marker.product || '';
     document.getElementById('mcmDataSheet').value = marker.dataSheet || '';
@@ -88,17 +146,23 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     powerSel.value = marker.power || '';
 
     // 位置：优先出现在鼠标点击点，超出视口则回推
-    const menuW = 520;
+    // 强制清除 resize 遗留的尺寸：先关 resize → 清尺寸 → 重排 → 再开 resize
+    markerContextMenu.style.resize = 'none';
+    markerContextMenu.style.width = '';
+    markerContextMenu.style.height = '';
+    void markerContextMenu.offsetHeight; // 强制重排
+    markerContextMenu.style.resize = 'both';
+    markerContextMenu.classList.add('visible');
     const rect = markerContextMenu.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     let x = screenX;
     let y = screenY;
-    if (x + menuW > vw) x = Math.max(4, vw - menuW);
-    if (y + 10 > vh) y = Math.max(4, vh - 10);
+    if (x + rect.width > vw) x = Math.max(4, vw - rect.width);
+    if (y + rect.height > vh) y = Math.max(4, vh - rect.height);
+    if (y < 4) y = 4;
     markerContextMenu.style.left = x + 'px';
     markerContextMenu.style.top = y + 'px';
-    markerContextMenu.classList.add('visible');
 
     // 焦点到仪表编号输入
     setTimeout(() => document.getElementById('mcmTagNumber').focus(), 30);
@@ -499,12 +563,22 @@ function saveMarkerContextMenu() {
     apply('tagNumber', tag);
     apply('location', document.getElementById('mcmLocation').value);
 
-    // 尺寸：下拉选中则用下拉，否则用自定义
-    const sizeSel = document.getElementById('mcmSize').value;
-    const sizeCustom = document.getElementById('mcmSizeCustom').value;
-    apply('sizeNote', sizeSel || sizeCustom);
+    // 口径：下拉 / 主框 / 次框 → 拼接为 sizeNote
+    // 存储格式：'2'（同径）或 '2x3'（异径），不带引号
+    const sizeSelEl = document.getElementById('mcmSize');
+    const sizeSelVal = sizeSelEl.selectedIndex === -1 ? '' : (sizeSelEl.value === '__custom__' ? '' : sizeSelEl.value);
+    const sizeCustomVal = document.getElementById('mcmSizeCustom').value.trim();
+    const sizeCustom2Val = document.getElementById('mcmSizeCustom2').value.trim();
+    const sizeMain = sizeSelVal || sizeCustomVal;
+    const sizeNoteVal = sizeMain && sizeCustom2Val ? `${sizeMain}x${sizeCustom2Val}` : sizeMain;
+    apply('sizeNote', sizeNoteVal);
 
-    apply('range', document.getElementById('mcmRange').value);
+    // 量程：下拉 / 自定义 → range
+    const rangeSelEl = document.getElementById('mcmRange');
+    const rangeSelVal = rangeSelEl.selectedIndex === -1 ? '' : (rangeSelEl.value === '__custom__' ? '' : rangeSelEl.value);
+    const rangeCustomVal = document.getElementById('mcmRangeCustom').value.trim();
+    apply('range', rangeSelVal || rangeCustomVal);
+
     apply('unit', document.getElementById('mcmUnit').value);
     apply('service', document.getElementById('mcmService').value);
     apply('product', document.getElementById('mcmProduct').value);
@@ -572,9 +646,20 @@ function saveMarkerContextMenu() {
             hideMarkerContextMenu();
         }
     });
-    // 尺寸下拉选中后同步清空自定义
+    // 口径下拉切换：自定义时显示两个输入框，否则隐藏
     document.getElementById('mcmSize').addEventListener('change', function () {
-        if (this.value) document.getElementById('mcmSizeCustom').value = '';
+        if (this.value !== '__custom__') {
+            document.getElementById('mcmSizeCustom').value = '';
+            document.getElementById('mcmSizeCustom2').value = '';
+        }
+        updateSizeCustomVisibility();
+    });
+    // 量程下拉切换：自定义时显示输入框
+    document.getElementById('mcmRange').addEventListener('change', function () {
+        if (this.value !== '__custom__') {
+            document.getElementById('mcmRangeCustom').value = '';
+        }
+        updateRangeCustomVisibility();
     });
 
     // ===== 通过 header 拖动菜单 =====

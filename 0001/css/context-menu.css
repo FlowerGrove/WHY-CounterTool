@@ -5,32 +5,45 @@
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
     min-width: 290px;
-    max-width: 340px;
-    max-height: 80vh;
+    min-height: 160px;
+    max-width: 520px;
+    max-height: 75vh;
     display: none;
     flex-direction: column;
     overflow: hidden;
+    resize: both;
     user-select: none;
     border: 1px solid rgba(0,0,0,0.06);
 }
 .marker-context-menu.visible {
     display: flex;
 }
-/* IO List 菜单：横向加宽 + 3 列网格，减少纵向高度 */
+.marker-context-menu::-webkit-resizer {
+    background: transparent;
+}
+.marker-context-menu::after {
+    content: '';
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.2) 50%);
+    border-radius: 0 0 8px 0;
+    pointer-events: none;
+}
 .marker-context-menu.menu-io {
-    min-width: 460px;
-    max-width: 520px;
+    min-width: 400px;
 }
 .marker-context-menu.menu-io .mcm-body {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-/* INS 菜单：横向加宽 + 3 列网格，wide 字段恢复单格 */
 .marker-context-menu.menu-ins {
-    min-width: 460px;
-    max-width: 520px;
+    min-width: 400px;
 }
 .marker-context-menu.menu-ins .mcm-body {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .marker-context-menu.menu-ins .mcm-field--wide {
     grid-column: auto;
@@ -93,6 +106,7 @@
     gap: 5px 10px;
     overflow-y: auto;
     flex: 1;
+    min-width: 0;
 }
 .mcm-field {
     display: flex;
@@ -137,6 +151,9 @@
     display: flex;
     gap: 5px;
     width: 100%;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
 }
 .mcm-select {
     flex-shrink: 0;
@@ -146,6 +163,50 @@
 .mcm-input-inline {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
+}
+/* 口径字段：下拉框单独一行（与 IO List 样式统一） */
+#mcmSizeField .mcm-input-wrap {
+    flex-direction: column;
+    align-items: stretch;
+}
+/* 口径异径输入：第二行自定义输入 */
+.mcm-size-custom-row {
+    display: none;
+    width: 100%;
+    gap: 5px;
+    align-items: center;
+    margin-top: 4px;
+}
+.mcm-field--custom-size .mcm-size-custom-row {
+    display: flex;
+}
+.mcm-size-custom-row #mcmSizeCustom {
+    flex: 1;
+    min-width: 0;
+}
+.mcm-size-custom-row .mcm-size-sec {
+    max-width: 60px;
+}
+.mcm-size-custom-row .mcm-size-x {
+    flex-shrink: 0;
+    color: #888;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* Range 字段：下拉框单独一行（与 Size / IO List 样式统一） */
+#mcmRangeField .mcm-input-wrap {
+    flex-direction: column;
+    align-items: stretch;
+}
+.mcm-range-custom-row {
+    display: none;
+    width: 100%;
+    margin-top: 4px;
+}
+.mcm-field--custom-range .mcm-range-custom-row {
+    display: flex;
 }
 
 /* Footer */
