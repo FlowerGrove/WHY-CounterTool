@@ -576,6 +576,59 @@ function saveMarkerContextMenu() {
     document.getElementById('mcmSize').addEventListener('change', function () {
         if (this.value) document.getElementById('mcmSizeCustom').value = '';
     });
+
+    // ===== 通过 header 拖动菜单 =====
+    const header = markerContextMenu.querySelector('.mcm-header');
+    let dragState = null; // {startX, startY, menuX, menuY, moved}
+
+    header.addEventListener('mousedown', (e) => {
+        // 点击按钮时不启动拖动
+        if (e.target.closest('button')) return;
+        if (!markerContextMenu.classList.contains('visible')) return;
+        const rect = markerContextMenu.getBoundingClientRect();
+        dragState = {
+            startX: e.clientX,
+            startY: e.clientY,
+            menuX: rect.left,
+            menuY: rect.top,
+            moved: false,
+        };
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragState) return;
+        const dx = e.clientX - dragState.startX;
+        const dy = e.clientY - dragState.startY;
+        // 阈值 3px，避免微小移动被识别为拖动
+        if (!dragState.moved && Math.hypot(dx, dy) < 3) return;
+        dragState.moved = true;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const w = markerContextMenu.offsetWidth;
+        const h = markerContextMenu.offsetHeight;
+        let x = dragState.menuX + dx;
+        let y = dragState.menuY + dy;
+        // 边界约束：至少保留部分在视口内
+        x = Math.max(4 - w + 80, Math.min(x, vw - 80));
+        y = Math.max(4, Math.min(y, vh - 32));
+        markerContextMenu.style.left = x + 'px';
+        markerContextMenu.style.top = y + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        const wasMoved = dragState && dragState.moved;
+        dragState = null;
+        // 拖动结束后阻止接下来的 click（防止触发"点击菜单外关闭"）
+        if (wasMoved) {
+            const suppress = (ev) => {
+                ev.stopPropagation();
+                ev.preventDefault();
+                document.removeEventListener('click', suppress, true);
+            };
+            document.addEventListener('click', suppress, true);
+        }
+    });
 })();
 
 // 点击菜单外关闭
