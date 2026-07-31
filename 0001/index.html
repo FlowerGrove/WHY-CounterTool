@@ -251,33 +251,80 @@
     </div>
 
     <div class="marker-context-menu" id="markerContextMenu">
-        <div class="context-menu-item" data-action="cancel"><i class="fa-solid fa-ban" style="color:#999;"></i> 取消</div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item context-menu-danger" data-action="delete"><i class="fa-solid fa-trash"></i> 删除标记</div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="tagNumber"><i class="fa-solid fa-hashtag"></i> 仪表编号…</div>
-        <div class="context-menu-item context-menu-danger" data-action="clearTag" id="contextMenuClearTag" style="display:none;"><i class="fa-solid fa-xmark"></i> 清除仪表编号</div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="sizeNote"><i class="fa-solid fa-ruler-horizontal"></i> 尺寸编号…</div>
-        <div class="context-menu-item context-menu-danger" data-action="clearSize" id="contextMenuClearSize" style="display:none;"><i class="fa-solid fa-xmark"></i> 清除尺寸编号</div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="note"><i class="fa-solid fa-pen"></i> 通用备注…</div>
-        <div class="context-menu-item context-menu-danger" data-action="clear" id="contextMenuClear"><i class="fa-solid fa-xmark"></i> 清除备注</div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-size-grid">
-            <div class="context-menu-item" data-action="pipe-0.5">1/2"</div>
-            <div class="context-menu-item" data-action="pipe-0.75">3/4"</div>
-            <div class="context-menu-item" data-action="pipe-1">1"</div>
-            <div class="context-menu-item" data-action="pipe-1.25">1¼"</div>
-            <div class="context-menu-item" data-action="pipe-1.5">1½"</div>
-            <div class="context-menu-item" data-action="pipe-2">2"</div>
-            <div class="context-menu-item" data-action="pipe-2.5">2½"</div>
-            <div class="context-menu-item" data-action="pipe-3">3"</div>
-            <div class="context-menu-item" data-action="pipe-4">4"</div>
-            <div class="context-menu-item" data-action="pipe-5">5"</div>
-            <div class="context-menu-item" data-action="pipe-6">6"</div>
-            <div class="context-menu-item" data-action="pipe-8">8"</div>
-            <div class="context-menu-item" data-action="pipe-10">10"</div>
+        <div class="mcm-header">
+            <div class="mcm-header-actions">
+                <button class="mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+                <button class="mcm-btn-close" id="mcmCloseBtn" title="关闭">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <span class="mcm-title" id="mcmTitle">标记属性</span>
+        </div>
+        <div class="mcm-body">
+            <div class="mcm-field">
+                <label class="mcm-label">仪表编号</label>
+                <input type="text" class="mcm-input" id="mcmTagNumber" />
+            </div>
+            <div class="mcm-field">
+                <label class="mcm-label">位置 Location</label>
+                <input type="text" class="mcm-input" id="mcmLocation" />
+            </div>
+            <div class="mcm-field">
+                <label class="mcm-label">尺寸</label>
+                <div class="mcm-input-wrap">
+                    <select class="mcm-select" id="mcmSize">
+                        <option value="">自定义…</option>
+                        <option value="1/2&quot;">1/2&quot;</option>
+                        <option value="3/4&quot;">3/4&quot;</option>
+                        <option value="1&quot;">1&quot;</option>
+                        <option value="1¼&quot;">1¼&quot;</option>
+                        <option value="1½&quot;">1½&quot;</option>
+                        <option value="2&quot;">2&quot;</option>
+                        <option value="2½&quot;">2½&quot;</option>
+                        <option value="3&quot;">3&quot;</option>
+                        <option value="4&quot;">4&quot;</option>
+                        <option value="5&quot;">5&quot;</option>
+                        <option value="6&quot;">6&quot;</option>
+                        <option value="8&quot;">8&quot;</option>
+                        <option value="10&quot;">10&quot;</option>
+                    </select>
+                    <input type="text" class="mcm-input mcm-input-inline" id="mcmSizeCustom" />
+                </div>
+            </div>
+            <div class="mcm-field">
+                <label class="mcm-label">量程 Range</label>
+                <input type="text" class="mcm-input" id="mcmRange" />
+            </div>
+            <div class="mcm-field">
+                <label class="mcm-label">单位 Unit</label>
+                <input type="text" class="mcm-input" id="mcmUnit" />
+            </div>
+            <div class="mcm-field mcm-field--wide">
+                <label class="mcm-label">服务 Service</label>
+                <input type="text" class="mcm-input" id="mcmService" />
+            </div>
+            <div class="mcm-field mcm-field--wide">
+                <label class="mcm-label">产品 Product</label>
+                <input type="text" class="mcm-input" id="mcmProduct" />
+            </div>
+            <div class="mcm-field mcm-field--wide">
+                <label class="mcm-label">数据表 Data Sheet</label>
+                <input type="text" class="mcm-input" id="mcmDataSheet" />
+            </div>
+            <div class="mcm-field mcm-field--wide">
+                <label class="mcm-label">P&amp;ID 图号</label>
+                <input type="text" class="mcm-input" id="mcmPid" />
+            </div>
+            <div class="mcm-field mcm-field--wide">
+                <label class="mcm-label">备注</label>
+                <input type="text" class="mcm-input" id="mcmNote" />
+            </div>
+        </div>
+        <div class="mcm-footer">
+            <button class="mcm-btn" id="mcmCancelBtn">取消</button>
+            <button class="mcm-btn mcm-btn-primary" id="mcmOkBtn">确定</button>
         </div>
     </div>
 

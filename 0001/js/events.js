@@ -9,24 +9,58 @@ let dragPanStartX = 0,
 const markerContextMenu = document.getElementById('markerContextMenu');
 let contextMenuTargetMarker = null;
 
+// 显示右键属性面板：填充当前标记值到表单
 function showMarkerContextMenu(screenX, screenY, marker) {
     contextMenuTargetMarker = marker;
-    markerContextMenu.style.left = screenX + 'px';
-    markerContextMenu.style.top = screenY + 'px';
 
-    const hasNote = !!marker.note;
-    const clearEl = document.getElementById('contextMenuClear');
-    if (clearEl) clearEl.style.display = hasNote ? 'flex' : 'none';
+    // 标题显示类型 + 编号
+    const t = getTypeById(marker.typeId);
+    const typeLabel = t.name || marker.typeName || '';
+    const numberLabel = marker.number ? `-${padWithFormat(marker.number)}` : '';
+    document.getElementById('mcmTitle').textContent = `标记属性：${typeLabel}${numberLabel}`;
 
-    const hasTag = !!(marker.tagNumber && marker.tagNumber.length > 0);
-    const clearTagEl = document.getElementById('contextMenuClearTag');
-    if (clearTagEl) clearTagEl.style.display = hasTag ? 'flex' : 'none';
+    // 填充各字段
+    document.getElementById('mcmTagNumber').value = marker.tagNumber || '';
+    document.getElementById('mcmLocation').value = marker.location || '';
+    // 尺寸：优先匹配下拉项，否则填入自定义输入框
+    const s = marker.sizeNote || '';
+    const sizeSel = document.getElementById('mcmSize');
+    const sizeInput = document.getElementById('mcmSizeCustom');
+    let matched = false;
+    for (let i = 0; i < sizeSel.options.length; i++) {
+        if (sizeSel.options[i].value && sizeSel.options[i].value === s) {
+            sizeSel.value = s;
+            sizeInput.value = '';
+            matched = true;
+            break;
+        }
+    }
+    if (!matched) {
+        sizeSel.value = '';
+        sizeInput.value = s;
+    }
+    document.getElementById('mcmRange').value = marker.range || '';
+    document.getElementById('mcmUnit').value = marker.unit || '';
+    document.getElementById('mcmService').value = marker.service || '';
+    document.getElementById('mcmProduct').value = marker.product || '';
+    document.getElementById('mcmDataSheet').value = marker.dataSheet || '';
+    document.getElementById('mcmPid').value = marker.pid || '';
+    document.getElementById('mcmNote').value = marker.note || '';
 
-    const hasSize = !!(marker.sizeNote && marker.sizeNote.length > 0);
-    const clearSizeEl = document.getElementById('contextMenuClearSize');
-    if (clearSizeEl) clearSizeEl.style.display = hasSize ? 'flex' : 'none';
-
+    // 位置：优先出现在鼠标点击点，超出视口则回推
+    const rect = markerContextMenu.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = screenX;
+    let y = screenY;
+    if (x + 340 > vw) x = Math.max(4, vw - 340);
+    if (y + 10 > vh) y = Math.max(4, vh - 10);
+    markerContextMenu.style.left = x + 'px';
+    markerContextMenu.style.top = y + 'px';
     markerContextMenu.classList.add('visible');
+
+    // 焦点到仪表编号输入
+    setTimeout(() => document.getElementById('mcmTagNumber').focus(), 30);
 }
 
 function hideMarkerContextMenu() {
@@ -401,96 +435,93 @@ canvas.addEventListener('contextmenu', (e) => {
     }
 });
 
-// 标记右键菜单交互
-markerContextMenu.addEventListener('click', (e) => {
-    const item = e.target.closest('[data-action]');
-    if (!item || !contextMenuTargetMarker) return;
-
-    const action = item.dataset.action;
+// 保存标记右键属性面板的更改
+function saveMarkerContextMenu() {
     const marker = contextMenuTargetMarker;
+    if (!marker) return;
+    const updates = []; // 记录变更用于 history 合并
 
-    if (action === 'cancel') {
-        // 直接关闭菜单
-    } else if (action === 'tagNumber') {
-        const curTag = marker.tagNumber || '';
-        const tag = prompt('输入仪表编号（例：001 或 0101 或 0201）', curTag);
-        if (tag !== null) {
-            const oldTag = marker.tagNumber || '';
-            const newTag = tag.trim();
-            if (oldTag !== newTag) {
-                pushHistory({ type: 'update', marker, field: 'tagNumber', oldValue: oldTag, newValue: newTag });
-                marker.tagNumber = newTag || undefined;
-                requestRender();
-                scheduleAutosave();
-            }
+    function apply(field, newVal, allowEmptyStrAsUndef = true) {
+        const clean = typeof newVal === 'string' ? newVal.trim() : newVal;
+        const isEmpty = clean === '' || clean === null || clean === undefined;
+        const finalVal = (isEmpty && allowEmptyStrAsUndef) ? undefined : (isEmpty ? '' : clean);
+        const oldVal = marker[field] !== undefined ? marker[field] : '';
+        const oldForCmp = (oldVal === undefined || oldVal === null) ? '' : String(oldVal);
+        const newForCmp = (finalVal === undefined || finalVal === null) ? '' : String(finalVal);
+        if (oldForCmp !== newForCmp) {
+            updates.push({ field, oldValue: oldForCmp, newValue: newForCmp });
+            marker[field] = finalVal;
         }
-    } else if (action === 'clearTag') {
-        if (marker.tagNumber) {
-            pushHistory({ type: 'update', marker, field: 'tagNumber', oldValue: marker.tagNumber, newValue: '' });
-            marker.tagNumber = undefined;
-            requestRender();
-            scheduleAutosave();
-        }
-    } else if (action === 'sizeNote') {
-        const curSize = marker.sizeNote || '';
-        const size = prompt('输入尺寸编号（例：3" 或 3" ANSI 300# RF），仅尺寸将自动拼接 ANSI 150# RF', curSize);
-        if (size !== null) {
-            const oldSize = marker.sizeNote || '';
-            const newSize = size.trim();
-            if (oldSize !== newSize) {
-                pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: oldSize, newValue: newSize });
-                marker.sizeNote = newSize || undefined;
-                requestRender();
-                scheduleAutosave();
-            }
-        }
-    } else if (action === 'clearSize') {
-        if (marker.sizeNote) {
-            pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: marker.sizeNote, newValue: '' });
-            marker.sizeNote = undefined;
-            requestRender();
-            scheduleAutosave();
-        }
-    } else if (action === 'note') {
-        const note = prompt('输入通用备注', marker.note || '');
-        if (note !== null) {
-            const oldNote = marker.note || '';
-            const newNote = note.trim();
-            if (oldNote !== newNote) {
-                pushHistory({ type: 'update', marker, field: 'note', oldNote, newNote });
-                marker.note = newNote || undefined;
-                requestRender();
-                scheduleAutosave();
-            }
-        }
-    } else if (action === 'clear') {
-        if (marker.note) {
-            pushHistory({ type: 'update', marker, field: 'note', oldNote: marker.note, newNote: '' });
-            marker.note = undefined;
-            requestRender();
-            scheduleAutosave();
-        }
-    } else if (action.startsWith('pipe-')) {
-        // 常用尺寸快捷点击：仅存纯尺寸（如 3"），Excel 导出时再拼接 ANSI 150# RF
-        const pipeSize = item.textContent.trim();
-        const oldSize = marker.sizeNote || '';
-        if (oldSize !== pipeSize) {
-            pushHistory({ type: 'update', marker, field: 'sizeNote', oldValue: oldSize, newValue: pipeSize });
-            marker.sizeNote = pipeSize;
-            requestRender();
-            scheduleAutosave();
-        }
-    } else if (action === 'delete') {
-        hideMarkerContextMenu();
-        deleteMarker(marker);
-        return;
     }
 
-    hideMarkerContextMenu();
-});
+    const tag = document.getElementById('mcmTagNumber').value;
+    apply('tagNumber', tag);
+    apply('location', document.getElementById('mcmLocation').value);
 
-// 点击其他地方关闭菜单
+    // 尺寸：下拉选中则用下拉，否则用自定义
+    const sizeSel = document.getElementById('mcmSize').value;
+    const sizeCustom = document.getElementById('mcmSizeCustom').value;
+    apply('sizeNote', sizeSel || sizeCustom);
+
+    apply('range', document.getElementById('mcmRange').value);
+    apply('unit', document.getElementById('mcmUnit').value);
+    apply('service', document.getElementById('mcmService').value);
+    apply('product', document.getElementById('mcmProduct').value);
+    apply('dataSheet', document.getElementById('mcmDataSheet').value);
+    apply('pid', document.getElementById('mcmPid').value);
+    apply('note', document.getElementById('mcmNote').value);
+
+    if (updates.length > 0) {
+        // 合并为一条 history 记录（用 oldValue/newValue 记录所有变更）
+        const changes = Object.fromEntries(updates.map(u => [u.field, u.oldValue]));
+        const after = Object.fromEntries(updates.map(u => [u.field, u.newValue]));
+        pushHistory({ type: 'bulkUpdate', marker, changes, after });
+        requestRender();
+        scheduleAutosave();
+    }
+}
+
+// 右键属性面板按钮事件绑定
+(function bindMarkerContextMenuActions() {
+    // 关闭按钮
+    document.getElementById('mcmCloseBtn').addEventListener('click', () => {
+        hideMarkerContextMenu();
+    });
+    // 删除按钮
+    document.getElementById('mcmDeleteBtn').addEventListener('click', () => {
+        const m = contextMenuTargetMarker;
+        hideMarkerContextMenu();
+        if (m) deleteMarker(m);
+    });
+    // 取消
+    document.getElementById('mcmCancelBtn').addEventListener('click', () => {
+        hideMarkerContextMenu();
+    });
+    // 确定
+    document.getElementById('mcmOkBtn').addEventListener('click', () => {
+        saveMarkerContextMenu();
+        hideMarkerContextMenu();
+    });
+    // 面板内输入框回车 = 确定（尺寸输入框除外，防止误触）
+    markerContextMenu.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            saveMarkerContextMenu();
+            hideMarkerContextMenu();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            hideMarkerContextMenu();
+        }
+    });
+    // 尺寸下拉选中后同步清空自定义
+    document.getElementById('mcmSize').addEventListener('change', function () {
+        if (this.value) document.getElementById('mcmSizeCustom').value = '';
+    });
+})();
+
+// 点击菜单外关闭
 document.addEventListener('click', (e) => {
+    if (!markerContextMenu.classList.contains('visible')) return;
     if (!markerContextMenu.contains(e.target)) {
         hideMarkerContextMenu();
     }

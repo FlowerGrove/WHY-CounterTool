@@ -326,6 +326,18 @@ function populateIOListData(ws, startRow, remarksCol) {
         row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N
         row.getCell(IO_LIST_TAG_COL).value = formatMarkerLabel(m);                     // Instrument Tag No.
         row.getCell(IO_LIST_DESC_COL).value = m.typeFullName || t.fullName || m.typeName || ''; // Signal Description
+        row.getCell(6).value = m.location || '';                    // Equipment = Location
+        row.getCell(7).value = m.pid || '';                         // P & ID Dwg No.
+        // Range: 0% / 100%（range 字段按 "~" 或 "-" 拆分，否则 0% 留空）
+        if (m.range) {
+            const parts = String(m.range).split(/[~\-–—]/).map(s => s.trim());
+            row.getCell(18).value = parts[0] || '';                // Range 0%
+            row.getCell(19).value = parts[1] || parts[0] || '';     // Range 100%
+        } else {
+            row.getCell(18).value = '';
+            row.getCell(19).value = '';
+        }
+        row.getCell(20).value = m.unit || '';                       // Unit
         row.getCell(remarksCol).value = m.note || '';                    // Remarks
 
         // 根据仪表类型自动填写 IO Type / Signal Type / Power
@@ -680,14 +692,14 @@ async function exportExcelCore() {
         const r = wsDetail.addRow({
             idx: i + 1,
             label: formatMarkerLabel(m),
-            location: '',
+            location: m.location || '',
             type: m.typeFullName || t.fullName || m.typeName || t.name || '',
             connection: connection,
-            size: '',
-            service: '',
-            product: '',
-            dataSheet: '',
-            pid: '',
+            size: m.range || '',
+            service: m.service || '',
+            product: m.product || '',
+            dataSheet: m.dataSheet || '',
+            pid: m.pid || '',
             note: m.note || '',
             list: listType,
         });
@@ -749,14 +761,14 @@ async function exportExcelCore() {
             wsIns.addRow({
                 idx: i + 1,
                 label: formatMarkerLabel(m),
-                location: '',
+                location: m.location || '',
                 type: m.typeFullName || t.fullName || m.typeName || t.name || '',
                 connection: connection,
-                size: '',
-                service: '',
-                product: '',
-                dataSheet: '',
-                pid: '',
+                size: m.range || '',
+                service: m.service || '',
+                product: m.product || '',
+                dataSheet: m.dataSheet || '',
+                pid: m.pid || '',
                 note: m.note || '',
             });
         });

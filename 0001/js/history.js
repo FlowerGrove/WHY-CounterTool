@@ -33,6 +33,19 @@ function applyHistoryUpdate(marker, entry, toOld) {
     }
 }
 
+// 批量更新：一次更新/恢复 marker 的多个字段（changes: {field: oldValue}, after: {field: newValue}
+function applyHistoryBulkUpdate(marker, entry, toOld) {
+    const map = toOld ? entry.changes : entry.after;
+    if (!map) return;
+    for (const [field, val] of Object.entries(map)) {
+        if (typeof val === 'string' && val.length === 0) {
+            marker[field] = undefined;
+        } else {
+            marker[field] = val;
+        }
+    }
+}
+
 function undo() {
     if (history.length === 0) return;
     const last = history.pop();
@@ -42,6 +55,8 @@ function undo() {
         insertMarkerToArray(last.marker);
     } else if (last.type === 'update') {
         applyHistoryUpdate(last.marker, last, true);
+    } else if (last.type === 'bulkUpdate') {
+        applyHistoryBulkUpdate(last.marker, last, true);
     }
     redoStack.push(last);
     nextMarkerNumber = findNextNumberForType(currentTypeId);
@@ -61,6 +76,8 @@ function redo() {
         removeMarkerFromArray(entry.marker);
     } else if (entry.type === 'update') {
         applyHistoryUpdate(entry.marker, entry, false);
+    } else if (entry.type === 'bulkUpdate') {
+        applyHistoryBulkUpdate(entry.marker, entry, false);
     }
     history.push(entry);
     nextMarkerNumber = findNextNumberForType(currentTypeId);
