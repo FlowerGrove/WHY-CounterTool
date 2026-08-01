@@ -22,6 +22,14 @@ function pvCell(text, cls) {
     return `<td${c}>${pvEscape(text)}</td>`;
 }
 
+// 可编辑单元格：input 直接渲染，修改后写回 marker 对应字段
+function pvEditCell(marker, field, text) {
+    const v = (text === null || text === undefined) ? '' : String(text);
+    return `<td class="cell-editable" data-mid="${marker.id}" data-field="${field}" title="点击编辑">
+        <input type="text" value="${pvEscape(v)}" spellcheck="false" autocomplete="off" />
+    </td>`;
+}
+
 function pvRow(cells, cls) {
     return `<tr class="${cls || ''}">${cells}</tr>`;
 }
@@ -188,9 +196,9 @@ function pvRenderDetail() {
         html += pvRow(
             `<td class="cell-number">${i + 1}</td>` +
             pvCell(formatMarkerLabel(m), 'cell-number') +
-            pvCell(m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
-            pvCell(m.range) + pvCell(m.service) + pvCell(m.product) +
-            pvCell(m.dataSheet) + pvCell(m.pid) + pvCell(m.note) +
+            pvEditCell(m, 'location', m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
+            pvEditCell(m, 'range', m.range) + pvEditCell(m, 'service', m.service) + pvEditCell(m, 'product', m.product) +
+            pvEditCell(m, 'dataSheet', m.dataSheet) + pvEditCell(m, 'pid', m.pid) + pvEditCell(m, 'note', m.note) +
             `<td>${listTag}</td>`
         );
     });
@@ -229,22 +237,23 @@ function pvRenderIOList() {
         html += pvRow(
             `<td class="cell-number">${i + 1}</td>` +
             pvCell('') +                                    // Revision No.
-            pvCell(m.dcsTag) +                              // DCS Tag Number
+            pvEditCell(m, 'dcsTag', m.dcsTag) +             // DCS Tag Number
             pvCell(formatMarkerLabel(m), 'cell-number') +   // Instrument Tag No.
             pvCell(typeDesc) +                              // Signal Description
-            pvCell(m.location) +                            // Equipment
-            pvCell(m.pid) +                                 // P & ID Dwg No.
-            pvCell(m.pidRev) +                              // P&ID Revision No.
-            pvCell(m.ioType || defs.ioType) +               // IO Type
-            pvCell(m.signalType || defs.signalType) +       // Signal Type
-            pvCell(m.power || defs.power) +                 // Power
-            pvCell(m.zeroStatus) +                          // Zero Status
-            pvCell(m.oneStatus) +                           // One Status
-            pvCell(m.alarmLL) + pvCell(m.alarmL) + pvCell(m.alarmH) + pvCell(m.alarmHH) +
-            pvCell(range0) + pvCell(range100) +
-            pvCell(m.unit) + pvCell(m.rioPanel) +
-            pvCell(m.slotNumber) + pvCell(m.channelNumber) +
-            pvCell(m.note)
+            pvEditCell(m, 'location', m.location) +         // Equipment
+            pvEditCell(m, 'pid', m.pid) +                   // P & ID Dwg No.
+            pvEditCell(m, 'pidRev', m.pidRev) +             // P&ID Revision No.
+            pvEditCell(m, 'ioType', m.ioType || defs.ioType) +         // IO Type
+            pvEditCell(m, 'signalType', m.signalType || defs.signalType) + // Signal Type
+            pvEditCell(m, 'power', m.power || defs.power) +             // Power
+            pvEditCell(m, 'zeroStatus', m.zeroStatus) +                 // Zero Status
+            pvEditCell(m, 'oneStatus', m.oneStatus) +                   // One Status
+            pvEditCell(m, 'alarmLL', m.alarmLL) + pvEditCell(m, 'alarmL', m.alarmL) +
+            pvEditCell(m, 'alarmH', m.alarmH) + pvEditCell(m, 'alarmHH', m.alarmHH) +
+            pvEditCell(m, 'range0', range0) + pvEditCell(m, 'range100', range100) +
+            pvEditCell(m, 'unit', m.unit) + pvEditCell(m, 'rioPanel', m.rioPanel) +
+            pvEditCell(m, 'slotNumber', m.slotNumber) + pvEditCell(m, 'channelNumber', m.channelNumber) +
+            pvEditCell(m, 'note', m.note)
         );
     });
 
@@ -282,9 +291,9 @@ function pvRenderInsList() {
             html += pvRow(
                 `<td class="cell-number">${i + 1}</td>` +
                 pvCell(formatMarkerLabel(m), 'cell-number') +
-                pvCell(m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
-                pvCell(m.range) + pvCell(m.service) + pvCell(m.product) +
-                pvCell(m.dataSheet) + pvCell(m.pid) + pvCell(m.note)
+                pvEditCell(m, 'location', m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
+                pvEditCell(m, 'range', m.range) + pvEditCell(m, 'service', m.service) + pvEditCell(m, 'product', m.product) +
+                pvEditCell(m, 'dataSheet', m.dataSheet) + pvEditCell(m, 'pid', m.pid) + pvEditCell(m, 'note', m.note)
             );
         });
     }
@@ -292,7 +301,77 @@ function pvRenderInsList() {
     table.innerHTML = html;
 }
 
+// ===== 表格单元格编辑：写回 marker 并复用 history/autosave =====
+function pvFindMarkerById(id) {
+    return markers.find(m => m.id === id);
+}
+
+// 提交一次单元格编辑：写回 marker → history → 重绘图纸 → 自动保存
+function pvCommitCell(td) {
+    const mid = td.dataset.mid;
+    const field = td.dataset.field;
+    const input = td.querySelector('input');
+    if (!mid || !field || !input) return;
+    const marker = pvFindMarkerById(mid);
+    if (!marker) return;
+
+    const clean = input.value.trim();
+    const oldVal = marker[field] !== undefined ? marker[field] : '';
+    const oldForCmp = (oldVal === undefined || oldVal === null) ? '' : String(oldVal);
+    if (oldForCmp !== clean) {
+        marker[field] = clean.length > 0 ? clean : undefined;
+        pushHistory({ type: 'bulkUpdate', marker, changes: { [field]: oldForCmp }, after: { [field]: clean } });
+        requestRender();
+        scheduleAutosave();
+    }
+    input.value = clean; // 回显规范化后的值（空 → 清空）
+}
+
+function pvSetupEditableTables() {
+    const tables = document.querySelectorAll('#pvTable-detail, #pvTable-insList, #pvTable-ioList');
+    tables.forEach(table => {
+        // 失焦 / 回车提交
+        table.addEventListener('change', (e) => {
+            const td = e.target.closest('td.cell-editable');
+            if (td) pvCommitCell(td);
+        });
+        table.addEventListener('keydown', (e) => {
+            const td = e.target.closest('td.cell-editable');
+            if (!td) return;
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                pvCommitCell(td);
+                // 跳到同一列下一行，方便连续录入
+                const field = td.dataset.field;
+                const inputs = [...table.querySelectorAll(`td[data-field="${field}"] input`)];
+                const idx = inputs.indexOf(e.target);
+                if (idx !== -1 && idx + 1 < inputs.length) {
+                    inputs[idx + 1].focus();
+                    inputs[idx + 1].select();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation(); // 避免触发预览关闭
+                const marker = pvFindMarkerById(td.dataset.mid);
+                if (marker && td.dataset.field) {
+                    const v = marker[td.dataset.field];
+                    e.target.value = (v === undefined || v === null) ? '' : String(v);
+                }
+                e.target.blur();
+            }
+        });
+    });
+}
+
 // ===== Tab 切换 =====
+const pvSheetRenderers = {
+    byFile: pvRenderByFile,
+    typeSummary: pvRenderTypeSummary,
+    detail: pvRenderDetail,
+    ioList: pvRenderIOList,
+    insList: pvRenderInsList,
+};
+
 function pvSetupTabs() {
     const tabs = document.querySelectorAll('.preview-tab');
     tabs.forEach(tab => {
@@ -303,6 +382,8 @@ function pvSetupTabs() {
             document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
             const panel = document.getElementById('pvSheet-' + target);
             if (panel) panel.hidden = false;
+            // 切换到哪个表就重渲染哪个表，保证跨表编辑后数据一致
+            if (pvSheetRenderers[target]) pvSheetRenderers[target]();
         });
     });
 }
@@ -333,7 +414,7 @@ function renderPreview() {
     const ioCount = markers.filter(m => isTypeInIOList(m.typeId)).length;
     const insCount = markers.length - ioCount;
     document.getElementById('pvFooter').textContent =
-        `总计 ${markers.length} · IO List ${ioCount} · INS List ${insCount}`;
+        `总计 ${markers.length} · IO List ${ioCount} · INS List ${insCount}（单元格可直接点击编辑）`;
 }
 
 // ===== 打开/关闭预览窗口 =====
@@ -349,6 +430,7 @@ function closePreview() {
 // ===== 初始化 =====
 document.addEventListener('DOMContentLoaded', () => {
     pvSetupTabs();
+    pvSetupEditableTables();
 
     document.getElementById('previewBtn').addEventListener('click', openPreview);
     document.getElementById('previewCloseBtn').addEventListener('click', closePreview);
