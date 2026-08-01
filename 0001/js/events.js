@@ -25,6 +25,24 @@ function updateRangeCustomVisibility() {
     field.classList.toggle('mcm-field--custom-range', rangeSel.value === '__custom__');
 }
 
+// 渲染右键菜单中的自定义属性字段（仅已启用的）
+function renderMcmCustomFields(marker) {
+    const container = document.getElementById('mcmCustomFields');
+    if (!container) return;
+    container.innerHTML = '';
+    const attrs = getCustomAttrDefs().filter(d => d.enabled !== false);
+    if (attrs.length === 0) return;
+    attrs.forEach(attr => {
+        const value = getCustomAttrValue(marker, attr.key);
+        const field = document.createElement('div');
+        field.className = 'mcm-field mcm-field--wide';
+        field.innerHTML =
+            '<label class="mcm-label">' + pvEscape(attr.label) + '</label>' +
+            '<input type="text" class="mcm-input mcm-custom-attr" data-attr-key="' + attr.key + '" value="' + pvEscape(value) + '" />';
+        container.appendChild(field);
+    });
+}
+
 // 显示右键属性面板：填充当前标记值到表单
 function showMarkerContextMenu(screenX, screenY, marker) {
     contextMenuTargetMarker = marker;
@@ -43,6 +61,27 @@ function showMarkerContextMenu(screenX, screenY, marker) {
         const menu = el.dataset.menu;
         el.style.display = (menu === 'both' || menu === (isIO ? 'io' : 'ins')) ? '' : 'none';
     });
+
+    // 根据内置属性启用状态隐藏已禁用的字段
+    const builtinFieldMap = {
+        mcmTagNumber: 'tagNumber', mcmDcsTag: 'dcsTag', mcmLocation: 'location',
+        mcmSize: 'sizeNote', mcmSizeField: 'sizeNote', mcmRange: 'range', mcmRangeField: 'range',
+        mcmService: 'service', mcmProduct: 'product', mcmDataSheet: 'dataSheet',
+        mcmPid: 'pid', mcmPidRev: 'pidRev', mcmNote: 'note',
+        mcmIoType: 'ioType', mcmSignalType: 'signalType', mcmPower: 'power',
+        mcmZeroStatus: 'zeroStatus', mcmOneStatus: 'oneStatus',
+        mcmAlarmLL: 'alarmLL', mcmAlarmL: 'alarmL', mcmAlarmH: 'alarmH', mcmAlarmHH: 'alarmHH',
+        mcmRange0: 'range0', mcmRange100: 'range100', mcmUnit: 'unit',
+        mcmRioPanel: 'rioPanel', mcmSlotNumber: 'slotNumber', mcmChannelNumber: 'channelNumber',
+    };
+    for (const [elId, attrKey] of Object.entries(builtinFieldMap)) {
+        const el = document.getElementById(elId);
+        if (!el) continue;
+        if (!isBuiltinAttrEnabled(attrKey)) {
+            const field = el.closest('[data-menu]') || el.closest('.mcm-field');
+            if (field) field.style.display = 'none';
+        }
+    }
 
     // ===== 公共字段 =====
     document.getElementById('mcmTagNumber').value = marker.tagNumber || '';
@@ -150,6 +189,8 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     markerContextMenu.style.resize = 'none';
     markerContextMenu.style.width = '';
     markerContextMenu.style.height = '';
+    // 渲染自定义属性字段
+    renderMcmCustomFields(marker);
     void markerContextMenu.offsetHeight; // 强制重排
     markerContextMenu.style.resize = 'both';
     markerContextMenu.classList.add('visible');
@@ -603,6 +644,19 @@ function saveMarkerContextMenu() {
     apply('rioPanel', document.getElementById('mcmRioPanel').value);
     apply('slotNumber', document.getElementById('mcmSlotNumber').value);
     apply('channelNumber', document.getElementById('mcmChannelNumber').value);
+
+    // ===== 自定义属性字段 =====
+    const customAttrInputs = markerContextMenu.querySelectorAll('.mcm-custom-attr');
+    customAttrInputs.forEach(input => {
+        const attrKey = input.dataset.attrKey;
+        if (!attrKey) return;
+        const newVal = input.value.trim();
+        const oldVal = getCustomAttrValue(marker, attrKey);
+        if (oldVal !== newVal) {
+            setCustomAttrValue(marker, attrKey, newVal.length > 0 ? newVal : '');
+            updates.push({ field: attrKey, oldValue: oldVal, newValue: newVal, isCustomAttr: true });
+        }
+    });
 
     if (updates.length > 0) {
         // 合并为一条 history 记录（用 oldValue/newValue 记录所有变更）
@@ -1226,6 +1280,10 @@ settingsBtn.addEventListener('click', () => {
     settingMeasureLabelFontSize.value = settings.measureLabelFontSize || 13;
     settingMeasureHatchSpacing.value = settings.measureHatchSpacing || 8;
     settingMeasureHatchOpacity.value = settings.measureHatchOpacity != null ? settings.measureHatchOpacity : 0.35;
+    // 页脚子设置显隐
+    updateCaptionSubVisibility();
+    // 折叠分组默认折叠
+    ensureSectionCollapsed('settingMeasureStyleHdr', 'settingMeasureStyleBody');
     settingsBackdrop.classList.add('visible');
 });
 
@@ -1265,6 +1323,336 @@ settingsBackdrop.addEventListener('click', (e) => {
         settingsBackdrop.classList.remove('visible');
     }
 });
+
+// ===== 设置面板折叠分组 & 子设置联动 =====
+function ensureSectionCollapsed(hdrId, bodyId) {
+    const hdr = document.getElementById(hdrId);
+    if (!hdr) return;
+    const section = hdr.closest('.setting-section');
+    if (!section) return;
+    section.classList.add('collapsed');
+}
+
+function toggleSection(hdr) {
+    const section = hdr.closest('.setting-section');
+    if (!section) return;
+    section.classList.toggle('collapsed');
+}
+
+function updateCaptionSubVisibility() {
+    const show = settingShowCaption.checked;
+    document.getElementById('settingCaptionNameRow').classList.toggle('visible', show);
+    document.getElementById('settingCaptionSizeRow').classList.toggle('visible', show);
+}
+
+// 折叠分组点击切换
+document.getElementById('settingMeasureStyleHdr').addEventListener('click', (e) => toggleSection(e.currentTarget));
+
+// 页脚开关联动子设置
+settingShowCaption.addEventListener('change', updateCaptionSubVisibility);
+
+// ===== 自定义列对话框 =====
+function openCustomFieldDialog(sheetName) {
+    const dialog = document.getElementById('cfDialogBackdrop');
+    const sheetSel = document.getElementById('cfSheet');
+    const bindSel = document.getElementById('cfBindField');
+    const labelInput = document.getElementById('cfLabel');
+
+    sheetSel.value = sheetName;
+    labelInput.value = '';
+
+    // 填充绑定属性下拉
+    bindSel.innerHTML = getAllBindableFields().map(f =>
+        `<option value="${f.key}">${f.label}</option>`
+    ).join('');
+
+    dialog.hidden = false;
+}
+
+function closeCustomFieldDialog() {
+    document.getElementById('cfDialogBackdrop').hidden = true;
+}
+
+function addCustomFieldFromDialog() {
+    const sheetName = document.getElementById('cfSheet').value;
+    const label = document.getElementById('cfLabel').value.trim();
+    const bindField = document.getElementById('cfBindField').value;
+
+    if (!label) {
+        showToast('请输入列名');
+        return;
+    }
+
+    addCustomFieldDef(sheetName, label, bindField);
+    closeCustomFieldDialog();
+    renderPreview();
+    showToast(`已添加自定义列「${label}」`);
+}
+
+// 对话框事件
+document.getElementById('cfDialogClose').addEventListener('click', closeCustomFieldDialog);
+document.getElementById('cfDialogCancel').addEventListener('click', closeCustomFieldDialog);
+document.getElementById('cfDialogAdd').addEventListener('click', addCustomFieldFromDialog);
+document.getElementById('cfDialogBackdrop').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCustomFieldDialog();
+});
+
+// ===== 自定义列管理对话框 =====
+let cfManageSheet = 'detailList';
+
+function openCustomFieldManage() {
+    cfManageSheet = 'detailList';
+    document.querySelectorAll('#cfManageTabs .cf-manage-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.sheet === cfManageSheet);
+    });
+    renderCfManageList();
+    document.getElementById('cfManageBackdrop').hidden = false;
+}
+
+function closeCustomFieldManage() {
+    document.getElementById('cfManageBackdrop').hidden = true;
+}
+
+function renderCfManageList() {
+    const list = document.getElementById('cfManageList');
+    const defs = getCustomFieldDefs().filter(d => d.sheet === cfManageSheet);
+    if (defs.length === 0) {
+        list.innerHTML = '<div class="cf-manage-empty">暂无自定义列，点击表格表头的 + 按钮添加</div>';
+        return;
+    }
+    const bindLabel = (key) => {
+        const opt = MARKER_FIELD_OPTIONS.find(f => f.key === key);
+        return opt ? opt.label : key;
+    };
+    list.innerHTML = defs.map(d => `
+        <div class="cf-manage-item">
+            <span class="cf-manage-item-label">${pvEscape(d.label)}</span>
+            <span class="cf-manage-item-bind">← ${pvEscape(bindLabel(d.bindField))}</span>
+            <button class="cf-manage-item-del" data-key="${d.key}" title="删除此列">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </div>
+    `).join('');
+
+    // 删除按钮事件
+    list.querySelectorAll('.cf-manage-item-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            removeCustomFieldDef(btn.dataset.key);
+            renderCfManageList();
+            renderPreview();
+            showToast('已删除自定义列');
+        });
+    });
+}
+
+// 管理 tab 切换
+document.getElementById('cfManageTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.cf-manage-tab');
+    if (!tab) return;
+    cfManageSheet = tab.dataset.sheet;
+    document.querySelectorAll('#cfManageTabs .cf-manage-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.sheet === cfManageSheet);
+    });
+    renderCfManageList();
+});
+
+// 管理对话框事件
+document.getElementById('cfManageClose').addEventListener('click', closeCustomFieldManage);
+document.getElementById('cfManageCancel').addEventListener('click', closeCustomFieldManage);
+document.getElementById('cfManageBackdrop').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCustomFieldManage();
+});
+
+// 预览窗口管理按钮
+document.getElementById('previewManageColsBtn').addEventListener('click', openCustomFieldManage);
+
+// ===== 仪表属性管理对话框 =====
+function openCustomAttrManage() {
+    renderCfAttrList();
+    document.getElementById('cfAttrBackdrop').hidden = false;
+    document.getElementById('cfAttrLabel').value = '';
+    document.getElementById('cfAttrDesc').value = '';
+    setTimeout(() => document.getElementById('cfAttrLabel').focus(), 50);
+}
+
+function closeCustomAttrManage() {
+    document.getElementById('cfAttrBackdrop').hidden = true;
+}
+
+function renderCfAttrList() {
+    const list = document.getElementById('cfAttrList');
+    const customDefs = getCustomAttrDefs();
+    let html = '';
+
+    // 内置属性（按分组排列，显示名称 + 描述 + 启用 + 隐藏）
+    const groups = {};
+    getVisibleBuiltinAttrs().forEach(a => {
+        if (!groups[a.group]) groups[a.group] = [];
+        groups[a.group].push(a);
+    });
+    for (const [group, attrs] of Object.entries(groups)) {
+        html += '<div class="cf-manage-group">';
+        html += '<div class="cf-manage-group-title">' + pvEscape(group) + '</div>';
+        attrs.forEach(a => {
+            const enabled = isBuiltinAttrEnabled(a.key);
+            html +=
+                '<div class="cf-manage-item cf-manage-item--builtin">' +
+                    '<span class="cf-manage-item-label" title="' + pvEscape(a.label) + '">' + pvEscape(a.label) + '</span>' +
+                    '<span class="cf-manage-item-desc cf-manage-item-desc--builtin" title="' + pvEscape(a.desc || '') + '">' + pvEscape(a.desc || '') + '</span>' +
+                    '<button class="cf-manage-item-toggle' + (enabled ? ' enabled' : '') + '" data-bkey="' + a.key + '" title="' + (enabled ? '已启用，点击禁用' : '已禁用，点击启用') + '">' + (enabled ? 'ON' : 'OFF') + '</button>' +
+                    '<button class="cf-manage-item-del" data-bkey="' + a.key + '" title="隐藏此属性">' +
+                        '<i class="fa-solid fa-trash-can"></i>' +
+                    '</button>' +
+                '</div>';
+        });
+        html += '</div>';
+    }
+
+    // 自定义属性（名称 + 描述 + 启用 + 删除）
+    if (customDefs.length > 0) {
+        html += '<div class="cf-manage-group">';
+        html += '<div class="cf-manage-group-title">自定义属性</div>';
+        customDefs.forEach(d => {
+            const enabled = d.enabled !== false;
+            html +=
+                '<div class="cf-manage-item">' +
+                    '<span class="cf-manage-item-label" title="' + pvEscape(d.label) + '">' + pvEscape(d.label) + '</span>' +
+                    '<span class="cf-manage-item-desc cf-manage-item-desc--editable" data-key="' + d.key + '" data-field="desc" title="点击编辑描述">' + pvEscape(d.description || '') + '</span>' +
+                    '<button class="cf-manage-item-toggle' + (enabled ? ' enabled' : '') + '" data-key="' + d.key + '" data-field="enabled" title="' + (enabled ? '已启用，点击禁用' : '已禁用，点击启用') + '">' + (enabled ? 'ON' : 'OFF') + '</button>' +
+                    '<button class="cf-manage-item-del" data-key="' + d.key + '" title="删除此属性">' +
+                        '<i class="fa-solid fa-trash-can"></i>' +
+                    '</button>' +
+                '</div>';
+        });
+        html += '</div>';
+    } else {
+        html += '<div class="cf-manage-empty">暂无自定义属性，在上方输入属性名后点击"添加属性"</div>';
+    }
+
+    // 恢复隐藏的内置属性按钮
+    if (hasHiddenBuiltinAttrs()) {
+        html += '<div class="cf-manage-restore">' +
+            '<button class="btn-secondary cf-restore-btn" id="cfRestoreBuiltin">恢复已隐藏的内置属性</button>' +
+            '</div>';
+    }
+
+    list.innerHTML = html;
+
+    // 内置属性启用/禁用切换
+    list.querySelectorAll('.cf-manage-item--builtin .cf-manage-item-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.bkey;
+            const enabled = isBuiltinAttrEnabled(key);
+            updateBuiltinAttrState(key, { enabled: !enabled });
+            renderCfAttrList();
+            showToast(enabled ? '已禁用内置属性' : '已启用内置属性');
+        });
+    });
+
+    // 内置属性隐藏（"删除"）
+    list.querySelectorAll('.cf-manage-item--builtin .cf-manage-item-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.bkey;
+            const attr = ALL_MARKER_ATTRIBUTES.find(a => a.key === key);
+            updateBuiltinAttrState(key, { hidden: true });
+            renderCfAttrList();
+            showToast('已隐藏「' + (attr ? attr.label : key) + '」');
+        });
+    });
+
+    // 恢复隐藏的内置属性
+    const restoreBtn = document.getElementById('cfRestoreBuiltin');
+    if (restoreBtn) {
+        restoreBtn.addEventListener('click', () => {
+            restoreAllBuiltinAttrs();
+            renderCfAttrList();
+            showToast('已恢复所有内置属性');
+        });
+    }
+
+    // 启用/禁用切换（自定义属性）
+    list.querySelectorAll('.cf-manage-item:not(.cf-manage-item--builtin) .cf-manage-item-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.key;
+            const defs = getCustomAttrDefs();
+            const d = defs.find(x => x.key === key);
+            if (!d) return;
+            const newEnabled = d.enabled === false;
+            updateCustomAttrDef(key, { enabled: newEnabled });
+            renderCfAttrList();
+            renderPreview();
+            showToast(newEnabled ? '已启用「' + d.label + '」' : '已禁用「' + d.label + '」');
+        });
+    });
+
+    // 描述点击编辑
+    list.querySelectorAll('.cf-manage-item-desc--editable').forEach(span => {
+        span.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const key = span.dataset.key;
+            const defs = getCustomAttrDefs();
+            const d = defs.find(x => x.key === key);
+            if (!d) return;
+            const newDesc = prompt('编辑属性描述：', d.description || '');
+            if (newDesc === null) return; // 取消
+            updateCustomAttrDef(key, { description: newDesc.trim() });
+            renderCfAttrList();
+            showToast('描述已更新');
+        });
+    });
+
+    // 删除按钮事件
+    list.querySelectorAll('.cf-manage-item-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            removeCustomAttrDef(btn.dataset.key);
+            renderCfAttrList();
+            renderPreview();
+            showToast('已删除自定义属性');
+        });
+    });
+}
+
+function addCustomAttrFromDialog() {
+    const label = document.getElementById('cfAttrLabel').value.trim();
+    const desc = document.getElementById('cfAttrDesc').value.trim();
+    if (!label) {
+        showToast('请输入属性名');
+        return;
+    }
+    // 检查是否已存在同名属性（内置 + 自定义）
+    if (ALL_MARKER_ATTRIBUTES.some(a => a.label === label)) {
+        showToast('与内置属性重名，请使用其他名称');
+        return;
+    }
+    const defs = getCustomAttrDefs();
+    if (defs.some(d => d.label === label)) {
+        showToast('属性名已存在');
+        return;
+    }
+    addCustomAttrDef(label, desc);
+    document.getElementById('cfAttrLabel').value = '';
+    document.getElementById('cfAttrDesc').value = '';
+    renderCfAttrList();
+    renderPreview();
+    showToast('已添加自定义属性「' + label + '」');
+}
+
+// 属性管理对话框事件
+document.getElementById('previewManageAttrsBtn').addEventListener('click', openCustomAttrManage);
+document.getElementById('cfAttrClose').addEventListener('click', closeCustomAttrManage);
+document.getElementById('cfAttrCancel').addEventListener('click', closeCustomAttrManage);
+document.getElementById('cfAttrAdd').addEventListener('click', addCustomAttrFromDialog);
+document.getElementById('cfAttrLabel').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomAttrFromDialog(); }
+});
+document.getElementById('cfAttrDesc').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomAttrFromDialog(); }
+});
+document.getElementById('cfAttrBackdrop').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCustomAttrManage();
+});
+
+// ===== 列选择 UI（已废弃，保留兼容性） =====
 
 addTypeBtn.addEventListener('click', addCustomType);
 

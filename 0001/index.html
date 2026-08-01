@@ -116,6 +116,8 @@
     <div class="settings-backdrop" id="settingsBackdrop">
         <div class="settings-modal" role="dialog" aria-label="设置">
             <h3>设置 <button type="button" id="settingsCloseBtn" title="关闭">×</button></h3>
+            <div class="settings-scroll">
+            <div class="settings-col">
             <div class="settings-row">
                 <label>编号补零<small>如 001、002（仪表显示）</small></label>
                 <select id="settingPadDigits">
@@ -128,12 +130,12 @@
                 <label>文档页脚信息<small>文件名 / 尺寸mm</small></label>
                 <input type="checkbox" id="settingShowCaption" checked />
             </div>
-            <div class="settings-row">
-                <label>页脚显示文件名</label>
+            <div class="settings-row setting-sub" id="settingCaptionNameRow">
+                <label>└ 页脚显示文件名</label>
                 <input type="checkbox" id="settingCaptionName" checked />
             </div>
-            <div class="settings-row">
-                <label>页脚显示尺寸</label>
+            <div class="settings-row setting-sub" id="settingCaptionSizeRow">
+                <label>└ 页脚显示尺寸</label>
                 <input type="checkbox" id="settingCaptionSize" checked />
             </div>
             <div class="settings-row">
@@ -147,38 +149,46 @@
                 <label>实物比例尺<small>图纸1mm = 实物多少mm</small></label>
                 <input type="number" id="settingMeasureScale" min="1" step="1" value="530" />
             </div>
-            <div class="settings-divider"></div>
-            <div class="settings-row" style="font-weight:600;color:#1976D2;font-size:13px;padding:4px 0;">
-                <span>测量标注样式</span>
+            </div><!-- .settings-col -->
+            <div class="settings-col">
+            <div class="setting-section">
+                <div class="setting-section-hdr" id="settingMeasureStyleHdr">
+                    <span>测量标注样式</span>
+                    <i class="fa-solid fa-chevron-down setting-section-arrow"></i>
+                </div>
+                <div class="setting-section-body" id="settingMeasureStyleBody">
+                    <div class="settings-row">
+                        <label>显示线段距离</label>
+                        <input type="checkbox" id="settingMeasureShowSegmentLen" checked />
+                    </div>
+                    <div class="settings-row">
+                        <label>显示面积数值</label>
+                        <input type="checkbox" id="settingMeasureShowArea" checked />
+                    </div>
+                    <div class="settings-row">
+                        <label>显示段编号 (M1/M2)</label>
+                        <input type="checkbox" id="settingMeasureShowSegLabel" checked />
+                    </div>
+                    <div class="settings-row">
+                        <label>面积内斜线填充</label>
+                        <input type="checkbox" id="settingMeasureShowHatch" checked />
+                    </div>
+                    <div class="settings-row">
+                        <label>标注字号<small>11–24 px</small></label>
+                        <input type="range" id="settingMeasureLabelFontSize" min="11" max="24" step="1" value="13" />
+                    </div>
+                    <div class="settings-row">
+                        <label>斜线间距<small>4–20 px（越小越密）</small></label>
+                        <input type="range" id="settingMeasureHatchSpacing" min="4" max="20" step="1" value="8" />
+                    </div>
+                    <div class="settings-row">
+                        <label>斜线透明度<small>0.1–0.6</small></label>
+                        <input type="range" id="settingMeasureHatchOpacity" min="0.1" max="0.6" step="0.05" value="0.35" />
+                    </div>
+                </div>
             </div>
-            <div class="settings-row">
-                <label>显示线段距离</label>
-                <input type="checkbox" id="settingMeasureShowSegmentLen" checked />
-            </div>
-            <div class="settings-row">
-                <label>显示面积数值</label>
-                <input type="checkbox" id="settingMeasureShowArea" checked />
-            </div>
-            <div class="settings-row">
-                <label>显示段编号 (M1/M2)</label>
-                <input type="checkbox" id="settingMeasureShowSegLabel" checked />
-            </div>
-            <div class="settings-row">
-                <label>面积内斜线填充</label>
-                <input type="checkbox" id="settingMeasureShowHatch" checked />
-            </div>
-            <div class="settings-row">
-                <label>标注字号<small>11–24 px</small></label>
-                <input type="range" id="settingMeasureLabelFontSize" min="11" max="24" step="1" value="13" />
-            </div>
-            <div class="settings-row">
-                <label>斜线间距<small>4–20 px（越小越密）</small></label>
-                <input type="range" id="settingMeasureHatchSpacing" min="4" max="20" step="1" value="8" />
-            </div>
-            <div class="settings-row">
-                <label>斜线透明度<small>0.1–0.6</small></label>
-                <input type="range" id="settingMeasureHatchOpacity" min="0.1" max="0.6" step="0.05" value="0.35" />
-            </div>
+            </div><!-- .settings-col -->
+            </div><!-- .settings-scroll -->
             <div class="settings-actions">
                 <button type="button" class="btn-secondary" id="settingsCancelBtn">取消</button>
                 <button type="button" class="btn-primary" id="settingsSaveBtn">保存</button>
@@ -267,6 +277,12 @@
                     <span class="preview-meta" id="pvMeta"></span>
                 </div>
                 <div class="preview-header__right">
+                    <button type="button" class="preview-manage-cols" id="previewManageAttrsBtn" title="管理仪表属性">
+                        <i class="fa-solid fa-tags"></i>
+                    </button>
+                    <button type="button" class="preview-manage-cols" id="previewManageColsBtn" title="管理自定义列">
+                        <i class="fa-solid fa-columns"></i>
+                    </button>
                     <button type="button" class="preview-close" id="previewCloseBtn" title="关闭预览（Esc）">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
@@ -307,37 +323,7 @@
 
                 <section class="preview-sheet" id="pvSheet-ioList" hidden>
                     <div class="preview-scroll">
-                        <table class="preview-table io-list-table" id="pvTable-ioList">
-                            <thead>
-                                <tr>
-                                    <th rowspan="2">S/N</th>
-                                    <th rowspan="2">Revision No.</th>
-                                    <th rowspan="2">DCS Tag Number</th>
-                                    <th rowspan="2">Instrument Tag No.</th>
-                                    <th rowspan="2">Signal Description</th>
-                                    <th rowspan="2">Equipment</th>
-                                    <th rowspan="2">P &amp; ID Dwg No.</th>
-                                    <th rowspan="2">P&amp;ID Revision No.</th>
-                                    <th rowspan="2">IO Type</th>
-                                    <th rowspan="2">Signal Type</th>
-                                    <th rowspan="2">Power</th>
-                                    <th rowspan="2">Zero Stauts</th>
-                                    <th rowspan="2">One Stauts</th>
-                                    <th colspan="4">Alarm Setting</th>
-                                    <th colspan="2">Range</th>
-                                    <th rowspan="2">Unit</th>
-                                    <th rowspan="2">RIO Panel No.</th>
-                                    <th rowspan="2">Slot Number</th>
-                                    <th rowspan="2">Channel Number</th>
-                                    <th rowspan="2">Remarks</th>
-                                </tr>
-                                <tr>
-                                    <th>LL</th><th>L</th><th>H</th><th>HH</th>
-                                    <th>0%</th><th>100%</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pvIoListBody"></tbody>
-                        </table>
+                        <table class="preview-table io-list-table" id="pvTable-ioList"></table>
                     </div>
                 </section>
 
@@ -351,6 +337,65 @@
             <footer class="preview-footer">
                 <span id="pvFooter"></span>
             </footer>
+        </div>
+    </div>
+
+    <!-- 仪表属性管理对话框 -->
+    <div class="cf-dialog-backdrop" id="cfAttrBackdrop" hidden>
+        <div class="cf-dialog cf-dialog--wide" role="dialog" aria-label="仪表属性列表">
+            <h3>仪表属性列表 <button type="button" id="cfAttrClose" title="关闭">&times;</button></h3>
+            <div class="cf-dialog-row">
+                <label>属性名</label>
+                <input type="text" id="cfAttrLabel" placeholder="如：制造商、型号" maxlength="20" />
+            </div>
+            <div class="cf-dialog-row">
+                <label>描述</label>
+                <input type="text" id="cfAttrDesc" placeholder="属性说明（选填）" maxlength="60" />
+            </div>
+            <div class="cf-dialog-actions" style="justify-content:space-between;">
+                <button type="button" class="btn-primary" id="cfAttrAdd">添加属性</button>
+                <button type="button" class="btn-secondary" id="cfAttrCancel">关闭</button>
+            </div>
+            <div class="cf-manage-list" id="cfAttrList"></div>
+        </div>
+    </div>
+    <div class="cf-dialog-backdrop" id="cfManageBackdrop" hidden>
+        <div class="cf-dialog" role="dialog" aria-label="管理自定义列">
+            <h3>管理自定义列 <button type="button" id="cfManageClose" title="关闭">&times;</button></h3>
+            <div class="cf-manage-tabs" id="cfManageTabs">
+                <button class="cf-manage-tab active" data-sheet="detailList">Detail List</button>
+                <button class="cf-manage-tab" data-sheet="insList">INS List</button>
+                <button class="cf-manage-tab" data-sheet="ioList">IO List</button>
+            </div>
+            <div class="cf-manage-list" id="cfManageList"></div>
+            <div class="cf-dialog-actions">
+                <button type="button" class="btn-secondary" id="cfManageCancel">关闭</button>
+            </div>
+        </div>
+    </div>
+    <div class="cf-dialog-backdrop" id="cfDialogBackdrop" hidden>
+        <div class="cf-dialog" role="dialog" aria-label="添加自定义列">
+            <h3>添加自定义列 <button type="button" id="cfDialogClose" title="关闭">&times;</button></h3>
+            <div class="cf-dialog-row">
+                <label>添加到工作表</label>
+                <select id="cfSheet">
+                    <option value="detailList">Detail List</option>
+                    <option value="insList">INS List</option>
+                    <option value="ioList">IO List</option>
+                </select>
+            </div>
+            <div class="cf-dialog-row">
+                <label>列名</label>
+                <input type="text" id="cfLabel" placeholder="输入列名" maxlength="30" />
+            </div>
+            <div class="cf-dialog-row">
+                <label>绑定属性</label>
+                <select id="cfBindField"></select>
+            </div>
+            <div class="cf-dialog-actions">
+                <button type="button" class="btn-secondary" id="cfDialogCancel">取消</button>
+                <button type="button" class="btn-primary" id="cfDialogAdd">添加</button>
+            </div>
         </div>
     </div>
 
@@ -536,6 +581,8 @@
                 <label class="mcm-label">Remarks</label>
                 <input type="text" class="mcm-input" id="mcmNote" />
             </div>
+            <!-- 自定义属性动态渲染区 -->
+            <div id="mcmCustomFields" data-menu="both"></div>
         </div>
         <div class="mcm-footer">
             <button class="mcm-btn" id="mcmCancelBtn">取消</button>
@@ -560,6 +607,7 @@
     <script src="js/render.js"></script>
     <script src="js/pdf-loader.js"></script>
     <script src="js/export-pdf.js"></script>
+    <script src="js/excel-config.js"></script>
     <script src="js/export-excel.js"></script>
     <script src="js/export-measure.js"></script>
     <script src="js/preview.js"></script>

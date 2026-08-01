@@ -114,168 +114,7 @@ const IO_LIST_FONT = { name: 'Arial', size: 10 };
 const IO_LIST_FONT_BOLD = { name: 'Arial', size: 10, bold: true };
 
 // ===== IO List 工作表（第 4 个表）=====
-
-// IO List 模板列头定义（共 24 列）
-// col: 列号 (1-based)
-// row1: 第一行文字（主标题）
-// row2: 第二行文字（子标题），若为空则与 row1 合并
-// row1Span: 第一行合并的列数（默认 1），用于分组标题（如 Alarm Setting 跨 4 列）
-const IO_LIST_COLUMNS = [
-    { col: 1,  row1: 'S/N',                      row2: 'S/N' },
-    { col: 2,  row1: 'Revision No.',             row2: 'Revision No.' },
-    { col: 3,  row1: 'DCS Tag Number',           row2: 'DCS Tag Number' },
-    { col: 4,  row1: 'Instrument Tag No.',       row2: 'Instrument Tag No.' },
-    { col: 5,  row1: 'Signal Description',       row2: 'Signal Description' },
-    { col: 6,  row1: 'Equipment',                row2: 'Equipment' },
-    { col: 7,  row1: 'P & ID Dwg No.',           row2: 'P & ID Dwg No.' },
-    { col: 8,  row1: 'P&ID Revision No.',        row2: 'P&ID Revision No.' },
-    { col: 9,  row1: 'IO Type',                  row2: 'IO Type' },
-    { col: 10, row1: 'Signal Type',              row2: 'Signal Type' },
-    { col: 11, row1: 'Power',                   row2: 'Power' },
-    { col: 12, row1: 'Zero Stauts',              row2: 'Zero Stauts' },
-    { col: 13, row1: 'One Stauts',               row2: 'One Stauts' },
-    { col: 14, row1: 'Alarm Setting',            row2: 'LL',  row1Span: 4 },
-    { col: 15, row1: '',                         row2: 'L' },
-    { col: 16, row1: '',                         row2: 'H' },
-    { col: 17, row1: '',                         row2: 'HH' },
-    { col: 18, row1: 'Range',                    row2: '0%',  row1Span: 2 },
-    { col: 19, row1: '',                         row2: '100%' },
-    { col: 20, row1: 'Unit',                     row2: 'Unit' },
-    { col: 21, row1: 'RIO Panel No.',            row2: 'RIO Panel No.' },
-    { col: 22, row1: 'Slot Number',              row2: 'Slot Number' },
-    { col: 23, row1: 'Channel Number',           row2: 'Channel Number' },
-    { col: 24, row1: 'Remarks',                  row2: 'Remarks' },
-];
-
-const IO_LIST_TOTAL_COLS = IO_LIST_COLUMNS.length;
-const IO_LIST_DATA_START_COL = 1;
-const IO_LIST_SN_COL = 1;
-const IO_LIST_TAG_COL = 4;
-const IO_LIST_DESC_COL = 5;
-const IO_LIST_REMARKS_COL = 24;
-
-// 写入 IO List 表头：支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列）
-function writeIOListHeader(ws) {
-    // 设置列 key
-    IO_LIST_COLUMNS.forEach((col) => {
-        ws.getColumn(col.col).key = 'c' + col.col;
-    });
-
-    const row1 = ws.getRow(1);
-    const row2 = ws.getRow(2);
-
-    // 写入 Row 1 和 Row 2 内容
-    IO_LIST_COLUMNS.forEach((col) => {
-        // Row 1
-        if (col.row1) {
-            const c1 = row1.getCell(col.col);
-            c1.value = col.row1;
-            c1.font = IO_LIST_FONT_BOLD;
-            c1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        }
-        // Row 2
-        if (col.row2) {
-            const c2 = row2.getCell(col.col);
-            c2.value = col.row2;
-            c2.font = IO_LIST_FONT_BOLD;
-            c2.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        }
-    });
-
-    // 填充背景色（表头统一浅灰色）
-    const fillColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F3F4' } };
-    for (let c = 1; c <= IO_LIST_TOTAL_COLS; c++) {
-        const cell1 = row1.getCell(c);
-        const cell2 = row2.getCell(c);
-        if (!cell1.fill || !cell1.fill.type) cell1.fill = fillColor;
-        if (!cell2.fill || !cell2.fill.type) cell2.fill = fillColor;
-    }
-
-    // 行高：每个单元格 20，表头共两行
-    row1.height = 20;
-    row2.height = 20;
-
-    // 合并逻辑
-    // 1. 对于分组合并列（row1Span > 1），Row 1 横向合并，Row 1 和 Row 2 之间不纵向合并
-    // 2. 对于普通列（row1Span = 1），Row 1 和 Row 2 纵向合并
-    IO_LIST_COLUMNS.forEach((col) => {
-        const span = col.row1Span || 1;
-        if (span > 1) {
-            // 横向合并 Row 1：col.col 到 col.col + span - 1
-            try { ws.mergeCells(1, col.col, 1, col.col + span - 1); } catch (e) {}
-        } else {
-            // 纵向合并 Row 1 和 Row 2
-            try { ws.mergeCells(1, col.col, 2, col.col); } catch (e) {}
-        }
-    });
-
-    // 第 3 行：区段标题（合并 A3:X3，跨所有列）
-    const sectionTitle = documents.length === 1
-        ? `INSTRUMENT I/O FOR ${documents[0].fileName.replace(/\.pdf$/i, '').toUpperCase()}`
-        : 'INSTRUMENT I/O FOR ALL DOCUMENTS';
-    const titleCell = ws.getRow(3).getCell(1);
-    titleCell.value = sectionTitle;
-    titleCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF333333' } };
-    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
-    ws.getRow(3).height = 24;
-    // 合并第 3 行所有列（A3:X3）
-    try { ws.mergeCells(3, 1, 3, IO_LIST_TOTAL_COLS); } catch (e) {}
-}
-
-// 创建 IO List 工作表（统一入口，原模板加载逻辑已移除）
-function addIOList(wb) {
-    const ws = wb.addWorksheet('IO List', {
-        views: [{ state: 'frozen', ySplit: 2 }],
-    });
-
-    // 统一写入表头（分组合并结构）
-    writeIOListHeader(ws);
-
-    // 填充标记数据
-    populateIOListData(ws, 4, IO_LIST_REMARKS_COL);
-
-    // 给表头行也加边框
-    applyIOListHeaderBorders(ws, IO_LIST_TOTAL_COLS);
-
-    // 自适应列宽（与明细表一致）；IO List 表头写入单元格、未走 col.header，这里显式传入
-    // 跳过合并的横幅/分组标题，避免标题长文本污染整列宽度
-    autoFitColumns(ws, IO_LIST_COLUMNS.map(c => c.row2 || c.row1));
-    // S/N 列不受标题行影响，固定窄宽
-    ws.getColumn(IO_LIST_SN_COL).width = 6;
-    // LL/L/H/HH 列宽与 0%/100% 保持一致
-    const alarmRangeWidth = ws.getColumn(18).width || 8;
-    for (let c = 14; c <= 19; c++) {
-        ws.getColumn(c).width = alarmRangeWidth;
-    }
-    // 列宽确定后按实际宽度重算数据行行高（数据从第 4 行开始；此前为未知列宽的保守估计）
-    for (let r = 4; r <= ws.actualRowCount; r++) {
-        ws.getRow(r).height = estimateRowHeight(ws, ws.getRow(r));
-    }
-    return ws;
-}
-
-// 给 IO List 表头行加边框（与数据行保持一致的细边框）
-function applyIOListHeaderBorders(ws, colCount) {
-    const border = {
-        top: { style: 'thin', color: { argb: 'FF808080' } },
-        left: { style: 'thin', color: { argb: 'FF808080' } },
-        bottom: { style: 'thin', color: { argb: 'FF808080' } },
-        right: { style: 'thin', color: { argb: 'FF808080' } },
-    };
-    // 获取实际有内容的最大行号（表头+标题行）
-    const headerEndRow = ws.actualRowCount || 3;
-    for (let r = 1; r <= headerEndRow; r++) {
-        const row = ws.getRow(r);
-        for (let c = 1; c <= colCount; c++) {
-            const cell = row.getCell(c);
-            cell.border = border;
-            // 表头行统一居中 + 自动换行
-            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        }
-        // 表头行高保持 20
-        if (r <= 2) row.height = 20;
-    }
-}
+// 列定义已迁移至 excel-config.js，使用 getSheetColumnsWithCustom('ioList') 动态获取
 
 // 根据仪表代号推断 IO 信号默认值
 function getIOListSignalDefaults(typeCode) {
@@ -299,9 +138,126 @@ function getIOListSignalDefaults(typeCode) {
     return { ioType: '', signalType: '', power: '' };
 }
 
+// 写入 IO List 表头：根据 excel-config.js 动态生成
+// 支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列 等）
+function writeIOListHeader(ws) {
+    const cols = getSheetColumnsWithCustom('ioList');
+    const totalCols = cols.length;
+
+    // 设置列 key
+    cols.forEach((col, idx) => {
+        ws.getColumn(idx + 1).key = col.key;
+    });
+
+    const row1 = ws.getRow(1);
+    const row2 = ws.getRow(2);
+
+    // 写入 Row 1 和 Row 2 内容
+    let colIdx = 1;
+    for (const col of cols) {
+        const span = col.colSpan || 1;
+        // Row 1
+        if (col.header) {
+            const c1 = row1.getCell(colIdx);
+            c1.value = col.header;
+            c1.font = IO_LIST_FONT_BOLD;
+            c1.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+        // Row 2
+        if (col.header2) {
+            const c2 = row2.getCell(colIdx);
+            c2.value = col.header2;
+            c2.font = IO_LIST_FONT_BOLD;
+            c2.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+        colIdx += span;
+    }
+
+    // 填充背景色（表头统一浅灰色）
+    const fillColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F3F4' } };
+    for (let c = 1; c <= totalCols; c++) {
+        const cell1 = row1.getCell(c);
+        const cell2 = row2.getCell(c);
+        if (!cell1.fill || !cell1.fill.type) cell1.fill = fillColor;
+        if (!cell2.fill || !cell2.fill.type) cell2.fill = fillColor;
+    }
+
+    // 行高：每个单元格 20，表头共两行
+    row1.height = 20;
+    row2.height = 20;
+
+    // 合并逻辑：colSpan > 1 的列在 Row 1 横向合并；其余列纵向合并 Row 1 和 Row 2
+    colIdx = 1;
+    for (const col of cols) {
+        const span = col.colSpan || 1;
+        if (span > 1) {
+            try { ws.mergeCells(1, colIdx, 1, colIdx + span - 1); } catch (e) {}
+        } else {
+            try { ws.mergeCells(1, colIdx, 2, colIdx); } catch (e) {}
+        }
+        colIdx += span;
+    }
+
+    // 第 3 行：区段标题（合并所有列）
+    const sectionTitle = documents.length === 1
+        ? `INSTRUMENT I/O FOR ${documents[0].fileName.replace(/\.pdf$/i, '').toUpperCase()}`
+        : 'INSTRUMENT I/O FOR ALL DOCUMENTS';
+    const titleCell = ws.getRow(3).getCell(1);
+    titleCell.value = sectionTitle;
+    titleCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF333333' } };
+    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    ws.getRow(3).height = 24;
+    try { ws.mergeCells(3, 1, 3, totalCols); } catch (e) {}
+}
+
+// 创建 IO List 工作表
+function addIOList(wb) {
+    const cols = getSheetColumnsWithCustom('ioList');
+    const totalCols = cols.length;
+
+    const ws = wb.addWorksheet('IO List', {
+        views: [{ state: 'frozen', ySplit: 2 }],
+    });
+
+    writeIOListHeader(ws);
+
+    // 填充标记数据
+    populateIOListData(ws, 4, cols);
+
+    // 给表头行加边框
+    applyIOListHeaderBorders(ws, totalCols);
+
+    // 自适应列宽
+    autoFitColumns(ws, cols.map(c => c.header2 || c.header));
+    // 列宽确定后重算数据行行高
+    for (let r = 4; r <= ws.actualRowCount; r++) {
+        ws.getRow(r).height = estimateRowHeight(ws, ws.getRow(r));
+    }
+    return ws;
+}
+
+// 给 IO List 表头行加边框
+function applyIOListHeaderBorders(ws, colCount) {
+    const border = {
+        top: { style: 'thin', color: { argb: 'FF808080' } },
+        left: { style: 'thin', color: { argb: 'FF808080' } },
+        bottom: { style: 'thin', color: { argb: 'FF808080' } },
+        right: { style: 'thin', color: { argb: 'FF808080' } },
+    };
+    const headerEndRow = ws.actualRowCount || 3;
+    for (let r = 1; r <= headerEndRow; r++) {
+        const row = ws.getRow(r);
+        for (let c = 1; c <= colCount; c++) {
+            const cell = row.getCell(c);
+            cell.border = border;
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        }
+        if (r <= 2) row.height = 20;
+    }
+}
+
 // 填充 IO List 标记数据（仅包含勾选导出的类型）
-function populateIOListData(ws, startRow, remarksCol) {
-    // 过滤：只导出 IO List 勾选的类型
+function populateIOListData(ws, startRow, cols) {
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
     const sorted = [...filtered].sort((a, b) => {
         const fa = getDocFileName(a.docId);
@@ -321,55 +277,18 @@ function populateIOListData(ws, startRow, remarksCol) {
     let rowIdx = startRow;
     for (let i = 0; i < sorted.length; i++) {
         const m = sorted[i];
-        const t = getTypeById(m.typeId);
         const row = ws.getRow(rowIdx);
 
-        row.getCell(IO_LIST_SN_COL).value = i + 1;                                    // S/N (1)
-        row.getCell(3).value = qExcel(m.dcsTag || '');                                        // DCS Tag Number (3)
-        row.getCell(IO_LIST_TAG_COL).value = qExcel(formatMarkerLabel(m));                     // Instrument Tag No. (4)
-        row.getCell(IO_LIST_DESC_COL).value = qExcel(m.typeFullName || t.fullName || m.typeName || ''); // Signal Description (5)
-        row.getCell(6).value = qExcel(m.location || '');                    // Equipment (6)
-        row.getCell(7).value = qExcel(m.pid || '');                         // P & ID Dwg No. (7)
-        row.getCell(8).value = qExcel(m.pidRev || '');                      // P&ID Revision No. (8)
-        // IO Type / Signal Type / Power：优先用用户填写值，空则自动推断
-        const defs = getIOListSignalDefaults(m.typeCode);
-        row.getCell(9).value = qExcel(m.ioType || defs.ioType);             // IO Type (9)
-        row.getCell(10).value = qExcel(m.signalType || defs.signalType);    // Signal Type (10)
-        row.getCell(11).value = qExcel(m.power || defs.power);              // Power (11)
-        row.getCell(12).value = qExcel(m.zeroStatus || '');                 // Zero Status (12)
-        row.getCell(13).value = qExcel(m.oneStatus || '');                  // One Status (13)
-        row.getCell(14).value = qExcel(m.alarmLL || '');                    // Alarm LL (14)
-        row.getCell(15).value = qExcel(m.alarmL || '');                     // Alarm L (15)
-        row.getCell(16).value = qExcel(m.alarmH || '');                     // Alarm H (16)
-        row.getCell(17).value = qExcel(m.alarmHH || '');                    // Alarm HH (17)
-        // Range 0% / 100%：优先用 range0/range100，空则从 range 拆分（兼容旧数据）
-        if (m.range0 || m.range100) {
-            row.getCell(18).value = qExcel(m.range0 || '');                 // Range 0% (18)
-            row.getCell(19).value = qExcel(m.range100 || '');               // Range 100% (19)
-        } else if (m.range) {
-            const parts = String(m.range).split(/[~\-–—]/).map(s => s.trim());
-            row.getCell(18).value = qExcel(parts[0] || '');
-            row.getCell(19).value = qExcel(parts[1] || parts[0] || '');
-        } else {
-            row.getCell(18).value = '';
-            row.getCell(19).value = '';
-        }
-        row.getCell(20).value = qExcel(m.unit || '');                       // Unit (20)
-        row.getCell(21).value = qExcel(m.rioPanel || '');                   // RIO Panel No. (21)
-        row.getCell(22).value = qExcel(m.slotNumber || '');                 // Slot Number (22)
-        row.getCell(23).value = qExcel(m.channelNumber || '');              // Channel Number (23)
-        row.getCell(remarksCol).value = qExcel(m.note || '');                    // Remarks (24)
-
-        for (let c = 1; c <= remarksCol; c++) {
-            const cell = row.getCell(c);
+        // 动态写入每列，按 getter 取值
+        cols.forEach((col, colIdx) => {
+            const cell = row.getCell(colIdx + 1);
+            cell.value = qExcel(col.getter(m, i));
             cell.font = IO_LIST_FONT;
             cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             cell.border = border;
-        }
+        });
 
-        // 根据内容长度估算行高（列宽未定时按 10 保守估算，autoFit 后会在 addIOList 中重算）
         row.height = estimateRowHeight(ws, row);
-
         rowIdx++;
     }
 }
@@ -633,24 +552,21 @@ async function exportExcelCore() {
     const typeTotal = wsType.addRow({ type: 'Total', desc: '', count: markers.length });
     typeTotal.font = { bold: true };
 
+    const detailCols = getSheetColumnsWithCustom('detailList').filter(c => c.type !== 'locate');
     const wsDetail = wb.addWorksheet('Detail List', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
-    wsDetail.columns = [
-        { header: 'S/N', key: 'idx', width: 6 },
-        { header: 'Tag No.', key: 'label', width: 18 },
-        { header: 'Location', key: 'location', width: 20 },
-        { header: 'Instrument Type', key: 'type', width: 24 },
-        { header: 'Process Connection', key: 'connection', width: 20 },
-        { header: 'Size / Calibration Range', key: 'size', width: 24 },
-        { header: 'Service', key: 'service', width: 16 },
-        { header: 'Product', key: 'product', width: 16 },
-        { header: 'Data Sheet No.', key: 'dataSheet', width: 20 },
-        { header: 'P & ID Dwg No.', key: 'pid', width: 20 },
-        { header: 'Remarks', key: 'note', width: 20 },
-        { header: 'List', key: 'list', width: 6 },
-    ];
-    styleHeaderRow(wsDetail.getRow(1));
+    // 动态设置列 key 和宽度
+    detailCols.forEach((col, idx) => {
+        wsDetail.getColumn(idx + 1).key = col.key;
+        wsDetail.getColumn(idx + 1).width = col.width || 10;
+    });
+    // 设置表头
+    const detailHdrRow = wsDetail.getRow(1);
+    detailCols.forEach((col, idx) => {
+        detailHdrRow.getCell(idx + 1).value = col.header;
+    });
+    styleHeaderRow(detailHdrRow);
 
     const sorted = [...markers].sort((a, b) => {
         const fa = getDocFileName(a.docId);
@@ -661,29 +577,16 @@ async function exportExcelCore() {
     });
 
     sorted.forEach((m, i) => {
-        const t = getTypeById(m.typeId);
-        // List 标识：IO = 勾选导出到 IO List，INS = 未勾选（仅 INS List）
-        const listType = isTypeInIOList(m.typeId) ? 'IO' : 'INS';
-        const r = wsDetail.addRow({
-            idx: i + 1,
-            label: qExcel(formatMarkerLabel(m)),
-            location: qExcel(m.location || ''),
-            type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
-            connection: qExcel(buildProcessConnection(m)),
-            size: qExcel(m.range || ''),
-            service: qExcel(m.service || ''),
-            product: qExcel(m.product || ''),
-            dataSheet: qExcel(m.dataSheet || ''),
-            pid: qExcel(m.pid || ''),
-            note: qExcel(m.note || ''),
-            list: listType,
+        const row = wsDetail.addRow();
+        detailCols.forEach((col, colIdx) => {
+            row.getCell(colIdx + 1).value = qExcel(col.getter(m, i));
         });
     });
 
     // 自动适应列宽（覆盖初始预设宽度，按实际内容估算）
     autoFitColumns(wsByFile);
     autoFitColumns(wsType);
-    autoFitColumns(wsDetail);
+    autoFitColumns(wsDetail, detailCols.map(c => c.header));
 
     // 统一格式：全部居中 + 细边框
     applyTableFormat(wsByFile);
@@ -696,42 +599,30 @@ async function exportExcelCore() {
     // Sheet 5: INS List（结构与明细清单一致，仅未勾选导出到 IO List 的标记）
     const insMarkers = sorted.filter(m => !isTypeInIOList(m.typeId));
     if (insMarkers.length > 0) {
+        const insCols = getSheetColumnsWithCustom('insList');
         const wsIns = wb.addWorksheet('INS List', {
             views: [{ state: 'frozen', ySplit: 1 }],
         });
-        wsIns.columns = [
-            { header: 'S/N', key: 'idx', width: 6 },
-            { header: 'Tag No.', key: 'label', width: 18 },
-            { header: 'Location', key: 'location', width: 20 },
-            { header: 'Instrument Type', key: 'type', width: 24 },
-            { header: 'Process Connection', key: 'connection', width: 20 },
-            { header: 'Size / Calibration Range', key: 'size', width: 24 },
-            { header: 'Service', key: 'service', width: 16 },
-            { header: 'Product', key: 'product', width: 16 },
-            { header: 'Data Sheet No.', key: 'dataSheet', width: 20 },
-            { header: 'P & ID Dwg No.', key: 'pid', width: 20 },
-            { header: 'Remarks', key: 'note', width: 20 },
-        ];
-        styleHeaderRow(wsIns.getRow(1));
+        // 动态设置列 key 和宽度
+        insCols.forEach((col, idx) => {
+            wsIns.getColumn(idx + 1).key = col.key;
+            wsIns.getColumn(idx + 1).width = col.width || 10;
+        });
+        // 设置表头
+        const insHdrRow = wsIns.getRow(1);
+        insCols.forEach((col, idx) => {
+            insHdrRow.getCell(idx + 1).value = col.header;
+        });
+        styleHeaderRow(insHdrRow);
 
         insMarkers.forEach((m, i) => {
-            const t = getTypeById(m.typeId);
-            wsIns.addRow({
-                idx: i + 1,
-                label: qExcel(formatMarkerLabel(m)),
-                location: qExcel(m.location || ''),
-                type: qExcel(m.typeFullName || t.fullName || m.typeName || t.name || ''),
-                connection: qExcel(buildProcessConnection(m)),
-                size: qExcel(m.range || ''),
-                service: qExcel(m.service || ''),
-                product: qExcel(m.product || ''),
-                dataSheet: qExcel(m.dataSheet || ''),
-                pid: qExcel(m.pid || ''),
-                note: qExcel(m.note || ''),
+            const row = wsIns.addRow();
+            insCols.forEach((col, colIdx) => {
+                row.getCell(colIdx + 1).value = qExcel(col.getter(m, i));
             });
         });
 
-        autoFitColumns(wsIns);
+        autoFitColumns(wsIns, insCols.map(c => c.header));
         applyTableFormat(wsIns);
     }
 

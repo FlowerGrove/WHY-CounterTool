@@ -23,9 +23,10 @@ function pvCell(text, cls) {
 }
 
 // 可编辑单元格：input 直接渲染，修改后写回 marker 对应字段
-function pvEditCell(marker, field, text) {
+function pvEditCell(marker, field, text, isCustomAttr) {
     const v = (text === null || text === undefined) ? '' : String(text);
-    return `<td class="cell-editable" data-mid="${marker.id}" data-field="${field}" title="点击编辑">
+    const attrFlag = isCustomAttr ? ' data-is-custom-attr="1"' : '';
+    return `<td class="cell-editable" data-mid="${marker.id}" data-field="${field}"${attrFlag} title="点击编辑">
         <input type="text" value="${pvEscape(v)}" spellcheck="false" autocomplete="off" />
     </td>`;
 }
@@ -177,39 +178,22 @@ function pvSortedMarkers() {
     });
 }
 
-// ===== Sheet 3: Detail List =====
+// ===== Sheet 3: Detail List（配置驱动 + 自定义列） =====
 function pvRenderDetail() {
     const table = document.getElementById('pvTable-detail');
     const sorted = pvSortedMarkers();
-    let html = `<thead><tr>
-        <th>S/N</th><th>Tag No.</th><th>Location</th><th>Instrument Type</th>
-        <th>Process Connection</th><th>Size / Calibration Range</th>
-        <th>Service</th><th>Product</th><th>Data Sheet No.</th>
-        <th>P &amp; ID Dwg No.</th><th>Remarks</th><th>List</th><th class="pv-col-locate">定位</th>
-    </tr></thead><tbody>`;
-
+    const cols = getSheetColumnsWithCustom('detailList');
+    let html = `<thead><tr>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="detailList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
     sorted.forEach((m, i) => {
-        const listType = isTypeInIOList(m.typeId) ? 'IO' : 'INS';
-        const listTag = `<span class="list-tag ${listType.toLowerCase()}">${listType}</span>`;
-        const t = getTypeById(m.typeId);
-        const typeDesc = m.typeFullName || (t && t.fullName) || m.typeName || t.name || '';
-        html += pvRow(
-            `<td class="cell-number">${i + 1}</td>` +
-            pvCell(formatMarkerLabel(m), 'cell-number') +
-            pvEditCell(m, 'location', m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
-            pvEditCell(m, 'range', m.range) + pvEditCell(m, 'service', m.service) + pvEditCell(m, 'product', m.product) +
-            pvEditCell(m, 'dataSheet', m.dataSheet) + pvEditCell(m, 'pid', m.pid) + pvEditCell(m, 'note', m.note) +
-            `<td>${listTag}</td>` +
-            `<td class="cell-locate"><button type="button" class="pv-locate-btn" data-mid="${m.id}" title="定位到图纸"><i class="fa-solid fa-location-crosshairs"></i></button></td>`
-        );
+        html += pvRow(cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>');
     });
     html += '</tbody>';
     table.innerHTML = html;
 }
 
-// ===== Sheet 4: IO List =====
+// ===== Sheet 4: IO List（配置驱动 + 自定义列） =====
 function pvRenderIOList() {
-    const tbody = document.getElementById('pvIoListBody');
+    const table = document.getElementById('pvTable-ioList');
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
     const sorted = [...filtered].sort((a, b) => {
         const fa = getDocFileName(a.docId);
@@ -218,53 +202,25 @@ function pvRenderIOList() {
         if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
         return (a.number || 0) - (b.number || 0);
     });
+    const cols = getSheetColumnsWithCustom('ioList');
 
-    let html = '';
+    let html = pvBuildIOListHeader(cols) + '<tbody>';
     sorted.forEach((m, i) => {
-        const defs = getIOListSignalDefaults(m.typeCode);
-        const t = getTypeById(m.typeId);
-        const typeDesc = m.typeFullName || (t && t.fullName) || m.typeName || '';
-
-        let range0 = '', range100 = '';
-        if (m.range0 || m.range100) {
-            range0 = m.range0 || '';
-            range100 = m.range100 || '';
-        } else if (m.range) {
-            const parts = String(m.range).split(/[~\-–—]/).map(s => s.trim());
-            range0 = parts[0] || '';
-            range100 = parts[1] || parts[0] || '';
-        }
-
-        html += pvRow(
-            `<td class="cell-number">${i + 1}</td>` +
-            pvCell('') +                                    // Revision No.
-            pvEditCell(m, 'dcsTag', m.dcsTag) +             // DCS Tag Number
-            pvCell(formatMarkerLabel(m), 'cell-number') +   // Instrument Tag No.
-            pvCell(typeDesc) +                              // Signal Description
-            pvEditCell(m, 'location', m.location) +         // Equipment
-            pvEditCell(m, 'pid', m.pid) +                   // P & ID Dwg No.
-            pvEditCell(m, 'pidRev', m.pidRev) +             // P&ID Revision No.
-            pvEditCell(m, 'ioType', m.ioType || defs.ioType) +         // IO Type
-            pvEditCell(m, 'signalType', m.signalType || defs.signalType) + // Signal Type
-            pvEditCell(m, 'power', m.power || defs.power) +             // Power
-            pvEditCell(m, 'zeroStatus', m.zeroStatus) +                 // Zero Status
-            pvEditCell(m, 'oneStatus', m.oneStatus) +                   // One Status
-            pvEditCell(m, 'alarmLL', m.alarmLL) + pvEditCell(m, 'alarmL', m.alarmL) +
-            pvEditCell(m, 'alarmH', m.alarmH) + pvEditCell(m, 'alarmHH', m.alarmHH) +
-            pvEditCell(m, 'range0', range0) + pvEditCell(m, 'range100', range100) +
-            pvEditCell(m, 'unit', m.unit) + pvEditCell(m, 'rioPanel', m.rioPanel) +
-            pvEditCell(m, 'slotNumber', m.slotNumber) + pvEditCell(m, 'channelNumber', m.channelNumber) +
-            pvEditCell(m, 'note', m.note)
-        );
+        html += pvRow(cols.map(c => {
+            if (c.editable) return pvEditCell(m, c.field, c.getter(m, i));
+            if (c.type === 'sn') return `<td class="cell-number">${i + 1}</td>`;
+            if (c.type === 'tagNo') return pvCell(c.getter(m, i), 'cell-number');
+            return pvCell(c.getter(m, i));
+        }).join('') + '<td class="td-add-col"></td>');
     });
-
     if (sorted.length === 0) {
-        html = `<tr><td colspan="24" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr>`;
+        html = `<thead><tr><th colspan="${cols.length + 1}">IO List</th></tr></thead><tbody><tr><td colspan="${cols.length + 1}" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr></tbody>`;
     }
-    tbody.innerHTML = html;
+    html += '</tbody>';
+    table.innerHTML = html;
 }
 
-// ===== Sheet 5: INS List =====
+// ===== Sheet 5: INS List（配置驱动 + 自定义列） =====
 function pvRenderInsList() {
     const table = document.getElementById('pvTable-insList');
     const insMarkers = markers.filter(m => !isTypeInIOList(m.typeId));
@@ -275,27 +231,19 @@ function pvRenderInsList() {
         if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
         return (a.number || 0) - (b.number || 0);
     });
+    const cols = getSheetColumnsWithCustom('insList');
 
-    let html = `<thead><tr>
-        <th>S/N</th><th>Tag No.</th><th>Location</th><th>Instrument Type</th>
-        <th>Process Connection</th><th>Size / Calibration Range</th>
-        <th>Service</th><th>Product</th><th>Data Sheet No.</th>
-        <th>P &amp; ID Dwg No.</th><th>Remarks</th>
-    </tr></thead><tbody>`;
-
+    let html = `<thead><tr>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="insList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
     if (sorted.length === 0) {
-        html += `<tr><td colspan="11" class="cell-empty" style="padding:24px;">无 INS List 标记（所有类型均已勾选导出到 IO List）</td></tr>`;
+        html += `<tr><td colspan="${cols.length + 1}" class="cell-empty" style="padding:24px;">无 INS List 标记（所有类型均已勾选导出到 IO List）</td></tr>`;
     } else {
         sorted.forEach((m, i) => {
-            const t = getTypeById(m.typeId);
-            const typeDesc = m.typeFullName || (t && t.fullName) || m.typeName || '';
-            html += pvRow(
-                `<td class="cell-number">${i + 1}</td>` +
-                pvCell(formatMarkerLabel(m), 'cell-number') +
-                pvEditCell(m, 'location', m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
-                pvEditCell(m, 'range', m.range) + pvEditCell(m, 'service', m.service) + pvEditCell(m, 'product', m.product) +
-                pvEditCell(m, 'dataSheet', m.dataSheet) + pvEditCell(m, 'pid', m.pid) + pvEditCell(m, 'note', m.note)
-            );
+            html += pvRow(cols.map(c => {
+                if (c.editable) return pvEditCell(m, c.field, c.getter(m, i));
+                if (c.type === 'sn') return `<td class="cell-number">${i + 1}</td>`;
+                if (c.type === 'tagNo') return pvCell(c.getter(m, i), 'cell-number');
+                return pvCell(c.getter(m, i));
+            }).join('') + '<td class="td-add-col"></td>');
         });
     }
     html += '</tbody>';
@@ -311,21 +259,31 @@ function pvFindMarkerById(id) {
 function pvCommitCell(td) {
     const mid = td.dataset.mid;
     const field = td.dataset.field;
+    const isCustomAttr = td.dataset.isCustomAttr === '1';
     const input = td.querySelector('input');
     if (!mid || !field || !input) return;
     const marker = pvFindMarkerById(mid);
     if (!marker) return;
 
     const clean = input.value.trim();
-    const oldVal = marker[field] !== undefined ? marker[field] : '';
+    let oldVal;
+    if (isCustomAttr) {
+        oldVal = getCustomAttrValue(marker, field);
+    } else {
+        oldVal = marker[field] !== undefined ? marker[field] : '';
+    }
     const oldForCmp = (oldVal === undefined || oldVal === null) ? '' : String(oldVal);
     if (oldForCmp !== clean) {
-        marker[field] = clean.length > 0 ? clean : undefined;
+        if (isCustomAttr) {
+            setCustomAttrValue(marker, field, clean.length > 0 ? clean : '');
+        } else {
+            marker[field] = clean.length > 0 ? clean : undefined;
+        }
         pushHistory({ type: 'bulkUpdate', marker, changes: { [field]: oldForCmp }, after: { [field]: clean } });
         requestRender();
         scheduleAutosave();
     }
-    input.value = clean; // 回显规范化后的值（空 → 清空）
+    input.value = clean;
 }
 
 function pvSetupEditableTables() {
@@ -364,6 +322,52 @@ function pvSetupEditableTables() {
     });
 }
 
+// ===== 配置驱动列渲染：根据列定义生成单元格 HTML =====
+function pvRenderCellByCol(col, marker, index) {
+    // 特殊类型
+    if (col.type === 'sn') {
+        return `<td class="cell-number">${index + 1}</td>`;
+    }
+    if (col.type === 'tagNo') {
+        return pvCell(col.getter(marker, index), 'cell-number');
+    }
+    if (col.type === 'locate') {
+        return `<td class="cell-locate"><button type="button" class="pv-locate-btn" data-mid="${marker.id}" title="定位到图纸"><i class="fa-solid fa-location-crosshairs"></i></button></td>`;
+    }
+    if (col.type === 'listTag') {
+        const listType = isTypeInIOList(marker.typeId) ? 'IO' : 'INS';
+        return `<td><span class="list-tag ${listType.toLowerCase()}">${listType}</span></td>`;
+    }
+    // 可编辑字段
+    if (col.editable) {
+        return pvEditCell(marker, col.field, col.getter(marker, index), col.isCustomAttr);
+    }
+    // 普通字段
+    return pvCell(col.getter(marker, index));
+}
+
+// 生成 IO List 双行表头 HTML（支持 colSpan 分组合并）
+function pvBuildIOListHeader(cols) {
+    let row1 = '', row2 = '';
+    let i = 0;
+    while (i < cols.length) {
+        const col = cols[i];
+        const span = col.colSpan || 1;
+        if (span > 1) {
+            row1 += `<th colspan="${span}">${pvEscape(col.header || '')}</th>`;
+            for (let j = 0; j < span; j++) {
+                row2 += `<th>${pvEscape(cols[i + j].header2 || '')}</th>`;
+            }
+            i += span;
+        } else {
+            row1 += `<th rowspan="2">${pvEscape(col.header || '')}</th>`;
+            i++;
+        }
+    }
+    row1 += `<th rowspan="2" class="th-add-col"><button class="pv-add-col-btn" data-sheet="ioList" title="添加自定义列">+</button></th>`;
+    return `<thead><tr>${row1}</tr><tr>${row2}</tr></thead>`;
+}
+
 // 定位：关闭预览，视图居中到标记并放大，同时短暂高亮闪烁
 function pvLocateMarker(m) {
     closePreview();
@@ -380,6 +384,21 @@ function pvSetupLocateButtons() {
         if (!btn) return;
         const marker = pvFindMarkerById(btn.dataset.mid);
         if (marker) pvLocateMarker(marker);
+    });
+}
+
+// ===== 自定义列 + 按钮（事件委托） =====
+function pvSetupAddColButtons() {
+    // 使用事件委托，绑在 preview-body 上，避免每次重渲染后重新绑定
+    const body = document.querySelector('.preview-body');
+    if (!body || body._cfDelegated) return;
+    body._cfDelegated = true;
+    body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.pv-add-col-btn');
+        if (!btn) return;
+        e.stopPropagation();
+        e.preventDefault();
+        openCustomFieldDialog(btn.dataset.sheet);
     });
 }
 
@@ -424,6 +443,7 @@ function renderPreview() {
     pvRenderDetail();
     pvRenderIOList();
     pvRenderInsList();
+    pvSetupAddColButtons();
 
     // 顶部元信息
     const docCount = documents.length;

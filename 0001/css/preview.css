@@ -21,8 +21,8 @@
 }
 
 .preview-window {
-    width: 90vw;
-    height: 90vh;
+    width: 95vw;
+    height: 95vh;
     background: #f5f6f8;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
@@ -357,4 +357,330 @@
     color: #888;
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+/* ===== 自定义列 + 按钮 ===== */
+.th-add-col {
+    width: 32px;
+    min-width: 32px;
+    padding: 2px !important;
+    background: #fafafa !important;
+}
+.td-add-col {
+    width: 32px;
+    min-width: 32px;
+    padding: 2px !important;
+    background: #fafafa;
+}
+.pv-add-col-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    background: transparent;
+    color: #999;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+}
+.pv-add-col-btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.06);
+}
+
+/* ===== 自定义列对话框 ===== */
+.cf-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+}
+.cf-dialog-backdrop[hidden] { display: none; }
+
+.cf-dialog {
+    width: min(360px, 90vw);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    padding: 18px 20px 14px;
+    color: #333;
+    font-size: 13px;
+}
+.cf-dialog--wide {
+    width: min(640px, 92vw);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+.cf-dialog--wide .cf-manage-list {
+    flex: 1;
+    max-height: none;
+    min-height: 200px;
+}
+.cf-dialog h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.cf-dialog h3 button {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    color: #888;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+}
+.cf-dialog h3 button:hover { background: rgba(0,0,0,0.06); color: #333; }
+
+.cf-dialog-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.cf-dialog-row label {
+    color: #555;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.cf-dialog-row select,
+.cf-dialog-row input[type="text"] {
+    height: 32px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 0 8px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    flex: 1;
+    min-width: 0;
+}
+.cf-dialog-row select:focus,
+.cf-dialog-row input:focus { border-color: #1a73e8; }
+
+.cf-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+.cf-dialog-actions button {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.cf-dialog-actions .btn-primary { background: #1a73e8; color: #fff; }
+.cf-dialog-actions .btn-secondary { background: rgba(0,0,0,0.06); color: #444; }
+
+/* ===== 管理自定义列按钮 ===== */
+.preview-manage-cols {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.preview-manage-cols:hover {
+    background: rgba(26, 115, 232, 0.10);
+    color: #1a73e8;
+}
+
+/* ===== 管理对话框 ===== */
+.cf-manage-tabs {
+    display: flex;
+    gap: 2px;
+    margin: 6px 0;
+    background: #f0f0f0;
+    border-radius: 8px;
+    padding: 2px;
+}
+.cf-manage-tab {
+    flex: 1;
+    padding: 5px 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #666;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.cf-manage-tab.active {
+    background: #fff;
+    color: #1a73e8;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.cf-manage-list {
+    max-height: 360px;
+    overflow-y: auto;
+    margin: 4px 0;
+}
+.cf-manage-empty {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 12px;
+}
+.cf-manage-group {
+    margin-bottom: 2px;
+}
+.cf-manage-group-title {
+    padding: 6px 10px 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(0,0,0,0.02);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.cf-manage-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    font-size: 12px;
+}
+.cf-manage-item--builtin .cf-manage-item-label {
+    font-weight: 400;
+    color: #666;
+}
+.cf-manage-item--builtin:hover {
+    background: rgba(0,0,0,0.02);
+}
+.cf-manage-restore {
+    padding: 8px 10px;
+    text-align: center;
+}
+.cf-restore-btn {
+    font-size: 11px;
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: 1px dashed #ccc;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.cf-restore-btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.05);
+}
+.cf-manage-item-label {
+    font-weight: 600;
+    color: #333;
+    min-width: 0;
+    flex: 0 0 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cf-manage-item-desc {
+    flex: 1;
+    font-size: 11px;
+    color: #888;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cf-manage-item-desc--builtin {
+    color: #aaa;
+    font-style: italic;
+}
+.cf-manage-item-desc--editable {
+    cursor: pointer;
+    color: #666;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background 0.15s;
+}
+.cf-manage-item-desc--editable:hover {
+    background: rgba(26, 115, 232, 0.08);
+    color: #1a73e8;
+}
+.cf-manage-item-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 26px;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 13px;
+    background: #f5f5f5;
+    color: #999;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+}
+.cf-manage-item-toggle.enabled {
+    background: #e8f5e9;
+    border-color: #66bb6a;
+    color: #2e7d32;
+}
+.cf-manage-item-toggle:hover {
+    border-color: #aaa;
+}
+.cf-manage-item-toggle.enabled:hover {
+    border-color: #43a047;
+    background: #c8e6c9;
+}
+.cf-manage-item-bind {
+    color: #999;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.cf-manage-item-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.cf-manage-item-del:hover {
+    background: rgba(217, 48, 37, 0.10);
+    color: #d93025;
 }
