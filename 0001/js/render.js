@@ -1,5 +1,23 @@
 let renderReq = null;
 
+// 定位闪烁：定位后标记周围画一圈渐隐圆环
+let locateFlash = null; // { marker, t0 }
+
+function flashLocate(marker) {
+    locateFlash = { marker, t0: performance.now() };
+    requestRender();
+    requestAnimationFrame(function tick(now) {
+        if (!locateFlash || locateFlash.marker !== marker) return;
+        if (now - locateFlash.t0 < 1200) {
+            requestRender();
+            requestAnimationFrame(tick);
+        } else {
+            locateFlash = null;
+            requestRender();
+        }
+    });
+}
+
 function requestRender() {
     if (renderReq) return;
     renderReq = requestAnimationFrame(() => {
@@ -28,6 +46,19 @@ function render() {
 
     for (const m of markers) {
         drawMarker(ctx, m);
+    }
+
+    // 定位闪烁圆环（标记周围渐隐，虚拟坐标下绘制）
+    if (locateFlash && markers.includes(locateFlash.marker)) {
+        const m = locateFlash.marker;
+        const t = (performance.now() - locateFlash.t0) / 1200;
+        if (t < 1) {
+            ctx.beginPath();
+            ctx.arc(m.vx, m.vy, markerRadius + 4 + 12 * t, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 152, 0, ${(1 - t) * 0.95})`;
+            ctx.lineWidth = 3 / Math.max(zoom, 0.01);
+            ctx.stroke();
+        }
     }
 
     // 先绘制所有已完成的测量段（蓝色，带段编号）

@@ -185,7 +185,7 @@ function pvRenderDetail() {
         <th>S/N</th><th>Tag No.</th><th>Location</th><th>Instrument Type</th>
         <th>Process Connection</th><th>Size / Calibration Range</th>
         <th>Service</th><th>Product</th><th>Data Sheet No.</th>
-        <th>P &amp; ID Dwg No.</th><th>Remarks</th><th>List</th>
+        <th>P &amp; ID Dwg No.</th><th>Remarks</th><th>List</th><th class="pv-col-locate">定位</th>
     </tr></thead><tbody>`;
 
     sorted.forEach((m, i) => {
@@ -199,7 +199,8 @@ function pvRenderDetail() {
             pvEditCell(m, 'location', m.location) + pvCell(typeDesc) + pvCell(pvBuildConnection(m)) +
             pvEditCell(m, 'range', m.range) + pvEditCell(m, 'service', m.service) + pvEditCell(m, 'product', m.product) +
             pvEditCell(m, 'dataSheet', m.dataSheet) + pvEditCell(m, 'pid', m.pid) + pvEditCell(m, 'note', m.note) +
-            `<td>${listTag}</td>`
+            `<td>${listTag}</td>` +
+            `<td class="cell-locate"><button type="button" class="pv-locate-btn" data-mid="${m.id}" title="定位到图纸"><i class="fa-solid fa-location-crosshairs"></i></button></td>`
         );
     });
     html += '</tbody>';
@@ -363,6 +364,25 @@ function pvSetupEditableTables() {
     });
 }
 
+// 定位：关闭预览，视图居中到标记并放大，同时短暂高亮闪烁
+function pvLocateMarker(m) {
+    closePreview();
+    if (zoom < 1.5) zoom = 1.5;
+    panX = -m.vx * zoom;
+    panY = -m.vy * zoom;
+    requestRender();
+    flashLocate(m);
+}
+
+function pvSetupLocateButtons() {
+    document.getElementById('pvTable-detail').addEventListener('click', (e) => {
+        const btn = e.target.closest('.pv-locate-btn');
+        if (!btn) return;
+        const marker = pvFindMarkerById(btn.dataset.mid);
+        if (marker) pvLocateMarker(marker);
+    });
+}
+
 // ===== Tab 切换 =====
 const pvSheetRenderers = {
     byFile: pvRenderByFile,
@@ -431,6 +451,7 @@ function closePreview() {
 document.addEventListener('DOMContentLoaded', () => {
     pvSetupTabs();
     pvSetupEditableTables();
+    pvSetupLocateButtons();
 
     document.getElementById('previewBtn').addEventListener('click', openPreview);
     document.getElementById('previewCloseBtn').addEventListener('click', closePreview);

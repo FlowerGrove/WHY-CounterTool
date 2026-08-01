@@ -37,11 +37,15 @@ function measureTextWidth(text) {
 }
 
 // 自动调整工作表所有列宽：基于表头和单元格内容估算
-function autoFitColumns(ws) {
+// extraHeaders: 可选，按列号（1-based）传入列头文本数组；用于表头未写入 col.header 的工作表（如 IO List）
+function autoFitColumns(ws, extraHeaders = null) {
     ws.columns.forEach(col => {
         let maxLen = 0;
-        if (col.header) maxLen = measureTextWidth(String(col.header));
+        const hdr = (extraHeaders && extraHeaders[col.number - 1]) || col.header;
+        if (hdr) maxLen = measureTextWidth(String(hdr));
         col.eachCell({ includeEmpty: false }, cell => {
+            // 跳过合并单元格（横幅标题/分组合并），避免长标题文本污染整列宽度
+            if (cell.isMerged) return;
             if (cell.value === null || cell.value === undefined) return;
             let txt;
             if (typeof cell.value === 'object') {
@@ -57,8 +61,31 @@ function autoFitColumns(ws) {
                 if (w > maxLen) maxLen = w;
             }
         });
-        col.width = Math.min(Math.max(maxLen + 2, 6), 60);
+        let w = Math.min(Math.max(maxLen + 2, 6), 50);
+        // ExcelJS 会把宽度恰为 9（内置默认列宽）的列视为默认列并在序列化时省略，
+        // 导致该列宽度丢失，此处避开 9 确保列宽一定写入文件
+        if (w === 9) w = 10;
+        col.width = w;
     });
+}
+
+// 按当前列宽估算数据行所需行高（wrapText 生效后的最长行数 × 15）
+function estimateRowHeight(ws, row) {
+    let maxLines = 1;
+    for (let c = 1; c <= ws.columnCount; c++) {
+        const val = row.getCell(c).value;
+        if (val === null || val === undefined) continue;
+        const text = String(typeof val === 'object' ? (val.text || val.result || '') : val);
+        const colWidth = ws.getColumn(c).width || 10;
+        // 估算每行可容纳字符数（中文按 2 计，列宽单位约等于字符数）
+        const charPerLine = Math.max(2, Math.floor(colWidth / 1.1));
+        let lines = 0;
+        for (const ln of text.split(/\r?\n/)) {
+            lines += Math.max(1, Math.ceil(measureTextWidth(ln) / charPerLine));
+        }
+        if (lines > maxLines) maxLines = lines;
+    }
+    return Math.max(22, maxLines * 15);
 }
 
 // 统一应用表格格式：所有单元格 Arial 字体 + 居中 + 细边框
@@ -210,14 +237,19 @@ function addIOList(wb) {
     // 给表头行也加边框
     applyIOListHeaderBorders(ws, IO_LIST_TOTAL_COLS);
 
-    // 自适应列宽（与明细表一致）
-    autoFitColumns(ws);
+    // 自适应列宽（与明细表一致）；IO List 表头写入单元格、未走 col.header，这里显式传入
+    // 跳过合并的横幅/分组标题，避免标题长文本污染整列宽度
+    autoFitColumns(ws, IO_LIST_COLUMNS.map(c => c.row2 || c.row1));
     // S/N 列不受标题行影响，固定窄宽
     ws.getColumn(IO_LIST_SN_COL).width = 6;
     // LL/L/H/HH 列宽与 0%/100% 保持一致
     const alarmRangeWidth = ws.getColumn(18).width || 8;
     for (let c = 14; c <= 19; c++) {
         ws.getColumn(c).width = alarmRangeWidth;
+    }
+    // 列宽确定后按实际宽度重算数据行行高（数据从第 4 行开始；此前为未知列宽的保守估计）
+    for (let r = 4; r <= ws.actualRowCount; r++) {
+        ws.getRow(r).height = estimateRowHeight(ws, ws.getRow(r));
     }
     return ws;
 }
@@ -335,23 +367,8 @@ function populateIOListData(ws, startRow, remarksCol) {
             cell.border = border;
         }
 
-        // 根据内容长度估算行高：取各列所需行数的最大值 × 15（单行约 15px）
-        let maxLines = 1;
-        for (let c = 1; c <= remarksCol; c++) {
-            const val = row.getCell(c).value;
-            if (val === null || val === undefined) continue;
-            const text = String(typeof val === 'object' ? (val.text || val.result || '') : val);
-            const colWidth = ws.getColumn(c).width || 10;
-            // 估算每行可容纳字符数（中文按 2 计，列宽单位约等于字符数）
-            const charPerLine = Math.max(2, Math.floor(colWidth / 1.1));
-            // 计算文本所需行数
-            let lines = 0;
-            for (const ln of text.split(/\r?\n/)) {
-                lines += Math.max(1, Math.ceil(measureTextWidth(ln) / charPerLine));
-            }
-            if (lines > maxLines) maxLines = lines;
-        }
-        row.height = Math.max(22, maxLines * 15);
+        // 根据内容长度估算行高（列宽未定时按 10 保守估算，autoFit 后会在 addIOList 中重算）
+        row.height = estimateRowHeight(ws, row);
 
         rowIdx++;
     }
