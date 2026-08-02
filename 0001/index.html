@@ -19,12 +19,6 @@
     <link rel="stylesheet" href="css/context-menu.css" />
     <link rel="stylesheet" href="css/responsive.css" />
     <link rel="stylesheet" href="css/preview.css" />
-    <style>
-        .number-input-group,
-        .number-input-group + .divider.marker-tool {
-            display: none !important;
-        }
-    </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -263,6 +257,7 @@
         <button class="btn-icon" id="exportBtn" title="导出带标记的PDF"><i class="fa-solid fa-file-arrow-down"></i><span class="tooltip">导出PDF</span></button>
         <button class="btn-icon" id="exportBothBtn" title="同步导出 Excel 和 PDF"><i class="fa-solid fa-download"></i><span class="tooltip">同步导出</span></button>
         <button class="btn-icon" id="previewBtn" title="预览标注数据"><i class="fa-solid fa-table-list"></i><span class="tooltip">预览</span></button>
+        <button class="btn-icon" id="dataFlowBtn" title="数据流"><i class="fa-solid fa-diagram-project"></i><span class="tooltip">数据流</span></button>
     </div>
 
     <!-- 预览窗口：占屏幕 90%，直接渲染内存数据 -->
@@ -289,13 +284,38 @@
                 </div>
             </header>
 
-            <nav class="preview-tabs">
-                <button class="preview-tab active" data-sheet="byFile">By File</button>
-                <button class="preview-tab" data-sheet="typeSummary">Type Summary</button>
-                <button class="preview-tab" data-sheet="detail">Detail List</button>
-                <button class="preview-tab" data-sheet="ioList">IO List</button>
-                <button class="preview-tab" data-sheet="insList">INS List</button>
-            </nav>
+            <div class="preview-tabs-wrap">
+                <nav class="preview-tabs">
+                    <button class="preview-tab active" data-sheet="byFile">By File</button>
+                    <button class="preview-tab" data-sheet="typeSummary">Type Summary</button>
+                    <button class="preview-tab" data-sheet="detail">Detail List</button>
+                    <button class="preview-tab" data-sheet="ioList">IO List</button>
+                    <button class="preview-tab" data-sheet="insList">INS List</button>
+                    <span id="customTabsContainer"></span>
+                    <button class="preview-tab-add" id="newTableBtn" title="新建自定义表格">+</button>
+                </nav>
+
+                <!-- 新建自定义表格下拉面板 -->
+                <div class="ins-field-dropdown" id="newTableDropdown" hidden>
+                    <div class="ins-field-dropdown__header">
+                        <span>新建自定义表格</span>
+                        <button class="ins-field-dropdown__close" id="newTableDropdownClose">&times;</button>
+                    </div>
+                    <div class="ins-field-dropdown__body">
+                        <div class="ins-field-dropdown__table-name">
+                            <label>表格名称</label>
+                            <input type="text" id="newTableName" placeholder="输入表格名称" maxlength="20" value="表1" />
+                        </div>
+                        <div class="ins-field-dropdown__list-label">字段列表</div>
+                        <div class="ins-field-dropdown__list" id="newTableFieldList"></div>
+                        <button class="ins-field-add-row-btn" id="newTableAddFieldBtn">+ 添加字段</button>
+                    </div>
+                    <div class="ins-field-dropdown__footer">
+                        <button class="ins-field-cancel-btn" id="newTableCancelBtn">取消</button>
+                        <button class="ins-field-create-btn" id="newTableCreateBtn">创建表格</button>
+                    </div>
+                </div>
+            </div>
 
             <main class="preview-body">
                 <div class="preview-empty" id="pvEmpty" hidden>
@@ -332,11 +352,39 @@
                         <table class="preview-table" id="pvTable-insList"></table>
                     </div>
                 </section>
+
+                <span id="customSheetsContainer"></span>
             </main>
 
             <footer class="preview-footer">
                 <span id="pvFooter"></span>
             </footer>
+        </div>
+    </div>
+
+    <!-- 数据流网状图：独立浮层 85vw × 85vh -->
+    <div class="dataflow-overlay" id="dataFlowOverlay" hidden>
+        <div class="dataflow-window">
+            <header class="dataflow-header">
+                <span class="dataflow-title">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    数据流
+                </span>
+                <span class="dataflow-stats" id="dataFlowStats"></span>
+                <div class="dataflow-search">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="dataFlowSearch" placeholder="搜索属性或表..." autocomplete="off" spellcheck="false" />
+                </div>
+                <button type="button" class="dataflow-close" id="dataFlowCloseBtn" title="关闭（Esc）">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+            <div class="dataflow-body">
+                <canvas id="dataFlowCanvas"></canvas>
+                <div class="dataflow-legend" id="dataFlowLegend"></div>
+                <div class="dataflow-tooltip" id="dataFlowTooltip" hidden></div>
+                <div class="df-select-panel" id="dataFlowSelectPanel" hidden></div>
+            </div>
         </div>
     </div>
 

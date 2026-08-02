@@ -128,8 +128,8 @@ async function exportMarkedPDFCore() {
                 }
 
                 // 圆圈外：尺寸编号 & 通用备注（常规字重，字号按 Canvas 相对比例换算）
-                // Canvas 中备注字号 = max(8, 11/zoom)，按圆圈半径比例换算到 PDF
-                const canvasNoteSize = Math.max(8, 11 / zoom);
+                // Canvas 中备注字号 = max(8, 11)，按圆圈半径比例换算到 PDF（固定 zoom=1，避免导出受当前缩放影响）
+                const canvasNoteSize = 11;
                 const noteSize = pdfRadius * (canvasNoteSize / markerRadius);
 
                 // 圆圈下方：尺寸编号

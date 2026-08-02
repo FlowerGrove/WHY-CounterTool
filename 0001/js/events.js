@@ -882,7 +882,22 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // 校准弹窗/设置面板中的输入框允许 Escape 关闭
+        if (e.key === 'Escape') {
+            if (document.getElementById('calibrateBackdrop').classList.contains('visible')) {
+                e.preventDefault();
+                cancelCalibration();
+                return;
+            }
+            if (settingsBackdrop.classList.contains('visible')) {
+                e.preventDefault();
+                settingsBackdrop.classList.remove('visible');
+                return;
+            }
+        }
+        return;
+    }
 
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
@@ -1477,6 +1492,7 @@ function openCustomAttrManage() {
 
 function closeCustomAttrManage() {
     document.getElementById('cfAttrBackdrop').hidden = true;
+    renderPreview();
 }
 
 function renderCfAttrList() {

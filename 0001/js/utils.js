@@ -107,11 +107,6 @@ function buildProcessConnection(m) {
     return s;
 }
 
-function pageStackGap(prevDocId, nextDocId) {
-    const caption = PAGE_CAPTION_H;
-    return (prevDocId !== nextDocId ? DOC_GAP : PAGE_GAP) + caption;
-}
-
 function computeRenderScale(origWidth, origHeight) {
     let scale = PDF_RENDER_SCALE;
     const dimCap = RENDER_MAX_DIM / Math.max(origWidth, origHeight);
@@ -289,20 +284,4 @@ function calculatePolylineArea(points) {
     if (!points || points.length < 3) return null;
     const pixelArea = calculatePolygonArea(points);
     return formatArea(pixelArea);
-}
-
-function calculateLabelPosition(points) {
-    if (!points || points.length === 0) return { x: 0, y: 0 };
-    if (points.length === 2) {
-        return {
-            x: (points[0].x + points[1].x) / 2,
-            y: (points[0].y + points[1].y) / 2
-        };
-    }
-    let sumX = 0, sumY = 0;
-    points.forEach(p => { sumX += p.x; sumY += p.y; });
-    return {
-        x: sumX / points.length,
-        y: sumY / points.length
-    };
 }

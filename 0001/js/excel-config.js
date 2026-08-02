@@ -264,22 +264,7 @@ function getExcelColumnDefs(sheetName) {
   return getEnabledColumns(sheetName);
 }
 
-// ===== 自定义字段作为列定义追加 =====
-function getCustomFieldColumns() {
-  const defs = getCustomFieldDefs();
-  return defs.map(cf => ({
-    key: 'cf_' + cf.key,
-    header: cf.label || cf.key,
-    width: 16,
-    editable: true,
-    field: cf.key,
-    isCustom: true,
-    getter: (m) => {
-      if (m.customFields && m.customFields[cf.key] !== undefined) return m.customFields[cf.key];
-      return '';
-    },
-  }));
-}
+
 
 // 获取包含自定义字段的完整列定义
 function getSheetColumnsWithCustom(sheetName) {
@@ -452,4 +437,37 @@ function getVisibleBuiltinAttrs() {
 // 是否有隐藏的内置属性
 function hasHiddenBuiltinAttrs() {
   return ALL_MARKER_ATTRIBUTES.some(a => isBuiltinAttrHidden(a.key));
+}
+
+// ===== 自定义表格数据存储 =====
+// 用户可在预览窗口创建自定义表格，每个表格有名称和字段列表
+// 存储结构: [{ id, name, columns: [{ key, label, bindField }] }]
+const CUSTOM_TABLES_KEY = 'elecPdfMarkerCustomTables_v1';
+
+let _customTables = null;
+
+function getCustomTables() {
+  if (_customTables) return _customTables;
+  try {
+    _customTables = JSON.parse(localStorage.getItem(CUSTOM_TABLES_KEY)) || [];
+  } catch { _customTables = []; }
+  return _customTables;
+}
+
+function saveCustomTables(tables) {
+  _customTables = tables;
+  try { localStorage.setItem(CUSTOM_TABLES_KEY, JSON.stringify(tables)); } catch {}
+}
+
+function addCustomTable(name, columns) {
+  const tables = getCustomTables();
+  const id = 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  tables.push({ id, name, columns });
+  saveCustomTables(tables);
+  return id;
+}
+
+function removeCustomTable(id) {
+  const tables = getCustomTables().filter(t => t.id !== id);
+  saveCustomTables(tables);
 }

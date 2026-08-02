@@ -330,16 +330,16 @@ async function exportBoth() {
         alert('还没有导入PDF文件');
         return;
     }
-    showToast('正在同步导出…', true);
-    try {
-        await exportExcelCore();
-        await exportMarkedPDFCore();
-        hideToast();
-        showToast('✅ Excel 和 PDF 导出完成');
-    } catch (e) {
-        hideToast();
-        alert('导出失败：' + (e.message || '未知错误'));
-    }
+    await runExportTask(
+        [exportBothBtn, exportExcelBtn, exportExcelBottomBtn, exportBtn, exportPdfFromStatsBtn],
+        async () => {
+            await exportExcelCore();
+            await exportMarkedPDFCore();
+        },
+        '正在同步导出…',
+        'Excel 和 PDF 导出完成',
+        '导出失败，请检查网络后重试'
+    );
 }
 
 async function exportExcelCore() {
@@ -626,6 +626,65 @@ async function exportExcelCore() {
         applyTableFormat(wsIns);
     }
 
+    // 自定义表格（用户创建的）
+    addCustomTableSheets(wb, sorted);
+
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `Instruments_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ===== 自定义表格导出 =====
+function addCustomTableSheets(wb, sorted) {
+    const tables = getCustomTables();
+    if (!tables || tables.length === 0) return;
+
+    for (const table of tables) {
+        const ws = wb.addWorksheet(table.name, {
+            views: [{ state: 'frozen', ySplit: 1 }],
+        });
+
+        // 列定义：S/N + Tag No. + 自定义字段
+        const colDefs = [
+            { header: 'S/N', width: 6 },
+            { header: 'Tag No.', width: 18 },
+            ...table.columns.map(c => ({ header: c.label, width: 16, bindField: c.bindField })),
+        ];
+
+        // 设置列
+        colDefs.forEach((col, idx) => {
+            ws.getColumn(idx + 1).key = col.header;
+            ws.getColumn(idx + 1).width = col.width || 10;
+        });
+
+        // 表头
+        const hdrRow = ws.getRow(1);
+        colDefs.forEach((col, idx) => {
+            hdrRow.getCell(idx + 1).value = col.header;
+        });
+        styleHeaderRow(hdrRow);
+
+        // 数据行
+        sorted.forEach((m, i) => {
+            const row = ws.addRow();
+            row.getCell(1).value = i + 1;
+            row.getCell(2).value = qExcel(formatMarkerLabel(m));
+            table.columns.forEach((col, colIdx) => {
+                const cellIdx = colIdx + 3;
+                if (col.bindField) {
+                    let v;
+                    if (col.bindField.startsWith('ca_')) {
+                        v = getCustomAttrValue(m, col.bindField);
+                    } else {
+                        v = m[col.bindField];
+                    }
+                    row.getCell(cellIdx).value = qExcel(v === undefined || v === null ? '' : String(v));
+                } else {
+                    row.getCell(cellIdx).value = '';
+                }
+            });
+        });
+
+        autoFitColumns(ws, colDefs.map(c => c.header));
+        applyTableFormat(ws);
+    }
 }
