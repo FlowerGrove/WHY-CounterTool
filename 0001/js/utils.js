@@ -169,6 +169,25 @@ function getDocFileName(docId) {
     return doc ? doc.fileName : '未知文件';
 }
 
+// 按 Detail List 排序顺序返回 marker → 全局序号 (1-based) 的映射
+// 所有仪表类型统一全局计数：PI放5个=1-5，TI放5个=6-10，FT放5个=11-15
+// 排序规则：按创建顺序（_globalOrder），确保序号与用户创建顺序一致
+function getDetailListIndexMap() {
+    const sorted = [...markers].sort((a, b) => {
+        return (a._globalOrder || 0) - (b._globalOrder || 0);
+    });
+    const map = new Map();
+    sorted.forEach((m, i) => map.set(m, i + 1));
+    // DEBUG: 输出排序结果排查序号不连续问题
+    if (sorted.length > 0) {
+        const debugInfo = sorted.map((m, i) =>
+            `${i + 1}: ${m.typeName || '?'} #${m.number} (order=${m._globalOrder})`
+        ).join(' | ');
+        console.log('[DEBUG idxMap] 总数=' + sorted.length + ' | ' + debugInfo);
+    }
+    return map;
+}
+
 function hexToRgb(hex) {
     const h = hex.replace('#', '');
     return {

@@ -4,10 +4,10 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
-    min-width: 290px;
+    min-width: 340px;
     min-height: 160px;
     max-width: 520px;
-    max-height: 75vh;
+    max-height: 80vh;
     display: none;
     flex-direction: column;
     overflow: hidden;
@@ -34,19 +34,10 @@
     pointer-events: none;
 }
 .marker-context-menu.menu-io {
-    min-width: 400px;
-}
-.marker-context-menu.menu-io .mcm-body {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 380px;
 }
 .marker-context-menu.menu-ins {
-    min-width: 400px;
-}
-.marker-context-menu.menu-ins .mcm-body {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.marker-context-menu.menu-ins .mcm-field--wide {
-    grid-column: auto;
+    min-width: 340px;
 }
 
 /* Header */
@@ -54,14 +45,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px 8px 12px;
+    padding: 6px 8px;
     border-bottom: 1px solid rgba(0,0,0,0.06);
     background: linear-gradient(to bottom, #fafafa, #f5f5f5);
     flex-shrink: 0;
     cursor: move;
     user-select: none;
 }
-.mcm-header-actions {
+.mcm-header-left {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    cursor: default;
+    flex-shrink: 0;
+}
+.mcm-header-right {
+    width: 48px;
+    flex-shrink: 0;
     cursor: default;
 }
 .mcm-title {
@@ -69,15 +69,11 @@
     font-weight: 600;
     color: #333;
     line-height: 1;
+    white-space: nowrap;
 }
-.mcm-header-actions {
-    display: flex;
-    gap: 2px;
-}
-.mcm-btn-danger,
-.mcm-btn-close {
-    width: 22px;
-    height: 22px;
+.mcm-btn-icon {
+    width: 24px;
+    height: 24px;
     border: none;
     background: transparent;
     border-radius: 5px;
@@ -88,26 +84,76 @@
     color: #888;
     font-size: 11px;
     transition: all 0.12s;
+    flex-shrink: 0;
+}
+.mcm-btn-icon:hover {
+    background: #eee;
+    color: #333;
+}
+.mcm-btn-danger {
+    color: #999;
 }
 .mcm-btn-danger:hover {
     background: #fde8e8;
     color: #c62828;
 }
-.mcm-btn-close:hover {
-    background: #eee;
-    color: #333;
-}
 
 /* Body */
 .mcm-body {
-    padding: 8px 12px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px 10px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     overflow-y: auto;
     flex: 1;
     min-width: 0;
 }
+
+/* Section */
+.mcm-section {
+    border: 1px solid rgba(0,0,0,0.04);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.mcm-section-hdr {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    cursor: pointer;
+    user-select: none;
+    background: #fafafa;
+    transition: background 0.12s;
+}
+.mcm-section-hdr:hover {
+    background: #f0f0f0;
+}
+.mcm-section-arrow {
+    font-size: 9px;
+    color: #999;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+.mcm-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    line-height: 1;
+}
+.mcm-section-body {
+    padding: 6px 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 8px;
+}
+.mcm-section.collapsed .mcm-section-body {
+    display: none;
+}
+.mcm-section.collapsed .mcm-section-arrow {
+    transform: rotate(-90deg);
+}
+
+/* Field (keep existing styles) */
 .mcm-field {
     display: flex;
     flex-direction: column;
@@ -155,22 +201,21 @@
     min-width: 0;
     overflow: hidden;
 }
-.mcm-select {
-    flex-shrink: 0;
-    width: 88px;
-    padding-right: 3px;
+.mcm-select--full {
+    width: 100%;
+    cursor: pointer;
 }
 .mcm-input-inline {
     flex: 1;
     min-width: 0;
     overflow: hidden;
 }
-/* 口径字段：下拉框单独一行（与 IO List 样式统一） */
+
+/* Size custom row */
 #mcmSizeField .mcm-input-wrap {
     flex-direction: column;
     align-items: stretch;
 }
-/* 口径异径输入：第二行自定义输入 */
 .mcm-size-custom-row {
     display: none;
     width: 100%;
@@ -195,7 +240,7 @@
     line-height: 1;
 }
 
-/* Range 字段：下拉框单独一行（与 Size / IO List 样式统一） */
+/* Range custom row */
 #mcmRangeField .mcm-input-wrap {
     flex-direction: column;
     align-items: stretch;
@@ -209,50 +254,7 @@
     display: flex;
 }
 
-/* Footer */
-.mcm-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
-    padding: 8px 12px;
-    border-top: 1px solid rgba(0,0,0,0.06);
-    background: #fafafa;
-    flex-shrink: 0;
-}
-.mcm-btn {
-    height: 26px;
-    padding: 0 14px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: #fff;
-    color: #555;
-    font-size: 11.5px;
-    cursor: pointer;
-    transition: all 0.12s;
-    font-family: inherit;
-}
-.mcm-btn:hover {
-    background: #f5f5f5;
-    border-color: #ccc;
-}
-.mcm-btn-primary {
-    background: #1a73e8;
-    border-color: #1a73e8;
-    color: #fff;
-    font-weight: 500;
-}
-.mcm-btn-primary:hover {
-    background: #1557b0;
-    border-color: #1557b0;
-}
-
-/* IO List 下拉框（全宽，覆盖 .mcm-select 的固定宽度） */
-.mcm-select--full {
-    width: 100%;
-    cursor: pointer;
-}
-
-/* Alarm Setting 四列网格（LL / L / H / HH） */
+/* Alarm Setting grid */
 .mcm-alarm-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -287,4 +289,41 @@
 .mcm-alarm-item input:focus {
     border-color: #1a73e8;
     box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
+}
+
+/* Footer */
+.mcm-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px 8px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    background: #fafafa;
+    flex-shrink: 0;
+}
+.mcm-btn {
+    height: 26px;
+    padding: 0 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #555;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+}
+.mcm-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+.mcm-btn-primary {
+    background: #1a73e8;
+    border-color: #1a73e8;
+    color: #fff;
+    font-weight: 500;
+}
+.mcm-btn-primary:hover {
+    background: #1557b0;
+    border-color: #1557b0;
 }

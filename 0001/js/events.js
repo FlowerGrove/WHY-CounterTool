@@ -1,3 +1,9 @@
+/**
+ * events.js - 事件处理与交互逻辑模块
+ * 负责处理鼠标/触摸/键盘事件、标记右键属性面板、校准与测量交互、
+ * 设置面板操作、自定义列/属性管理，以及导出功能的事件绑定。
+ */
+
 let mouseDownPos = null;
 let mouseDownButton = -1;
 let isDragging = false;
@@ -9,7 +15,9 @@ let dragPanStartX = 0,
 const markerContextMenu = document.getElementById('markerContextMenu');
 let contextMenuTargetMarker = null;
 
-// 口径字段：根据下拉是否“自定义”切换两个输入框的显隐
+/**
+ * 根据口径下拉框的值切换自定义输入框的显隐状态
+ */
 function updateSizeCustomVisibility() {
     const field = document.getElementById('mcmSizeField');
     const sizeSel = document.getElementById('mcmSize');
@@ -17,7 +25,9 @@ function updateSizeCustomVisibility() {
     field.classList.toggle('mcm-field--custom-size', sizeSel.value === '__custom__');
 }
 
-// 量程字段：根据下拉是否“自定义”切换输入框的显隐
+/**
+ * 根据量程下拉框的值切换自定义输入框的显隐状态
+ */
 function updateRangeCustomVisibility() {
     const field = document.getElementById('mcmRangeField');
     const rangeSel = document.getElementById('mcmRange');
@@ -25,7 +35,10 @@ function updateRangeCustomVisibility() {
     field.classList.toggle('mcm-field--custom-range', rangeSel.value === '__custom__');
 }
 
-// 渲染右键菜单中的自定义属性字段（仅已启用的）
+/**
+ * 渲染右键菜单中的自定义属性字段（仅渲染已启用的属性）
+ * @param {Object} marker - 当前标记对象
+ */
 function renderMcmCustomFields(marker) {
     const container = document.getElementById('mcmCustomFields');
     if (!container) return;
@@ -43,17 +56,18 @@ function renderMcmCustomFields(marker) {
     });
 }
 
-// 显示右键属性面板：填充当前标记值到表单
-function showMarkerContextMenu(screenX, screenY, marker) {
-    contextMenuTargetMarker = marker;
-
+/**
+ * 填充右键菜单表单字段（不处理定位和显示逻辑）
+ * @param {Object} marker - 当前标记对象
+ */
+function _fillMarkerContextMenuFields(marker) {
     // 标题显示类型 + 编号
     const t = getTypeById(marker.typeId);
     const typeLabel = t.name || marker.typeName || '';
-    const numberLabel = marker.number ? `-${padWithFormat(marker.number)}` : '';
-    document.getElementById('mcmTitle').textContent = `标记属性：${typeLabel}${numberLabel}`;
+    const numberLabel = marker.number ? `-${formatMarkerNumber(marker.number)}` : '';
+    document.getElementById('mcmTitle').textContent = `${typeLabel}${numberLabel}`;
 
-    // 根据是否进入 IO List 切换字段集：io=IO List 表格字段，ins=明细清单字段
+    // 根据是否进入 IO List 切换字段集
     const isIO = isTypeInIOList(marker.typeId);
     markerContextMenu.classList.toggle('menu-io', isIO);
     markerContextMenu.classList.toggle('menu-ins', !isIO);
@@ -73,6 +87,7 @@ function showMarkerContextMenu(screenX, screenY, marker) {
         mcmAlarmLL: 'alarmLL', mcmAlarmL: 'alarmL', mcmAlarmH: 'alarmH', mcmAlarmHH: 'alarmHH',
         mcmRange0: 'range0', mcmRange100: 'range100', mcmUnit: 'unit',
         mcmRioPanel: 'rioPanel', mcmSlotNumber: 'slotNumber', mcmChannelNumber: 'channelNumber',
+        mcmCableNo: 'cableNo', mcmJunctionBox: 'junctionBox', mcmCableType: 'cableType',
     };
     for (const [elId, attrKey] of Object.entries(builtinFieldMap)) {
         const el = document.getElementById(elId);
@@ -83,24 +98,27 @@ function showMarkerContextMenu(screenX, screenY, marker) {
         }
     }
 
+    // 隐藏空的自定义 section
+    const customSection = document.getElementById('mcmCustomSection');
+    if (customSection) {
+        const attrs = getCustomAttrDefs().filter(d => d.enabled !== false);
+        customSection.style.display = attrs.length === 0 ? 'none' : '';
+    }
+
     // ===== 公共字段 =====
     document.getElementById('mcmTagNumber').value = marker.tagNumber || '';
     document.getElementById('mcmLocation').value = marker.location || '';
     document.getElementById('mcmPid').value = marker.pid || '';
     document.getElementById('mcmNote').value = marker.note || '';
 
-    // ===== INS 专属字段（明细清单） =====
-    // 口径：解析 sizeNote → 下拉 / 主框 / 次框
-    // 存储格式：'2'（裸数字）或 '2x3'（异径）；旧数据 '2"' / '2"x3"' 也兼容
+    // ===== INS 专属字段 =====
     const rawSize = String(marker.sizeNote || '');
     const sizeSel = document.getElementById('mcmSize');
     const sizeInput = document.getElementById('mcmSizeCustom');
     const sizeInput2 = document.getElementById('mcmSizeCustom2');
-    // 去掉引号后按 x/X 拆分为主/次
     const sizeParts = rawSize.replace(/[""]/g, '').split(/\s*[xX]\s*/);
     const sizeMain = sizeParts[0] || '';
     const sizeSec = sizeParts[1] || '';
-    // 优先匹配下拉预设（同径）
     let sizeMatched = false;
     if (!sizeSec) {
         for (let i = 0; i < sizeSel.options.length; i++) {
@@ -114,17 +132,15 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     }
     if (!sizeMatched) {
         if (sizeMain) {
-            // 非空但不匹配任何下拉项 → 自定义
             sizeSel.value = '__custom__';
             sizeInput.value = sizeMain;
         } else {
-            // sizeMain 为空时：下拉保持空选择状态
             sizeSel.selectedIndex = -1;
         }
     }
     sizeInput2.value = sizeSec;
     updateSizeCustomVisibility();
-    // Range：匹配预设 → 下拉选中；否则 → 自定义
+
     const rangeSel = document.getElementById('mcmRange');
     const rangeVal = String(marker.range || '');
     let rangeMatched = false;
@@ -154,7 +170,7 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     document.getElementById('mcmProduct').value = marker.product || '';
     document.getElementById('mcmDataSheet').value = marker.dataSheet || '';
 
-    // ===== IO 专属字段（IO List 表格字段） =====
+    // ===== IO 专属字段 =====
     document.getElementById('mcmDcsTag').value = marker.dcsTag || '';
     document.getElementById('mcmPidRev').value = marker.pidRev || '';
     document.getElementById('mcmZeroStatus').value = marker.zeroStatus || '';
@@ -169,8 +185,11 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     document.getElementById('mcmRioPanel').value = marker.rioPanel || '';
     document.getElementById('mcmSlotNumber').value = marker.slotNumber || '';
     document.getElementById('mcmChannelNumber').value = marker.channelNumber || '';
+    document.getElementById('mcmCableNo').value = marker.cableNo || '';
+    document.getElementById('mcmJunctionBox').value = marker.junctionBox || '';
+    document.getElementById('mcmCableType').value = marker.cableType || '';
 
-    // IO Type / Signal Type / Power：空值=自动推断，下拉首项显示当前推断值
+    // IO Type / Signal Type / Power
     const defs = (typeof getIOListSignalDefaults === 'function')
         ? getIOListSignalDefaults(marker.typeCode)
         : { ioType: '', signalType: '', power: '' };
@@ -184,14 +203,43 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     signalTypeSel.value = marker.signalType || '';
     powerSel.value = marker.power || '';
 
-    // 位置：优先出现在鼠标点击点，超出视口则回推
-    // 强制清除 resize 遗留的尺寸：先关 resize → 清尺寸 → 重排 → 再开 resize
+    // 渲染自定义属性字段
+    renderMcmCustomFields(marker);
+
+    // 设置分组默认折叠状态：图纸备注和自定义默认折叠，核心分组展开
+    const collapseSections = ['drawing', 'custom'];
+    markerContextMenu.querySelectorAll('.mcm-section').forEach(section => {
+        const hdr = section.querySelector('.mcm-section-hdr');
+        const name = hdr ? hdr.dataset.section : null;
+        section.classList.toggle('collapsed', name && collapseSections.includes(name));
+    });
+}
+
+/**
+ * 显示标记右键属性面板，填充当前标记的值到表单
+ * 如果面板已打开则自动保存并切换到新标记
+ * @param {number} screenX - 屏幕 X 坐标
+ * @param {number} screenY - 屏幕 Y 坐标
+ * @param {Object} marker - 目标标记对象
+ */
+function showMarkerContextMenu(screenX, screenY, marker) {
+    // 如果菜单已打开，自动保存当前数据并切换到新标记（不改变位置）
+    if (markerContextMenu.classList.contains('visible') && contextMenuTargetMarker) {
+        if (contextMenuTargetMarker === marker) return; // 同一标记，不操作
+        saveMarkerContextMenu();
+        contextMenuTargetMarker = marker;
+        _fillMarkerContextMenuFields(marker);
+        setTimeout(() => document.getElementById('mcmTagNumber').focus(), 30);
+        return;
+    }
+
+    addLog('编辑标记属性');
+    contextMenuTargetMarker = marker;
+    _fillMarkerContextMenuFields(marker);
     markerContextMenu.style.resize = 'none';
     markerContextMenu.style.width = '';
     markerContextMenu.style.height = '';
-    // 渲染自定义属性字段
-    renderMcmCustomFields(marker);
-    void markerContextMenu.offsetHeight; // 强制重排
+    void markerContextMenu.offsetHeight;
     markerContextMenu.style.resize = 'both';
     markerContextMenu.classList.add('visible');
     const rect = markerContextMenu.getBoundingClientRect();
@@ -209,11 +257,19 @@ function showMarkerContextMenu(screenX, screenY, marker) {
     setTimeout(() => document.getElementById('mcmTagNumber').focus(), 30);
 }
 
+/**
+ * 隐藏标记右键属性面板，重置目标标记引用
+ */
 function hideMarkerContextMenu() {
     markerContextMenu.classList.remove('visible');
     contextMenuTargetMarker = null;
 }
 
+/**
+ * 获取事件相对于画布内容的坐标（考虑设备像素比）
+ * @param {Event} e - 鼠标或触摸事件
+ * @returns {{x: number, y: number}} 画布坐标系中的坐标
+ */
 function getEventPos(e) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -295,6 +351,11 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
+/**
+ * 处理画布点击/轻触事件，根据当前模式分派到对应的操作
+ * @param {number} vx - 虚拟坐标 X
+ * @param {number} vy - 虚拟坐标 Y
+ */
 function handleCanvasTap(vx, vy) {
     if (pages.length === 0) {
         showToast('请先导入PDF文件');
@@ -315,14 +376,19 @@ function handleCanvasTap(vx, vy) {
         }
     } else if (eraseMode) {
         const hit = findMarkerAtVirtual(vx, vy);
-        if (hit) deleteMarker(hit);
+        if (hit) { addLog('删除标记'); deleteMarker(hit); }
     } else {
+        addLog('添加标记');
         addMarker(vx, vy);
     }
 }
 
-// ===== 校准阶段：点击两点（正交约束）+ 输入真实距离 =====
-
+/**
+ * 校准阶段：处理点击事件，拾取两个校准点（正交约束）
+ * 拾取完成后弹出距离输入对话框
+ * @param {number} vx - 虚拟坐标 X
+ * @param {number} vy - 虚拟坐标 Y
+ */
 function handleCalibrateTap(vx, vy) {
     if (calibratePoints.length === 0) {
         calibratePoints.push({ x: vx, y: vy });
@@ -343,8 +409,12 @@ function handleCalibrateTap(vx, vy) {
     }
 }
 
-// ===== 测量阶段：连续点击添加点 =====
-
+/**
+ * 测量阶段：处理点击事件，连续添加折线点
+ * 显示当前点数量和实时距离/面积信息
+ * @param {number} vx - 虚拟坐标 X
+ * @param {number} vy - 虚拟坐标 Y
+ */
 function handleMeasureTap(vx, vy) {
     currentPolylinePoints.push({ x: vx, y: vy });
 
@@ -366,7 +436,9 @@ function handleMeasureTap(vx, vy) {
     requestRender();
 }
 
-// 撤回测量：优先撤回当前未完成的点；当前无点时撤回最后一个完成的测量段
+/**
+ * 撤回测量：优先撤回当前未完成的点；若无点则撤回最后一个已完成的测量段
+ */
 function undoLastMeasurePoint() {
     if (measurePhase !== 'measure') return;
 
@@ -399,7 +471,9 @@ function undoLastMeasurePoint() {
     requestRender();
 }
 
-// 一键清空所有测量段（不影响校准）
+/**
+ * 一键清空所有测量段（不影响校准状态）
+ */
 function clearAllMeasurements() {
     if (measurePhase !== 'measure') {
         showToast('请先完成校准');
@@ -409,6 +483,7 @@ function clearAllMeasurements() {
     isPolylineComplete = false;
     measurements = [];
     snapHint = null;
+    addLog('清空所有测量段');
     updateMeasureUI();
     requestRender();
     showToast('🧹 已清空所有测量段');
@@ -419,7 +494,11 @@ function clearAllMeasurements() {
 // 常用工程比例（建筑/机械制图标准）
 const ENGINEERING_SCALES = [1, 2, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 750, 1000, 1500, 2000, 2500, 5000];
 
-// 在 ±3% 误差范围内查找最接近的工程比例
+/**
+ * 在常用工程比例列表中查找最接近原始计算比例的工程比例
+ * @param {number} rawScale - 原始计算比例
+ * @returns {{scale: number, error: number}|null} 匹配的工程比例及误差，误差超过3%则返回null
+ */
 function findClosestEngineeringScale(rawScale) {
     if (!rawScale || rawScale <= 0) return null;
     let best = null;
@@ -437,7 +516,9 @@ function findClosestEngineeringScale(rawScale) {
     return null;
 }
 
-// 实时更新校准弹窗中的原值/自动校准显示
+/**
+ * 实时更新校准弹窗中的原始比例和自动校准比例显示
+ */
 function updateCalibratePreview() {
     const raw = parseFloat(document.getElementById('calibrateRealValue').value);
     const unit = document.getElementById('calibrateUnit').value;
@@ -470,6 +551,9 @@ function updateCalibratePreview() {
     }
 }
 
+/**
+ * 打开校准距离输入对话框，显示图纸测量尺寸
+ */
 function openCalibrateDialog() {
     if (calibratePoints.length < 2) return;
     const p1 = calibratePoints[0];
@@ -484,6 +568,10 @@ function openCalibrateDialog() {
     setTimeout(() => document.getElementById('calibrateRealValue').focus(), 50);
 }
 
+/**
+ * 应用校准：根据输入的真实距离计算比例尺，自动检测工程比例
+ * 完成后进入测量阶段
+ */
 function applyCalibration() {
     const raw = parseFloat(document.getElementById('calibrateRealValue').value);
     if (!raw || raw <= 0) {
@@ -523,6 +611,7 @@ function applyCalibration() {
     isPolylineComplete = false;
     updateMeasureUI();
     const autoCalibrated = measureRawScale !== null && measureRawScale !== measureScale;
+    addLog('校准完成: 比例 1:' + measureScale);
     const toastMsg = autoCalibrated
         ? `✅ 校准完成 1:${measureScale}（原值 1:${measureRawScale}，自动校准至工程比例）`
         : `✅ 校准完成 1:${measureScale}，现在开始测量（可随时撤回）`;
@@ -530,8 +619,12 @@ function applyCalibration() {
     requestRender();
 }
 
+/**
+ * 取消校准：清除校准点，留在校准阶段重新拾取
+ */
 function cancelCalibration() {
     document.getElementById('calibrateBackdrop').classList.remove('visible');
+    addLog('取消校准');
     // 取消校准：清除校准点，留在校准阶段重新拾取
     calibratePoints = [];
     calibratePreview = null;
@@ -557,6 +650,7 @@ document.addEventListener('mouseup', (e) => {
 canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
 // 右键完成当前测量段（替代双击，避免与 click 添加点冲突）
 canvas.addEventListener('contextmenu', (e) => {
+    console.log('[DEBUG contextmenu] 触发右键 | isDragging=' + isDragging + ' | polylineMode=' + polylineMode + ' | eraseMode=' + eraseMode + ' | markers.length=' + markers.length);
     if (isDragging) { e.preventDefault(); return; }
 
     // 标记模式下：右键已标记位置弹出备注菜单
@@ -564,6 +658,7 @@ canvas.addEventListener('contextmenu', (e) => {
         const pos = getEventPos(e);
         const v = screenToVirtual(pos.x, pos.y);
         const hit = findMarkerAtVirtual(v.x, v.y);
+        console.log('[DEBUG contextmenu] 虚拟坐标=' + v.x.toFixed(1) + ',' + v.y.toFixed(1) + ' | hit=' + (hit ? hit.typeName + '#' + hit.number : 'null'));
         if (hit) {
             e.preventDefault();
             showMarkerContextMenu(e.clientX, e.clientY, hit);
@@ -581,7 +676,9 @@ canvas.addEventListener('contextmenu', (e) => {
     }
 });
 
-// 保存标记右键属性面板的更改
+/**
+ * 保存标记右键属性面板的更改，对比变更并记录到历史
+ */
 function saveMarkerContextMenu() {
     const marker = contextMenuTargetMarker;
     if (!marker) return;
@@ -644,6 +741,9 @@ function saveMarkerContextMenu() {
     apply('rioPanel', document.getElementById('mcmRioPanel').value);
     apply('slotNumber', document.getElementById('mcmSlotNumber').value);
     apply('channelNumber', document.getElementById('mcmChannelNumber').value);
+    apply('cableNo', document.getElementById('mcmCableNo').value);
+    apply('junctionBox', document.getElementById('mcmJunctionBox').value);
+    apply('cableType', document.getElementById('mcmCableType').value);
 
     // ===== 自定义属性字段 =====
     const customAttrInputs = markerContextMenu.querySelectorAll('.mcm-custom-attr');
@@ -659,6 +759,7 @@ function saveMarkerContextMenu() {
     });
 
     if (updates.length > 0) {
+        addLog('保存标记属性');
         // 合并为一条 history 记录（用 oldValue/newValue 记录所有变更）
         const changes = Object.fromEntries(updates.map(u => [u.field, u.oldValue]));
         const after = Object.fromEntries(updates.map(u => [u.field, u.newValue]));
@@ -670,8 +771,12 @@ function saveMarkerContextMenu() {
 
 // 右键属性面板按钮事件绑定
 (function bindMarkerContextMenuActions() {
-    // 关闭按钮
+    // 关闭按钮（header）
     document.getElementById('mcmCloseBtn').addEventListener('click', () => {
+        hideMarkerContextMenu();
+    });
+    // 关闭按钮（footer）
+    document.getElementById('mcmCloseBtn2').addEventListener('click', () => {
         hideMarkerContextMenu();
     });
     // 删除按钮
@@ -680,21 +785,15 @@ function saveMarkerContextMenu() {
         hideMarkerContextMenu();
         if (m) deleteMarker(m);
     });
-    // 取消
-    document.getElementById('mcmCancelBtn').addEventListener('click', () => {
-        hideMarkerContextMenu();
-    });
-    // 确定
-    document.getElementById('mcmOkBtn').addEventListener('click', () => {
+    // 保存按钮（仅保存，不关闭）
+    document.getElementById('mcmSaveBtn').addEventListener('click', () => {
         saveMarkerContextMenu();
-        hideMarkerContextMenu();
     });
-    // 面板内输入框回车 = 确定（尺寸输入框除外，防止误触）
+    // 面板内输入框回车 = 保存，Escape = 关闭
     markerContextMenu.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             saveMarkerContextMenu();
-            hideMarkerContextMenu();
         } else if (e.key === 'Escape') {
             e.preventDefault();
             hideMarkerContextMenu();
@@ -770,12 +869,12 @@ function saveMarkerContextMenu() {
     });
 })();
 
-// 点击菜单外关闭
-document.addEventListener('click', (e) => {
-    if (!markerContextMenu.classList.contains('visible')) return;
-    if (!markerContextMenu.contains(e.target)) {
-        hideMarkerContextMenu();
-    }
+// 分组折叠/展开切换
+markerContextMenu.addEventListener('click', (e) => {
+    const hdr = e.target.closest('.mcm-section-hdr');
+    if (!hdr) return;
+    const section = hdr.closest('.mcm-section');
+    if (section) section.classList.toggle('collapsed');
 });
 
 let touchStartPos = null;
@@ -931,6 +1030,7 @@ numberInput.addEventListener('keydown', (e) => {
         const val = parseInt(numberInput.value, 10);
         if (!isNaN(val) && val >= 1 && val <= MAX_MARKER_NUMBER && !isNumberUsed(val)) {
             nextMarkerNumber = val;
+            manualNumberSet = true;
             syncNumberInput();
         }
     }
@@ -939,7 +1039,9 @@ numberInput.addEventListener('keydown', (e) => {
 undoBtn.addEventListener('click', undo);
 redoBtn.addEventListener('click', redo);
 
-// 统一管理模式 UI：测量时智能隐藏标记相关控件
+/**
+ * 统一管理模式 UI：测量时智能隐藏标记相关控件，切换工具栏按钮状态
+ */
 function updateModeUI() {
     document.body.classList.toggle('measure-active', polylineMode);
     measureBtn.classList.toggle('active', polylineMode);
@@ -949,7 +1051,9 @@ function updateModeUI() {
     updateMeasureUI();
 }
 
-// 控制测量阶段相关 UI（撤回按钮、比例尺显示、汇总）
+/**
+ * 控制测量阶段相关 UI（撤回按钮、比例尺显示、汇总面板）
+ */
 function updateMeasureUI() {
     const showUndo = polylineMode && measurePhase === 'measure';
     measureUndoBtn.classList.toggle('visible', showUndo);
@@ -957,7 +1061,9 @@ function updateMeasureUI() {
     updateMeasureSummary();
 }
 
-// 更新测量段汇总：渲染侧边统计面板
+/**
+ * 更新测量段汇总面板：渲染侧边统计面板中的测量段列表和汇总数据
+ */
 function updateMeasureSummary() {
     const panel = document.getElementById('measurePanel');
     if (!panel) return;
@@ -1042,13 +1148,17 @@ function updateMeasureSummary() {
     }
 }
 
-// 删除指定测量段
+/**
+ * 删除指定测量段，并重新编号保持连续性
+ * @param {number} id - 测量段 ID
+ */
 function deleteMeasurement(id) {
     const idx = measurements.findIndex(m => m.id === id);
     if (idx === -1) return;
     measurements.splice(idx, 1);
     // 重新编号（保持 M1/M2/... 连续）
     measurements.forEach((m, i) => { m.id = i + 1; });
+    addLog('删除测量段');
     updateMeasureUI();
     requestRender();
     showToast(`已删除该测量段`);
@@ -1063,7 +1173,9 @@ document.getElementById('measurePanel').addEventListener('click', (e) => {
     }
 });
 
-// 更新工具栏校准比例尺显示
+/**
+ * 更新工具栏校准比例尺显示，包括原始值和自动校准后的值
+ */
 function updateMeasureScaleDisplay() {
     if (!polylineMode) return;
     const rawRow = document.getElementById('measureScaleRaw');
@@ -1104,6 +1216,7 @@ eraserBtn.addEventListener('click', () => {
     measurePhase = 'calibrate';
     updateModeUI();
     requestRender();
+    addLog(eraseMode ? '切换橡皮擦模式' : '切换标记模式');
     showToast(eraseMode ? '橡皮擦模式：点击标记可删除' : '标记模式');
 });
 
@@ -1119,6 +1232,7 @@ measureBtn.addEventListener('click', () => {
         measurePhase = 'calibrate';
         calibratePoints = [];
         calibratePreview = null;
+        addLog('切换测量模式');
         if (pages.length === 0) { showToast('请先导入PDF文件'); }
         else { showToast('🎯 第一步·校准：点击两个已知距离的点（自动水平/垂直对齐）'); }
     } else {
@@ -1130,6 +1244,7 @@ measureBtn.addEventListener('click', () => {
         calibratePreview = null;
         measureRawScale = null;
         measurePhase = 'calibrate';
+        addLog('切换标记模式');
         requestRender();
         showToast('标记模式');
     }
@@ -1150,6 +1265,7 @@ recalibrateBtn.addEventListener('click', () => {
     snapHint = null;
     measureRawScale = null;
     measurePhase = 'calibrate';
+    addLog('重新校准');
     updateMeasureUI();
     requestRender();
     showToast('🎯 重新校准：点击两个已知距离的点（自动水平/垂直对齐）');
@@ -1197,6 +1313,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+/**
+ * 完成当前折线测量段：存档测量数据，自动开始下一段
+ */
 function completeCurrentPolyline() {
     const pointCount = currentPolylinePoints.length;
     if (pointCount < 2) return;
@@ -1233,6 +1352,7 @@ function completeCurrentPolyline() {
     isPolylineComplete = false;
 
     const segLabel = `M${measurement.id}`;
+    addLog('完成测量段 ' + segLabel);
     let toastMsg;
     if (pointCount === 2) {
         toastMsg = `✅ ${segLabel} 完成: ${totalLen.text} ${totalLen.unit}（已自动开始下一段）`;
@@ -1247,6 +1367,9 @@ function completeCurrentPolyline() {
     requestRender();
 }
 
+/**
+ * 取消当前折线测量，清除所有未完成的点
+ */
 function cancelCurrentPolyline() {
     currentPolylinePoints = [];
     isPolylineComplete = false;
@@ -1255,6 +1378,9 @@ function cancelCurrentPolyline() {
     requestRender();
 }
 
+/**
+ * 删除折线最后一个点，更新实时距离/面积信息
+ */
 function removeLastPolylinePoint() {
     if (currentPolylinePoints.length > 0) {
         currentPolylinePoints.pop();
@@ -1328,6 +1454,7 @@ settingsSaveBtn.addEventListener('click', () => {
     settings.measureHatchSpacing = parseInt(settingMeasureHatchSpacing.value, 10) || 8;
     settings.measureHatchOpacity = parseFloat(settingMeasureHatchOpacity.value) || 0.35;
     saveSettings();
+    addLog('保存设置');
     settingsBackdrop.classList.remove('visible');
     updateMeasureUI();
     requestRender();
@@ -1340,6 +1467,11 @@ settingsBackdrop.addEventListener('click', (e) => {
 });
 
 // ===== 设置面板折叠分组 & 子设置联动 =====
+/**
+ * 确保设置面板中的指定分组处于折叠状态
+ * @param {string} hdrId - 分组标题元素 ID
+ * @param {string} bodyId - 分组内容元素 ID（未使用，保留兼容性）
+ */
 function ensureSectionCollapsed(hdrId, bodyId) {
     const hdr = document.getElementById(hdrId);
     if (!hdr) return;
@@ -1348,12 +1480,19 @@ function ensureSectionCollapsed(hdrId, bodyId) {
     section.classList.add('collapsed');
 }
 
+/**
+ * 切换设置面板中分组的折叠/展开状态
+ * @param {HTMLElement} hdr - 分组标题元素
+ */
 function toggleSection(hdr) {
     const section = hdr.closest('.setting-section');
     if (!section) return;
     section.classList.toggle('collapsed');
 }
 
+/**
+ * 根据"显示页脚"开关状态，更新页脚子设置项的显隐
+ */
 function updateCaptionSubVisibility() {
     const show = settingShowCaption.checked;
     document.getElementById('settingCaptionNameRow').classList.toggle('visible', show);
@@ -1367,6 +1506,10 @@ document.getElementById('settingMeasureStyleHdr').addEventListener('click', (e) 
 settingShowCaption.addEventListener('change', updateCaptionSubVisibility);
 
 // ===== 自定义列对话框 =====
+/**
+ * 打开自定义列添加对话框
+ * @param {string} sheetName - 目标表格名称
+ */
 function openCustomFieldDialog(sheetName) {
     const dialog = document.getElementById('cfDialogBackdrop');
     const sheetSel = document.getElementById('cfSheet');
@@ -1384,10 +1527,16 @@ function openCustomFieldDialog(sheetName) {
     dialog.hidden = false;
 }
 
+/**
+ * 关闭自定义列添加对话框
+ */
 function closeCustomFieldDialog() {
     document.getElementById('cfDialogBackdrop').hidden = true;
 }
 
+/**
+ * 从对话框添加自定义列定义
+ */
 function addCustomFieldFromDialog() {
     const sheetName = document.getElementById('cfSheet').value;
     const label = document.getElementById('cfLabel').value.trim();
@@ -1415,6 +1564,9 @@ document.getElementById('cfDialogBackdrop').addEventListener('click', (e) => {
 // ===== 自定义列管理对话框 =====
 let cfManageSheet = 'detailList';
 
+/**
+ * 打开自定义列管理对话框
+ */
 function openCustomFieldManage() {
     cfManageSheet = 'detailList';
     document.querySelectorAll('#cfManageTabs .cf-manage-tab').forEach(t => {
@@ -1424,10 +1576,16 @@ function openCustomFieldManage() {
     document.getElementById('cfManageBackdrop').hidden = false;
 }
 
+/**
+ * 关闭自定义列管理对话框
+ */
 function closeCustomFieldManage() {
     document.getElementById('cfManageBackdrop').hidden = true;
 }
 
+/**
+ * 渲染自定义列管理列表，包含删除按钮事件绑定
+ */
 function renderCfManageList() {
     const list = document.getElementById('cfManageList');
     const defs = getCustomFieldDefs().filter(d => d.sheet === cfManageSheet);
@@ -1482,6 +1640,9 @@ document.getElementById('cfManageBackdrop').addEventListener('click', (e) => {
 document.getElementById('previewManageColsBtn').addEventListener('click', openCustomFieldManage);
 
 // ===== 仪表属性管理对话框 =====
+/**
+ * 打开仪表属性管理对话框
+ */
 function openCustomAttrManage() {
     renderCfAttrList();
     document.getElementById('cfAttrBackdrop').hidden = false;
@@ -1490,11 +1651,18 @@ function openCustomAttrManage() {
     setTimeout(() => document.getElementById('cfAttrLabel').focus(), 50);
 }
 
+/**
+ * 关闭仪表属性管理对话框，刷新预览
+ */
 function closeCustomAttrManage() {
     document.getElementById('cfAttrBackdrop').hidden = true;
     renderPreview();
 }
 
+/**
+ * 渲染仪表属性管理列表：内置属性（分组显示）和自定义属性
+ * 包含启用/禁用切换、隐藏、删除等交互事件绑定
+ */
 function renderCfAttrList() {
     const list = document.getElementById('cfAttrList');
     const customDefs = getCustomAttrDefs();
@@ -1628,6 +1796,9 @@ function renderCfAttrList() {
     });
 }
 
+/**
+ * 从对话框添加自定义属性定义，校验重名
+ */
 function addCustomAttrFromDialog() {
     const label = document.getElementById('cfAttrLabel').value.trim();
     const desc = document.getElementById('cfAttrDesc').value.trim();
@@ -1679,6 +1850,7 @@ if (ioSelectBtn) ioSelectBtn.addEventListener('click', openIOSelectModal);
 statsToggle.addEventListener('click', () => {
     const visible = statsPanel.classList.toggle('visible');
     statsToggle.classList.toggle('active', visible);
+    addLog(visible ? '打开统计面板' : '关闭统计面板');
 });
 
 exportExcelBtn.addEventListener('click', exportExcel);
@@ -1702,7 +1874,7 @@ canvas.addEventListener('drop', async (e) => {
     const files = Array.from(e.dataTransfer.files).filter(f =>
         f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
     );
-    if (files.length > 0) await importPDF(files);
+    if (files.length > 0) { addLog('导入PDF...'); await importPDF(files); }
 });
 
 importBtn.addEventListener('click', () => fileInput.click());
@@ -1710,7 +1882,7 @@ fileInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files).filter(f =>
         f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
     );
-    if (files.length > 0) await importPDF(files);
+    if (files.length > 0) { addLog('导入PDF...'); await importPDF(files); }
     fileInput.value = '';
 });
 

@@ -1,3 +1,9 @@
+/**
+ * main.js - 应用主入口模块
+ * 负责初始化画布、绑定 DOM 元素引用、设置响应式画布尺寸，
+ * 并启动应用的初始化流程（恢复会话、渲染类型标签、同步编号输入等）。
+ */
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
 const dropHint = document.getElementById('dropHint');
@@ -59,6 +65,10 @@ fontSizeSlider.value = markerFontSize;
 radiusValueEl.textContent = markerRadius;
 fontSizeValueEl.textContent = markerFontSize;
 
+/**
+ * 根据窗口尺寸调整画布大小，并适配设备像素比
+ * 调整后自动触发重绘
+ */
 function resizeCanvas() {
     canvas.width = window.innerWidth * devicePixelRatio;
     canvas.height = window.innerHeight * devicePixelRatio;

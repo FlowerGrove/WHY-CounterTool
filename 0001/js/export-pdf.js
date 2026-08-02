@@ -1,3 +1,13 @@
+/**
+ * export-pdf.js - PDF导出功能，将标注的标记渲染到PDF图纸上
+ * 支持将用户标记的圆圈、编号、尺寸备注和通用备注绘制到原始PDF页面上
+ */
+
+/**
+ * 导出带标注的PDF文件
+ * 检查标记和文档是否就绪，然后调用核心导出逻辑
+ * @returns {Promise<void>}
+ */
 async function exportMarkedPDF() {
     if (markers.length === 0) {
         alert('还没有标记，请先在图纸上点击标注');
@@ -7,6 +17,7 @@ async function exportMarkedPDF() {
         alert('还没有导入PDF文件');
         return;
     }
+    addLog('开始导出标注PDF...');
     await runExportTask(
         [exportPdfFromStatsBtn, exportBtn],
         exportMarkedPDFCore,
@@ -16,6 +27,11 @@ async function exportMarkedPDF() {
     );
 }
 
+/**
+ * PDF导出核心逻辑：加载PDF库，遍历所有文档和页面，将标记渲染到PDF上
+ * 包括圆圈标记、类型缩写、编号、尺寸备注和通用备注
+ * @returns {Promise<void>}
+ */
 async function exportMarkedPDFCore() {
     await loadPdfLib();
     const PDFLib = window.PDFLib;
@@ -26,6 +42,9 @@ async function exportMarkedPDFCore() {
     const VISUAL_CENTER_OFFSET = 0.38;
     const radius = markerRadius;
     const fontSize = markerFontSize;
+
+    // 构建全局索引映射（按 Detail List 排序顺序）
+    const globalIndexMap = getDetailListIndexMap();
 
     for (const doc of documents) {
         const srcDoc = await PDFLib.PDFDocument.load(doc.arrayBuffer);
@@ -127,6 +146,36 @@ async function exportMarkedPDFCore() {
                     });
                 }
 
+                // 右上角全局计数标记（绿色小圆 + 白色数字）
+                // PDF 坐标系 Y 向上，右上角 = 45°（与 Canvas 中 -45° 视觉一致）
+                const globalIdx = globalIndexMap.get(m);
+                if (globalIdx != null) {
+                    const badgeR = pdfRadius * 0.32;
+                    const badgeOff = rotVec(
+                        Math.cos(Math.PI / 4) * (pdfRadius + badgeR * 0.1),
+                        Math.sin(Math.PI / 4) * (pdfRadius + badgeR * 0.1)
+                    );
+                    copiedPage.drawCircle({
+                        x: pdfX + badgeOff.x,
+                        y: pdfY + badgeOff.y,
+                        size: badgeR,
+                        color: PDFLib.rgb(0.18, 0.49, 0.20),
+                        borderWidth: 0,
+                    });
+                    const numStr = String(globalIdx);
+                    const numSize = badgeR * 1.3;
+                    const numWidth = boldFont.widthOfTextAtSize(numStr, numSize);
+                    const numPos = posAtCenter(pdfX + badgeOff.x, pdfY + badgeOff.y, numWidth, numSize);
+                    copiedPage.drawText(numStr, {
+                        x: numPos.x,
+                        y: numPos.y,
+                        size: numSize,
+                        color: PDFLib.rgb(1, 1, 1),
+                        font: boldFont,
+                        rotate: PDFLib.degrees(pageRotation),
+                    });
+                }
+
                 // 圆圈外：尺寸编号 & 通用备注（常规字重，字号按 Canvas 相对比例换算）
                 // Canvas 中备注字号 = max(8, 11)，按圆圈半径比例换算到 PDF（固定 zoom=1，避免导出受当前缩放影响）
                 const canvasNoteSize = 11;
@@ -179,4 +228,5 @@ async function exportMarkedPDFCore() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    addLog('标注PDF导出完成，共导出 ' + markers.length + ' 个标记');
 }

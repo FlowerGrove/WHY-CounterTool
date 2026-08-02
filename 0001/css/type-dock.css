@@ -4,7 +4,7 @@
     left: 14px;
     transform: translateY(-50%);
     z-index: 22;
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 0;
     width: 80px;
@@ -21,13 +21,17 @@
     user-select: none;
     -webkit-user-select: none;
 }
+.type-dock.visible {
+    display: flex;
+}
 
 /* --- Header: add button --- */
 .type-dock__header {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     padding: 12px 14px 10px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     flex-shrink: 0;

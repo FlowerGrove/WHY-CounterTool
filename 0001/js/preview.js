@@ -1,9 +1,28 @@
+/**
+ * preview.js - 预览窗口模块
+ *
+ * 功能概述：
+ * 直接读取主页内存中的 markers/documents/markerTypes 数据，渲染为多工作表预览表格。
+ * 不依赖 localStorage 中转，数据永远是当前最新状态。
+ * 支持按文件汇总、按类型汇总、详细列表、IO List、INS List、MTO口径汇总等视图，
+ * 以及自定义表格、数据流图、单元格编辑、批量编辑等功能。
+ *
+ * @module preview
+ */
+
 'use strict';
 
-// 预览窗口：直接读取主页内存中的 markers/documents/markerTypes，渲染为表格
-// 不依赖 localStorage 中转，数据永远是当前最新状态
+// ===== 批量编辑状态 =====
+let _pvBatchSelected = new Set();    // 当前选中的 marker ID 集合
+let _pvBatchCurrentSheet = 'detail'; // 当前激活的工作表名称
 
 // ===== 工具：HTML 转义 + 单元格构造 =====
+
+/**
+ * HTML 转义：将特殊字符替换为 HTML 实体，防止 XSS 攻击
+ * @param {*} s - 待转义的字符串
+ * @returns {string} 转义后的安全字符串
+ */
 function pvEscape(s) {
     if (s === null || s === undefined) return '';
     return String(s)
@@ -14,6 +33,12 @@ function pvEscape(s) {
         .replace(/'/g, '&#39;');
 }
 
+/**
+ * 构造普通的表格单元格 HTML
+ * @param {*} text - 单元格文本内容
+ * @param {string} [cls] - 可选的 CSS 类名
+ * @returns {string} 单元格 HTML 字符串
+ */
 function pvCell(text, cls) {
     const c = cls ? ` class="${cls}"` : '';
     if (text === null || text === undefined || String(text).length === 0) {
@@ -22,7 +47,14 @@ function pvCell(text, cls) {
     return `<td${c}>${pvEscape(text)}</td>`;
 }
 
-// 可编辑单元格：input 直接渲染，修改后写回 marker 对应字段
+/**
+ * 构造可编辑单元格：内含 input，修改后通过事件委托写回 marker 对应字段
+ * @param {Object} marker - 关联的标记对象
+ * @param {string} field - 绑定的字段名
+ * @param {*} text - 当前值
+ * @param {boolean} [isCustomAttr] - 是否为自定义属性字段
+ * @returns {string} 可编辑单元格 HTML 字符串
+ */
 function pvEditCell(marker, field, text, isCustomAttr) {
     const v = (text === null || text === undefined) ? '' : String(text);
     const attrFlag = isCustomAttr ? ' data-is-custom-attr="1"' : '';
@@ -31,6 +63,12 @@ function pvEditCell(marker, field, text, isCustomAttr) {
     </td>`;
 }
 
+/**
+ * 构造表格行 HTML
+ * @param {string} cells - 行内单元格 HTML 拼接
+ * @param {string} [cls] - 可选的 CSS 类名
+ * @returns {string} 表格行 HTML 字符串
+ */
 function pvRow(cells, cls) {
     return `<tr class="${cls || ''}">${cells}</tr>`;
 }
@@ -38,7 +76,10 @@ function pvRow(cells, cls) {
 // Process Connection 拼接：复用 utils.js 的 buildProcessConnection，保证与 Excel 导出一致
 const pvBuildConnection = buildProcessConnection;
 
-// ===== Sheet 1: By File =====
+/**
+ * 渲染 Sheet 1: By File — 按文件分组汇总（多页单文档时按页分组）
+ * 输出到 pvTable-byFile 表格元素
+ */
 function pvRenderByFile() {
     const table = document.getElementById('pvTable-byFile');
     const isSingleMultiPageDoc =
@@ -133,7 +174,10 @@ function pvRenderByFile() {
     table.innerHTML = html;
 }
 
-// ===== Sheet 2: Type Summary =====
+/**
+ * 渲染 Sheet 2: Type Summary — 按标记类型统计数量
+ * 输出到 pvTable-typeSummary 表格元素
+ */
 function pvRenderTypeSummary() {
     const table = document.getElementById('pvTable-typeSummary');
     const typeCounts = new Map();
@@ -167,31 +211,37 @@ function pvRenderTypeSummary() {
     table.innerHTML = html;
 }
 
-// 标记排序：文件名 → 类型名 → 编号
+/**
+ * 对 markers 进行排序：按创建顺序（_globalOrder）
+ * @returns {Object[]} 排序后的 markers 数组副本
+ */
 function pvSortedMarkers() {
     return [...markers].sort((a, b) => {
-        const fa = getDocFileName(a.docId);
-        const fb = getDocFileName(b.docId);
-        if (fa !== fb) return fa.localeCompare(fb, 'zh');
-        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-        return (a.number || 0) - (b.number || 0);
+        return (a._globalOrder || 0) - (b._globalOrder || 0);
     });
 }
 
-// ===== Sheet 3: Detail List（配置驱动 + 自定义列） =====
+/**
+ * 渲染 Sheet 3: Detail List — 配置驱动的详细列表（含自定义列）
+ * 输出到 pvTable-detail 表格元素
+ */
 function pvRenderDetail() {
     const table = document.getElementById('pvTable-detail');
     const sorted = pvSortedMarkers();
     const cols = getSheetColumnsWithCustom('detailList');
-    let html = `<thead><tr>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="detailList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
+    let html = `<thead><tr><th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="detail" title="全选/取消" /></th>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="detailList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
     sorted.forEach((m, i) => {
-        html += pvRow(cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>');
+        const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
+        html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>', _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
     });
     html += '</tbody>';
     table.innerHTML = html;
 }
 
-// ===== Sheet 4: IO List（配置驱动 + 自定义列） =====
+/**
+ * 渲染 Sheet 4: IO List — 仅包含 IO 类型的标记（配置驱动 + 自定义列）
+ * 输出到 pvTable-ioList 表格元素
+ */
 function pvRenderIOList() {
     const table = document.getElementById('pvTable-ioList');
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
@@ -206,16 +256,20 @@ function pvRenderIOList() {
 
     let html = pvBuildIOListHeader(cols) + '<tbody>';
     sorted.forEach((m, i) => {
-        html += pvRow(cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>');
+        const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
+        html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>', _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
     });
     if (sorted.length === 0) {
-        html = `<thead><tr><th colspan="${cols.length + 1}">IO List</th></tr></thead><tbody><tr><td colspan="${cols.length + 1}" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr></tbody>`;
+        html = `<thead><tr><th colspan="${cols.length + 2}">IO List</th></tr></thead><tbody><tr><td colspan="${cols.length + 2}" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr></tbody>`;
     }
     html += '</tbody>';
     table.innerHTML = html;
 }
 
-// ===== Sheet 5: INS List（配置驱动 + 自定义列） =====
+/**
+ * 渲染 Sheet 5: INS List — 非 IO 类型的标记（配置驱动 + 自定义列）
+ * 输出到 pvTable-insList 表格元素
+ */
 function pvRenderInsList() {
     const table = document.getElementById('pvTable-insList');
     const insMarkers = markers.filter(m => !isTypeInIOList(m.typeId));
@@ -228,25 +282,126 @@ function pvRenderInsList() {
     });
     const cols = getSheetColumnsWithCustom('insList');
 
-    let html = `<thead><tr>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="insList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
+    let html = `<thead><tr><th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="insList" title="全选/取消" /></th>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="insList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
     if (sorted.length === 0) {
-        html += `<tr><td colspan="${cols.length + 1}" class="cell-empty" style="padding:24px;">无 INS List 标记（所有类型均已勾选导出到 IO List）</td></tr>`;
+        html += `<tr><td colspan="${cols.length + 2}" class="cell-empty" style="padding:24px;">无 INS List 标记（所有类型均已勾选导出到 IO List）</td></tr>`;
     } else {
         sorted.forEach((m, i) => {
-            html += pvRow(cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>');
+            const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
+            html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>', _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
         });
     }
     html += '</tbody>';
     table.innerHTML = html;
 }
 
-// ===== 表格单元格编辑：写回 marker 并复用 history/autosave =====
+/**
+ * 渲染 Sheet 6: Material Take-off（口径汇总）— 按 sizeNote 分组统计 IO/INS 数量
+ * 输出到 pvTable-mto 表格元素
+ */
+function pvRenderMTO() {
+    addLog('生成MTO口径汇总');
+    const table = document.getElementById('pvTable-mto');
+    if (!table) return;
+
+    // 按 sizeNote 分组统计
+    const sizeMap = new Map();
+    for (const m of markers) {
+        const size = (m.sizeNote || m.size || '').trim();
+        const key = size || '(未指定)';
+        if (!sizeMap.has(key)) {
+            sizeMap.set(key, { ioCount: 0, insCount: 0, types: new Map() });
+        }
+        const entry = sizeMap.get(key);
+        if (isTypeInIOList(m.typeId)) {
+            entry.ioCount++;
+        } else {
+            entry.insCount++;
+        }
+        const typeName = m.typeName || '?';
+        entry.types.set(typeName, (entry.types.get(typeName) || 0) + 1);
+    }
+
+    // 按口径排序（智能排序：先数字后字母，未指定放最后）
+    const sorted = [...sizeMap.entries()].sort((a, b) => {
+        if (a[0] === '(未指定)') return 1;
+        if (b[0] === '(未指定)') return -1;
+        // 提取数字部分比较
+        const na = parseFloat(a[0]);
+        const nb = parseFloat(b[0]);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a[0].localeCompare(b[0]);
+    });
+
+    // 收集所有类型名
+    const allTypes = new Set();
+    for (const [, entry] of sizeMap) {
+        for (const t of entry.types.keys()) allTypes.add(t);
+    }
+    const typeOrder = [...allTypes].sort();
+
+    let html = '<thead><tr>';
+    html += '<th>口径</th>';
+    html += '<th>IO 数量</th>';
+    html += '<th>INS 数量</th>';
+    html += '<th>合计</th>';
+    for (const t of typeOrder) {
+        html += `<th>${pvEscape(t)}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    let totalIO = 0, totalINS = 0;
+    for (const [size, entry] of sorted) {
+        const total = entry.ioCount + entry.insCount;
+        totalIO += entry.ioCount;
+        totalINS += entry.insCount;
+        html += '<tr>';
+        html += `<td class="row-title">${pvEscape(size)}</td>`;
+        html += `<td class="cell-number">${entry.ioCount || ''}</td>`;
+        html += `<td class="cell-number">${entry.insCount || ''}</td>`;
+        html += `<td class="cell-number" style="font-weight:700;">${total}</td>`;
+        for (const t of typeOrder) {
+            const cnt = entry.types.get(t) || 0;
+            html += `<td class="cell-number">${cnt || ''}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    // 合计行
+    const grandTotal = totalIO + totalINS;
+    html += '<tr class="row-grand">';
+    html += '<td>合计</td>';
+    html += `<td class="cell-number">${totalIO}</td>`;
+    html += `<td class="cell-number">${totalINS}</td>`;
+    html += `<td class="cell-number">${grandTotal}</td>`;
+    for (const t of typeOrder) {
+        let typeTotal = 0;
+        for (const [, entry] of sizeMap) {
+            typeTotal += entry.types.get(t) || 0;
+        }
+        html += `<td class="cell-number">${typeTotal || ''}</td>`;
+    }
+    html += '</tr>';
+
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+/**
+ * 根据 ID 查找 marker 对象
+ * @param {string} id - marker ID
+ * @returns {Object|undefined} 匹配的 marker 对象，未找到则返回 undefined
+ */
 function pvFindMarkerById(id) {
     return markers.find(m => m.id === id);
 }
 
-// 提交一次单元格编辑：写回 marker → history → 重绘图纸 → 自动保存
+/**
+ * 提交一次单元格编辑：写回 marker → 记录历史 → 重绘图纸 → 自动保存
+ * @param {HTMLElement} td - 被编辑的 td 元素
+ */
 function pvCommitCell(td) {
+    addLog('编辑单元格');
     const mid = td.dataset.mid;
     const field = td.dataset.field;
     const isCustomAttr = td.dataset.isCustomAttr === '1';
@@ -276,6 +431,10 @@ function pvCommitCell(td) {
     input.value = clean;
 }
 
+/**
+ * 设置可编辑表格的事件委托：在 preview-body 上监听 change/keydown 事件
+ * 支持失焦/回车提交、Tab 键跳转、Escape 取消编辑
+ */
 function pvSetupEditableTables() {
     // 使用事件委托在 preview-body 上，覆盖所有表格（包括动态创建的自定义表格）
     const body = document.querySelector('.preview-body');
@@ -322,7 +481,195 @@ function pvSetupEditableTables() {
     });
 }
 
-// ===== 配置驱动列渲染：根据列定义生成单元格 HTML =====
+/**
+ * 更新批量编辑工具栏状态：显示/隐藏、选中计数、字段下拉填充
+ */
+function pvUpdateBatchBar() {
+    const bar = document.getElementById('pvBatchBar');
+    const countEl = document.getElementById('pvBatchCount');
+    const applyBtn = document.getElementById('pvBatchApply');
+    if (!bar || !countEl || !applyBtn) return;
+
+    const count = _pvBatchSelected.size;
+    if (count === 0) {
+        bar.hidden = true;
+        return;
+    }
+
+    bar.hidden = false;
+    countEl.textContent = `已选 ${count} 项`;
+    applyBtn.disabled = true;
+
+    // 填充字段下拉
+    pvPopulateBatchFields(_pvBatchCurrentSheet);
+}
+
+/**
+ * 根据当前工作表填充批量编辑字段下拉选项
+ * @param {string} sheetName - 当前工作表名称
+ */
+function pvPopulateBatchFields(sheetName) {
+    const fieldSelect = document.getElementById('pvBatchField');
+    const valueInput = document.getElementById('pvBatchValue');
+    const applyBtn = document.getElementById('pvBatchApply');
+    if (!fieldSelect) return;
+
+    // 映射 UI sheet 名称到列定义 key
+    const sheetKey = sheetName === 'detail' ? 'detailList' : sheetName;
+    const cols = getSheetColumnsWithCustom(sheetKey);
+    const editableCols = cols.filter(c => c.editable && c.field);
+
+    let html = '<option value="">选择字段…</option>';
+    for (const c of editableCols) {
+        html += `<option value="${pvEscape(c.field)}">${pvEscape(c.header || c.field)}</option>`;
+    }
+    fieldSelect.innerHTML = html;
+
+    // 字段或值变化时更新应用按钮状态
+    const checkApply = () => {
+        applyBtn.disabled = !(fieldSelect.value && _pvBatchSelected.size > 0);
+    };
+    fieldSelect.onchange = checkApply;
+    if (valueInput) {
+        valueInput.oninput = checkApply;
+    }
+    checkApply();
+}
+
+/**
+ * 执行批量修改：将选中行的指定字段统一设置为新值
+ * 写回 marker → 记录历史 → 重绘图纸 → 自动保存 → 刷新表格
+ */
+function pvApplyBatch() {
+    const fieldSelect = document.getElementById('pvBatchField');
+    const valueInput = document.getElementById('pvBatchValue');
+    if (!fieldSelect || !valueInput) return;
+
+    const field = fieldSelect.value;
+    const newValue = valueInput.value.trim();
+    if (!field || _pvBatchSelected.size === 0) return;
+
+    addLog('批量修改: ' + _pvBatchSelected.size + '行');
+
+    // 判断是否为自定义属性字段
+    const isCustomAttr = field.startsWith('ca_');
+    const changes = [];
+
+    for (const mid of _pvBatchSelected) {
+        const marker = pvFindMarkerById(mid);
+        if (!marker) continue;
+
+        let oldVal;
+        if (isCustomAttr) {
+            oldVal = getCustomAttrValue(marker, field);
+        } else {
+            oldVal = marker[field] !== undefined ? marker[field] : '';
+        }
+        const oldForCmp = (oldVal === undefined || oldVal === null) ? '' : String(oldVal);
+
+        if (oldForCmp === newValue) continue;
+
+        if (isCustomAttr) {
+            setCustomAttrValue(marker, field, newValue.length > 0 ? newValue : '');
+        } else {
+            marker[field] = newValue.length > 0 ? newValue : undefined;
+        }
+        changes.push({ marker, field, old: oldForCmp, after: newValue });
+    }
+
+    if (changes.length > 0) {
+        pushHistory({
+            type: 'bulkUpdate',
+            markers: changes.map(c => c.marker),
+            changes: Object.fromEntries(changes.map(c => [c.field, c.old])),
+            after: Object.fromEntries(changes.map(c => [c.field, c.after])),
+        });
+        requestRender();
+        scheduleAutosave();
+        // 重新渲染当前表格
+        pvRerenderCurrentSheet();
+    }
+
+    // 清空值输入框，保留选中状态
+    valueInput.value = '';
+    const applyBtn = document.getElementById('pvBatchApply');
+    if (applyBtn) applyBtn.disabled = true;
+}
+
+/**
+ * 取消批量选择：清空选中集合并重新渲染当前工作表
+ */
+function pvCancelBatch() {
+    addLog('取消批量选择');
+    _pvBatchSelected.clear();
+    pvRerenderCurrentSheet();
+    const bar = document.getElementById('pvBatchBar');
+    if (bar) bar.hidden = true;
+}
+
+/**
+ * 重新渲染当前激活的工作表
+ */
+function pvRerenderCurrentSheet() {
+    const renderer = pvSheetRenderers[_pvBatchCurrentSheet];
+    if (renderer) renderer();
+}
+
+/**
+ * 设置批量编辑复选框的事件委托：全选/取消、单行选择
+ */
+function pvSetupBatchCheckboxes() {
+    const body = document.querySelector('.preview-body');
+    if (!body || body._batchDelegated) return;
+    body._batchDelegated = true;
+
+    body.addEventListener('change', (e) => {
+        // 全选/取消
+        const checkAll = e.target.closest('.pv-check-all');
+        if (checkAll) {
+            const sheetName = checkAll.dataset.sheet;
+            let markersInSheet;
+            if (sheetName === 'ioList') {
+                markersInSheet = markers.filter(m => isTypeInIOList(m.typeId));
+            } else if (sheetName === 'insList') {
+                markersInSheet = markers.filter(m => !isTypeInIOList(m.typeId));
+            } else {
+                markersInSheet = markers;
+            }
+
+            if (checkAll.checked) {
+                for (const m of markersInSheet) _pvBatchSelected.add(m.id);
+            } else {
+                for (const m of markersInSheet) _pvBatchSelected.delete(m.id);
+            }
+            pvRerenderCurrentSheet();
+            pvUpdateBatchBar();
+            return;
+        }
+
+        // 单行选择
+        const checkRow = e.target.closest('.pv-check-row');
+        if (checkRow) {
+            const mid = checkRow.dataset.mid;
+            if (!mid) return;
+            if (checkRow.checked) {
+                _pvBatchSelected.add(mid);
+            } else {
+                _pvBatchSelected.delete(mid);
+            }
+            pvRerenderCurrentSheet();
+            pvUpdateBatchBar();
+        }
+    });
+}
+
+/**
+ * 根据列定义生成单元格 HTML（配置驱动）
+ * @param {Object} col - 列定义对象
+ * @param {Object} marker - 标记对象
+ * @param {number} index - 行索引
+ * @returns {string} 单元格 HTML 字符串
+ */
 function pvRenderCellByCol(col, marker, index) {
     // 特殊类型
     if (col.type === 'sn') {
@@ -346,7 +693,11 @@ function pvRenderCellByCol(col, marker, index) {
     return pvCell(col.getter(marker, index));
 }
 
-// 生成 IO List 双行表头 HTML（支持 colSpan 分组合并）
+/**
+ * 生成 IO List 双行表头 HTML（支持 colSpan 分组合并）
+ * @param {Object[]} cols - 列定义数组
+ * @returns {string} 双行表头 HTML 字符串
+ */
 function pvBuildIOListHeader(cols) {
     let row1 = '', row2 = '';
     let i = 0;
@@ -364,12 +715,17 @@ function pvBuildIOListHeader(cols) {
             i++;
         }
     }
+    row1 = `<th rowspan="2" class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="ioList" title="全选/取消" /></th>` + row1;
     row1 += `<th rowspan="2" class="th-add-col"><button class="pv-add-col-btn" data-sheet="ioList" title="添加自定义列">+</button></th>`;
     return `<thead><tr>${row1}</tr><tr>${row2}</tr></thead>`;
 }
 
-// 定位：关闭预览，视图居中到标记并放大，同时短暂高亮闪烁
+/**
+ * 定位到图纸上的标记位置：关闭预览 → 居中放大 → 闪烁高亮
+ * @param {Object} m - marker 对象
+ */
 function pvLocateMarker(m) {
+    addLog('定位标记到图纸');
     closePreview();
     if (zoom < 1.5) zoom = 1.5;
     panX = -m.vx * zoom;
@@ -378,6 +734,9 @@ function pvLocateMarker(m) {
     flashLocate(m);
 }
 
+/**
+ * 在 Detail 表格上设置定位按钮的点击事件委托
+ */
 function pvSetupLocateButtons() {
     document.getElementById('pvTable-detail').addEventListener('click', (e) => {
         const btn = e.target.closest('.pv-locate-btn');
@@ -387,7 +746,9 @@ function pvSetupLocateButtons() {
     });
 }
 
-// ===== 自定义列 + 按钮（事件委托） =====
+/**
+ * 设置自定义列添加按钮的事件委托（在 preview-body 上）
+ */
 function pvSetupAddColButtons() {
     // 使用事件委托，绑在 preview-body 上，避免每次重渲染后重新绑定
     const body = document.querySelector('.preview-body');
@@ -402,15 +763,21 @@ function pvSetupAddColButtons() {
     });
 }
 
-// ===== Tab 切换 =====
+/**
+ * 工作表渲染器映射表：sheet 名称 → 渲染函数
+ */
 const pvSheetRenderers = {
     byFile: pvRenderByFile,
     typeSummary: pvRenderTypeSummary,
     detail: pvRenderDetail,
     ioList: pvRenderIOList,
     insList: pvRenderInsList,
+    mto: pvRenderMTO,
 };
 
+/**
+ * 设置 Tab 切换的事件委托（含自定义表格编辑/删除按钮）
+ */
 function pvSetupTabs() {
     const nav = document.querySelector('.preview-tabs');
     if (!nav) return;
@@ -431,6 +798,7 @@ function pvSetupTabs() {
             e.stopPropagation();
             const tableId = delBtn.dataset.table;
             if (tableId && confirm('确定删除此自定义表格？')) {
+                addLog('删除自定义表');
                 removeCustomTable(tableId);
                 renderCustomTabs();
                 renderCustomSheets();
@@ -448,23 +816,28 @@ function pvSetupTabs() {
         const sheetName = tab.dataset.sheet;
         const tableId = tab.dataset.table;
 
-        document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
-
         if (sheetName) {
-            const panel = document.getElementById('pvSheet-' + sheetName);
-            if (panel) panel.hidden = false;
+            pvSwitchToTab(sheetName);
         } else if (tableId) {
-            const panel = document.getElementById('pvSheet-' + tableId);
-            if (panel) panel.hidden = false;
+            pvSwitchToCustomTable(tableId);
         }
 
         renderAllTables();
     });
 }
 
+/**
+ * 切换到指定工作表标签
+ * @param {string} sheetName - 工作表名称（如 'detail', 'ioList', 'mto' 等）
+ */
 function pvSwitchToTab(sheetName) {
+    addLog('切换预览标签: ' + sheetName);
+    if (_pvBatchCurrentSheet !== sheetName) {
+        _pvBatchSelected.clear();
+        pvUpdateBatchBar();
+    }
+    _pvBatchCurrentSheet = sheetName;
+
     document.querySelectorAll('.preview-tab, [data-sheet].active').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
 
@@ -474,7 +847,15 @@ function pvSwitchToTab(sheetName) {
     if (panel) panel.hidden = false;
 }
 
+/**
+ * 切换到自定义表格标签
+ * @param {string} tableId - 自定义表格 ID
+ */
 function pvSwitchToCustomTable(tableId) {
+    addLog('切换预览标签: ' + tableId);
+    _pvBatchSelected.clear();
+    pvUpdateBatchBar();
+
     document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
 
@@ -484,6 +865,9 @@ function pvSwitchToCustomTable(tableId) {
     if (panel) panel.hidden = false;
 }
 
+/**
+ * 渲染所有工作表（内置 + 自定义）
+ */
 function renderAllTables() {
     for (const key of Object.keys(pvSheetRenderers)) {
         pvSheetRenderers[key]();
@@ -491,7 +875,9 @@ function renderAllTables() {
     renderAllCustomTables();
 }
 
-// ===== 主入口：渲染所有表格 =====
+/**
+ * 渲染预览窗口主内容：所有工作表、元信息、底部统计
+ */
 function renderPreview() {
     if (markers.length === 0) {
         document.getElementById('pvEmpty').hidden = false;
@@ -509,6 +895,7 @@ function renderPreview() {
     pvRenderDetail();
     pvRenderIOList();
     pvRenderInsList();
+    pvRenderMTO();
     renderAllCustomTables();
     pvSetupAddColButtons();
 
@@ -524,17 +911,31 @@ function renderPreview() {
         `总计 ${markers.length} · IO List ${ioCount} · INS List ${insCount}（单元格可直接点击编辑）`;
 }
 
-// ===== 打开/关闭预览窗口 =====
+/**
+ * 打开预览窗口：渲染所有表格并显示预览浮层
+ */
 function openPreview() {
+    addLog('打开预览窗口');
     renderPreview();
     document.getElementById('previewOverlay').hidden = false;
 }
 
+/**
+ * 关闭预览窗口：隐藏浮层并清空批量选择状态
+ */
 function closePreview() {
+    addLog('关闭预览窗口');
     document.getElementById('previewOverlay').hidden = true;
+    _pvBatchSelected.clear();
+    const bar = document.getElementById('pvBatchBar');
+    if (bar) bar.hidden = true;
 }
 
+/**
+ * 打开数据流图浮层
+ */
 function openDataFlow() {
+    addLog('打开数据流图');
     const overlay = document.getElementById('dataFlowOverlay');
     if (!overlay) return;
     overlay.hidden = false;
@@ -542,20 +943,33 @@ function openDataFlow() {
     requestAnimationFrame(() => pvRenderDataFlow());
 }
 
+/**
+ * 关闭数据流图浮层
+ */
 function closeDataFlow() {
+    addLog('关闭数据流图');
     const overlay = document.getElementById('dataFlowOverlay');
     if (overlay) overlay.hidden = true;
 }
 
-// ===== 初始化 =====
+/**
+ * 初始化：DOMContentLoaded 时绑定所有事件和渲染器
+ */
 document.addEventListener('DOMContentLoaded', () => {
     pvSetupTabs();
     pvSetupEditableTables();
     pvSetupLocateButtons();
     pvSetupNewTableDropdown();
+    pvSetupBatchCheckboxes();
 
     document.getElementById('previewBtn').addEventListener('click', openPreview);
     document.getElementById('previewCloseBtn').addEventListener('click', closePreview);
+
+    // 批量编辑工具栏按钮
+    const batchApply = document.getElementById('pvBatchApply');
+    const batchCancel = document.getElementById('pvBatchCancel');
+    if (batchApply) batchApply.addEventListener('click', pvApplyBatch);
+    if (batchCancel) batchCancel.addEventListener('click', pvCancelBatch);
 
     const previewOverlay = document.getElementById('previewOverlay');
     previewOverlay.addEventListener('click', (e) => {
@@ -585,7 +999,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ===== 动态标签页和表格区域渲染 =====
+/**
+ * 渲染自定义表格标签页（动态生成 Tab 按钮）
+ */
 function renderCustomTabs() {
     const container = document.getElementById('customTabsContainer');
     if (!container) return;
@@ -601,6 +1017,9 @@ function renderCustomTabs() {
     container.innerHTML = html;
 }
 
+/**
+ * 渲染自定义表格区域（动态生成 sheet 面板 DOM）
+ */
 function renderCustomSheets() {
     const container = document.getElementById('customSheetsContainer');
     if (!container) return;
@@ -616,7 +1035,9 @@ function renderCustomSheets() {
     container.innerHTML = html;
 }
 
-// ===== 新建/编辑自定义表格下拉面板：字段列表渲染 =====
+/**
+ * 渲染新建/编辑自定义表格的字段列表
+ */
 function renderNewTableFieldList() {
     const list = document.getElementById('newTableFieldList');
     if (!list) return;
@@ -639,13 +1060,19 @@ function renderNewTableFieldList() {
     list.innerHTML = html;
 }
 
+/**
+ * 向新建表格中添加一个字段
+ */
 function addFieldToNewTable() {
     const idx = _newTableFields.length + 1;
     _newTableFields.push({ label: '字段' + idx, bindField: '' });
     renderNewTableFieldList();
 }
 
-// ===== 自定义表格渲染 =====
+/**
+ * 渲染指定自定义表格：根据列定义生成表格 HTML
+ * @param {string} tableId - 自定义表格 ID
+ */
 function renderCustomTable(tableId) {
     const tableEl = document.getElementById('pvTable-' + tableId);
     if (!tableEl) return;
@@ -701,6 +1128,9 @@ function renderCustomTable(tableId) {
     tableEl.innerHTML = html;
 }
 
+/**
+ * 渲染所有自定义表格
+ */
 function renderAllCustomTables() {
     const tables = getCustomTables();
     for (const table of tables) {
@@ -708,11 +1138,16 @@ function renderAllCustomTables() {
     }
 }
 
-// ===== DataFlow 命名空间 =====
-// Canvas 无限画布网状图：展示仪表属性 ↔ 数据表引用关系
-// 数据流方向：属性节点（左列）→ 表节点（右列），箭头指示流向
-// 交互：鼠标拖拽平移 / 滚轮缩放 / 悬停高亮 / 点击选中聚焦
-// 检查能力：填充率指示 / 孤立属性检测 / 表数据完整度 / 空引用警告
+/**
+ * DataFlow 命名空间 — Canvas 无限画布网状图
+ *
+ * 展示仪表属性与数据表之间的引用关系：
+ * - 数据流方向：属性节点（左列）→ 表节点（右列），箭头指示流向
+ * - 交互：鼠标拖拽平移 / 滚轮缩放 / 悬停高亮 / 点击选中聚焦
+ * - 检查能力：填充率指示 / 孤立属性检测 / 表数据完整度 / 空引用警告
+ *
+ * @namespace DataFlow
+ */
 const DataFlow = (() => {
     // ═══════════════════════════════════════════
     //  内部状态
@@ -768,12 +1203,23 @@ const DataFlow = (() => {
     // ═══════════════════════════════════════════
     //  工具函数
     // ═══════════════════════════════════════════
+    /**
+     * 根据字段名获取属性分类
+     * @param {string} field - 字段名
+     * @returns {string} 分类名称
+     */
     function _getCat(field) {
         const a = ALL_MARKER_ATTRIBUTES.find(x => x.key === field);
         if (a) return a.group;
         return field.startsWith('ca_') ? '自定义' : '自定义';
     }
 
+    /**
+     * 读取 marker 的指定字段值
+     * @param {Object} m - marker 对象
+     * @param {string} field - 字段名
+     * @returns {string} 字段值
+     */
     function _readFieldVal(m, field) {
         if (field === 'tagNumber') return formatMarkerLabel(m);
         if (field === 'sizeNote') return m.sizeNote || m.size || '';
@@ -786,13 +1232,20 @@ const DataFlow = (() => {
         return (v === undefined || v === null) ? '' : String(v);
     }
 
+    /**
+     * 判断值是否已填充（非空）
+     * @param {*} val - 待检查的值
+     * @returns {boolean} 是否已填充
+     */
     function _isFilled(val) {
         return val !== undefined && val !== null && String(val).trim() !== '';
     }
 
-    // ═══════════════════════════════════════════
-    //  填充率计算
-    // ═══════════════════════════════════════════
+    /**
+     * 计算所有属性字段的填充率
+     * @param {Map} attrMap - 字段名 → 信息对象的映射
+     * @returns {Map} 字段名 → { total, filled, pct } 的映射
+     */
     function _calcFillRates(attrMap) {
         const rates = new Map();
         const total = markers.length;
@@ -807,7 +1260,12 @@ const DataFlow = (() => {
         return rates;
     }
 
-    // 计算表节点数据完整度：该表引用的字段中有多少百分比有数据
+    /**
+     * 计算表节点的数据完整度：该表引用的字段中有多少百分比有数据
+     * @param {Object} node - 表节点对象
+     * @param {Object[]} attrNodes - 属性节点数组
+     * @returns {{ pct: number, refCount: number, emptyCount: number }} 完整度信息
+     */
     function _calcTableFill(node, attrNodes) {
         const refFields = _edges.filter(e => e.to.id === node.id).map(e => e.from.field);
         if (refFields.length === 0) return { pct: 100, refCount: 0, emptyCount: 0 };
@@ -822,9 +1280,10 @@ const DataFlow = (() => {
         return { pct: Math.round((refFields.length - emptyCount) / refFields.length * 100), refCount: refFields.length, emptyCount };
     }
 
-    // ═══════════════════════════════════════════
-    //  图构建
-    // ═══════════════════════════════════════════
+    /**
+     * 构建数据流图：从内置表和自定义表的列定义中提取属性-表引用关系
+     * 生成属性节点（左列）和表节点（右列），以及它们之间的边
+     */
     function _buildGraph() {
         _nodes = []; _edges = [];
         const attrMap = new Map();
@@ -951,9 +1410,9 @@ const DataFlow = (() => {
         _buildLegend();
     }
 
-    // ═══════════════════════════════════════════
-    //  UI 更新
-    // ═══════════════════════════════════════════
+    /**
+     * 更新统计信息 UI：健康度分数、属性数、连线数、孤立警告等
+     */
     function _updateStats() {
         const el = document.getElementById('dataFlowStats');
         if (!el) return;
@@ -968,6 +1427,9 @@ const DataFlow = (() => {
         el.innerHTML = html;
     }
 
+    /**
+     * 构建图例 HTML：属性分类、数据表类型、填充率、连线颜色、交互说明
+     */
     function _buildLegend() {
         const el = document.getElementById('dataFlowLegend');
         if (!el) return;
@@ -1016,6 +1478,9 @@ const DataFlow = (() => {
         }
     }
 
+    /**
+     * 更新选中节点详情面板
+     */
     function _updateSelectPanel() {
         const panel = document.getElementById('dataFlowSelectPanel');
         if (!panel) return;
@@ -1059,9 +1524,9 @@ const DataFlow = (() => {
         if (clearBtn) clearBtn.addEventListener('click', _clearSelection);
     }
 
-    // ═══════════════════════════════════════════
-    //  Canvas 初始化和事件
-    // ═══════════════════════════════════════════
+    /**
+     * 设置 Canvas 事件监听：鼠标拖拽平移、滚轮缩放、点击选中、搜索输入
+     */
     function _setupCanvas() {
         if (!_c) return;
         _c.addEventListener('mousedown', (e) => {
@@ -1134,6 +1599,9 @@ const DataFlow = (() => {
         }
     }
 
+    /**
+     * 调整 Canvas 尺寸以适配容器（考虑 devicePixelRatio）
+     */
     function _resize() {
         if (!_c) return;
         const rect = _c.getBoundingClientRect();
@@ -1144,6 +1612,9 @@ const DataFlow = (() => {
         _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    /**
+     * 将图的内容居中在可视区域内
+     */
     function _centerContent() {
         if (_nodes.length === 0) return;
         if (!_c || _c.width === 0) return;
@@ -1161,9 +1632,10 @@ const DataFlow = (() => {
         _panY = (vh - ch * _zoom) / 2 - minY * _zoom;
     }
 
-    // ═══════════════════════════════════════════
-    //  选中/取消选中
-    // ═══════════════════════════════════════════
+    /**
+     * 选中节点（再次点击则取消选中）
+     * @param {Object} node - 要选中的节点对象
+     */
     function _selectNode(node) {
         if (_selected && _selected.id === node.id) {
             _clearSelection();
@@ -1174,12 +1646,20 @@ const DataFlow = (() => {
         _draw();
     }
 
+    /**
+     * 取消选中当前节点
+     */
     function _clearSelection() {
         _selected = null;
         _updateSelectPanel();
         _draw();
     }
 
+    /**
+     * 判断节点是否匹配搜索词
+     * @param {Object} node - 节点对象
+     * @returns {boolean} 是否匹配
+     */
     function _matchesSearch(node) {
         if (!_searchTerm) return true;
         const t = _searchTerm.toLowerCase();
@@ -1188,6 +1668,12 @@ const DataFlow = (() => {
                (node.category || '').toLowerCase().includes(t);
     }
 
+    /**
+     * 判断两个节点之间是否存在边连接
+     * @param {Object} n1 - 节点1
+     * @param {Object} n2 - 节点2
+     * @returns {boolean} 是否连接
+     */
     function _isConnected(n1, n2) {
         return _edges.some(e =>
             (e.from.id === n1.id && e.to.id === n2.id) ||
@@ -1195,15 +1681,20 @@ const DataFlow = (() => {
         );
     }
 
+    /**
+     * 判断节点是否与当前选中节点相关（同一节点或直接连接）
+     * @param {Object} node - 节点对象
+     * @returns {boolean} 是否相关
+     */
     function _isRelated(node) {
         if (!_selected) return true;
         if (node.id === _selected.id) return true;
         return _isConnected(node, _selected);
     }
 
-    // ═══════════════════════════════════════════
-    //  绘制
-    // ═══════════════════════════════════════════
+    /**
+     * 绘制整个 Canvas：网格背景 → 列标题 → 边 → 节点
+     */
     function _draw() {
         if (!_c || _c.width === 0) return;
         const ctx = _ctx;
@@ -1236,6 +1727,11 @@ const DataFlow = (() => {
         ctx.restore();
     }
 
+    /**
+     * 绘制一条边（贝塞尔曲线 + 箭头 + 填充计数标签）
+     * @param {CanvasRenderingContext2D} ctx - Canvas 上下文
+     * @param {Object} edge - 边对象
+     */
     function _drawEdge(ctx, edge) {
         const fx = edge.from.x + edge.from.w, fy = edge.from.y + edge.from.h / 2;
         const tx = edge.to.x, ty = edge.to.y + edge.to.h / 2;
@@ -1306,6 +1802,17 @@ const DataFlow = (() => {
         ctx.globalAlpha = 1;
     }
 
+    /**
+     * 绘制箭头（三角形填充）
+     * @param {CanvasRenderingContext2D} ctx - Canvas 上下文
+     * @param {number} cx - 贝塞尔控制点 x
+     * @param {number} cy - 贝塞尔控制点 y
+     * @param {number} tx - 目标 x
+     * @param {number} ty - 目标 y
+     * @param {string} color - 颜色
+     * @param {number} size - 箭头大小
+     * @param {number} alpha - 透明度
+     */
     function _drawArrow(ctx, cx, cy, tx, ty, color, size, alpha) {
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -1323,6 +1830,11 @@ const DataFlow = (() => {
         ctx.restore();
     }
 
+    /**
+     * 绘制一个节点（圆角矩形 + 填充率指示条 + 标签文本 + 引用计数）
+     * @param {CanvasRenderingContext2D} ctx - Canvas 上下文
+     * @param {Object} node - 节点对象
+     */
     function _drawNode(ctx, node) {
         const { x, y, w, h } = node;
         const isHovered = node === _hovered;
@@ -1448,6 +1960,9 @@ const DataFlow = (() => {
         ctx.globalAlpha = 1;
     }
 
+    /**
+     * 绘制空状态提示（无标记数据时显示）
+     */
     function _drawEmpty() {
         _resize();
         if (!_c || _c.width === 0) return;
@@ -1462,9 +1977,10 @@ const DataFlow = (() => {
         ctx.fillText('---', w / 2, h / 2 - 30);
     }
 
-    // ═══════════════════════════════════════════
-    //  悬停检测
-    // ═══════════════════════════════════════════
+    /**
+     * 检测鼠标悬停的节点，更新光标样式和提示框
+     * @param {MouseEvent} e - 鼠标事件
+     */
     function _checkHover(e) {
         if (!_c || _dragging) return;
         const rect = _c.getBoundingClientRect();
@@ -1487,9 +2003,11 @@ const DataFlow = (() => {
         }
     }
 
-    // ═══════════════════════════════════════════
-    //  提示框
-    // ═══════════════════════════════════════════
+    /**
+     * 显示悬停提示框：节点名称、分类、填充率、引用表等详情
+     * @param {Object} node - 悬停的节点
+     * @param {MouseEvent} e - 鼠标事件
+     */
     function _showTooltip(node, e) {
         const tip = document.getElementById('dataFlowTooltip');
         if (!tip) return;
@@ -1540,15 +2058,20 @@ const DataFlow = (() => {
         tip.style.top = top + 'px';
     }
 
+    /**
+     * 隐藏悬停提示框
+     */
     function _hideTooltip() {
         const tip = document.getElementById('dataFlowTooltip');
         if (tip) tip.hidden = true;
     }
 
-    // ═══════════════════════════════════════════
-    //  公开 API
-    // ═══════════════════════════════════════════
+    /**
+     * 公开 API
+     * @type {{ render: Function, open: Function, close: Function, selected: Object|null }}
+     */
     return {
+        /** 渲染数据流图到 Canvas */
         render() {
             _c = document.getElementById('dataFlowCanvas');
             if (!_c) return;
@@ -1576,6 +2099,7 @@ const DataFlow = (() => {
             });
         },
 
+        /** 打开数据流图浮层并渲染 */
         open() {
             const overlay = document.getElementById('dataFlowOverlay');
             if (!overlay) return;
@@ -1583,6 +2107,7 @@ const DataFlow = (() => {
             requestAnimationFrame(() => this.render());
         },
 
+        /** 关闭数据流图浮层并重置状态 */
         close() {
             const overlay = document.getElementById('dataFlowOverlay');
             if (overlay) overlay.hidden = true;
@@ -1597,15 +2122,20 @@ const DataFlow = (() => {
     };
 })();
 
-// 兼容旧函数名
+/** 兼容旧函数名：渲染数据流图 */
 function pvRenderDataFlow() { DataFlow.render(); }
+/** 兼容旧函数名：打开数据流图 */
 function openDataFlow() { DataFlow.open(); }
+/** 兼容旧函数名：关闭数据流图 */
 function closeDataFlow() { DataFlow.close(); }
 
 // ===== 新建自定义表格下拉面板 =====
 let _newTableFields = []; // 临时字段列表（未保存）
 let _editingTableId = null; // 编辑模式下的表格 ID（null = 新建模式）
 
+/**
+ * 设置新建自定义表格下拉面板的事件绑定
+ */
 function pvSetupNewTableDropdown() {
     const addBtn = document.getElementById('newTableBtn');
     const dropdown = document.getElementById('newTableDropdown');
@@ -1668,6 +2198,9 @@ function pvSetupNewTableDropdown() {
     });
 }
 
+/**
+ * 打开新建自定义表格下拉面板（重置表单为新建模式）
+ */
 function openNewTableDropdown() {
     const dropdown = document.getElementById('newTableDropdown');
     if (!dropdown) return;
@@ -1681,7 +2214,12 @@ function openNewTableDropdown() {
     dropdown.hidden = false;
 }
 
+/**
+ * 打开编辑自定义表格下拉面板（加载已有表格数据）
+ * @param {string} tableId - 要编辑的表格 ID
+ */
 function editCustomTable(tableId) {
+    addLog('编辑自定义表: ' + tableId);
     const ct = getCustomTables().find(t => t.id === tableId);
     if (!ct) return;
     const dropdown = document.getElementById('newTableDropdown');
@@ -1696,6 +2234,9 @@ function editCustomTable(tableId) {
     dropdown.hidden = false;
 }
 
+/**
+ * 关闭新建/编辑自定义表格下拉面板
+ */
 function closeNewTableDropdown() {
     const dropdown = document.getElementById('newTableDropdown');
     if (!dropdown) return;
@@ -1704,6 +2245,9 @@ function closeNewTableDropdown() {
     _editingTableId = null;
 }
 
+/**
+ * 创建或保存自定义表格（新建/编辑模式）
+ */
 function createOrSaveTable() {
     const nameInput = document.getElementById('newTableName');
     const tableName = nameInput ? nameInput.value.trim() : '';
@@ -1721,6 +2265,7 @@ function createOrSaveTable() {
     if (columns.length === 0) return;
 
     if (_editingTableId) {
+        addLog('编辑自定义表: ' + tableName);
         // 编辑模式：更新已有表格
         const tables = getCustomTables();
         const ct = tables.find(t => t.id === _editingTableId);
@@ -1734,6 +2279,7 @@ function createOrSaveTable() {
         renderCustomSheets();
         pvSwitchToCustomTable(_editingTableId);
     } else {
+        addLog('添加自定义表: ' + tableName);
         // 新建模式
         const tableId = addCustomTable(tableName, columns);
         closeNewTableDropdown();

@@ -291,6 +291,7 @@
                     <button class="preview-tab" data-sheet="detail">Detail List</button>
                     <button class="preview-tab" data-sheet="ioList">IO List</button>
                     <button class="preview-tab" data-sheet="insList">INS List</button>
+                    <button class="preview-tab" data-sheet="mto">MTO</button>
                     <span id="customTabsContainer"></span>
                     <button class="preview-tab-add" id="newTableBtn" title="新建自定义表格">+</button>
                 </nav>
@@ -353,12 +354,29 @@
                     </div>
                 </section>
 
+                <section class="preview-sheet" id="pvSheet-mto" hidden>
+                    <div class="preview-scroll">
+                        <table class="preview-table" id="pvTable-mto"></table>
+                    </div>
+                </section>
+
                 <span id="customSheetsContainer"></span>
             </main>
 
             <footer class="preview-footer">
                 <span id="pvFooter"></span>
             </footer>
+
+            <!-- 批量编辑工具栏 -->
+            <div class="pv-batch-bar" id="pvBatchBar" hidden>
+                <span class="pv-batch-bar__count" id="pvBatchCount">已选 0 项</span>
+                <select class="pv-batch-bar__field" id="pvBatchField">
+                    <option value="">选择字段…</option>
+                </select>
+                <input type="text" class="pv-batch-bar__value" id="pvBatchValue" placeholder="输入新值…" />
+                <button class="pv-batch-bar__apply" id="pvBatchApply" disabled>应用到选中</button>
+                <button class="pv-batch-bar__cancel" id="pvBatchCancel">取消</button>
+            </div>
         </div>
     </div>
 
@@ -449,192 +467,259 @@
 
     <div class="marker-context-menu" id="markerContextMenu">
         <div class="mcm-header">
-            <div class="mcm-header-actions">
-                <button class="mcm-btn-close" id="mcmCloseBtn" title="关闭">
+            <div class="mcm-header-left">
+                <button class="mcm-btn-icon" id="mcmCloseBtn" title="关闭">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-                <button class="mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
+                <button class="mcm-btn-icon mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
             <span class="mcm-title" id="mcmTitle">标记属性</span>
+            <div class="mcm-header-right"></div>
         </div>
         <div class="mcm-body">
-            <!-- ===== 公共字段（两个菜单都显示） ===== -->
-            <div class="mcm-field" data-menu="both">
-                <label class="mcm-label">Tag No.</label>
-                <input type="text" class="mcm-input" id="mcmTagNumber" />
-            </div>
-            <!-- IO 专属：DCS Tag Number -->
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">DCS Tag Number</label>
-                <input type="text" class="mcm-input" id="mcmDcsTag" />
-            </div>
-            <div class="mcm-field" data-menu="both">
-                <label class="mcm-label">Location</label>
-                <input type="text" class="mcm-input" id="mcmLocation" />
-            </div>
-            <!-- ===== INS 专属字段（明细清单） ===== -->
-            <div class="mcm-field" data-menu="ins" id="mcmSizeField">
-                <label class="mcm-label">Process Connection</label>
-                <div class="mcm-input-wrap">
-                    <select class="mcm-input mcm-select--full" id="mcmSize">
-                        <option value="1/2">1/2"</option>
-                        <option value="3/4">3/4"</option>
-                        <option value="1">1"</option>
-                        <option value="1¼">1¼"</option>
-                        <option value="1½">1½"</option>
-                        <option value="2">2"</option>
-                        <option value="2½">2½"</option>
-                        <option value="3">3"</option>
-                        <option value="4">4"</option>
-                        <option value="5">5"</option>
-                        <option value="6">6"</option>
-                        <option value="8">8"</option>
-                        <option value="10">10"</option>
-                        <option value="__custom__">自定义…</option>
-                    </select>
-                    <div class="mcm-size-custom-row">
-                        <input type="text" class="mcm-input mcm-input-inline" id="mcmSizeCustom" />
-                        <span class="mcm-size-x">×</span>
-                        <input type="text" class="mcm-input mcm-input-inline mcm-size-sec" id="mcmSizeCustom2" />
+            <!-- ===== 标识 Identification ===== -->
+            <div class="mcm-section" data-menu="both">
+                <div class="mcm-section-hdr" data-section="ident">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">标识 Identification</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field" data-menu="both">
+                        <label class="mcm-label">Tag No.</label>
+                        <input type="text" class="mcm-input" id="mcmTagNumber" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">DCS Tag Number</label>
+                        <input type="text" class="mcm-input" id="mcmDcsTag" />
+                    </div>
+                    <div class="mcm-field" data-menu="both">
+                        <label class="mcm-label">Location</label>
+                        <input type="text" class="mcm-input" id="mcmLocation" />
                     </div>
                 </div>
             </div>
-            <div class="mcm-field" data-menu="ins" id="mcmRangeField">
-                <label class="mcm-label">Range / Set Point</label>
-                <div class="mcm-input-wrap">
-                    <select class="mcm-input mcm-select--full" id="mcmRange">
-                        <option value="0 ~ 10 Barg">0 ~ 10 Barg</option>
-                        <option value="-1 ~ 5 Barg">-1 ~ 5 Barg</option>
-                        <option value="0 ~ 25 Barg">0 ~ 25 Barg</option>
-                        <option value="0 ~ 100℃">0 ~ 100℃</option>
-                        <option value="0 ~ 23 m">0 ~ 23 m</option>
-                        <option value="Set @ 5.7 Barg">Set @ 5.7 Barg</option>
-                        <option value="Set @ 7 Barg">Set @ 7 Barg</option>
-                        <option value="Set @ 7.7 Barg">Set @ 7.7 Barg</option>
-                        <option value="Set @ 9 Barg">Set @ 9 Barg</option>
-                        <option value="Set @ 12 Barg">Set @ 12 Barg</option>
-                        <option value="Set @ 14 Barg">Set @ 14 Barg</option>
-                        <option value="600mm Sensor Length">600mm Sensor Length</option>
-                        <option value="__custom__">自定义…</option>
-                    </select>
-                    <div class="mcm-range-custom-row">
-                        <input type="text" class="mcm-input mcm-input-inline" id="mcmRangeCustom" />
+            <!-- ===== 规格 Specifications (INS) ===== -->
+            <div class="mcm-section" data-menu="ins">
+                <div class="mcm-section-hdr" data-section="spec">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">规格 Specifications</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field mcm-field--wide" id="mcmSizeField">
+                        <label class="mcm-label">Process Connection</label>
+                        <div class="mcm-input-wrap">
+                            <select class="mcm-input mcm-select--full" id="mcmSize">
+                                <option value="1/2">1/2"</option>
+                                <option value="3/4">3/4"</option>
+                                <option value="1">1"</option>
+                                <option value="1¼">1¼"</option>
+                                <option value="1½">1½"</option>
+                                <option value="2">2"</option>
+                                <option value="2½">2½"</option>
+                                <option value="3">3"</option>
+                                <option value="4">4"</option>
+                                <option value="5">5"</option>
+                                <option value="6">6"</option>
+                                <option value="8">8"</option>
+                                <option value="10">10"</option>
+                                <option value="__custom__">自定义…</option>
+                            </select>
+                            <div class="mcm-size-custom-row">
+                                <input type="text" class="mcm-input mcm-input-inline" id="mcmSizeCustom" />
+                                <span class="mcm-size-x">×</span>
+                                <input type="text" class="mcm-input mcm-input-inline mcm-size-sec" id="mcmSizeCustom2" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mcm-field mcm-field--wide" id="mcmRangeField">
+                        <label class="mcm-label">Range / Set Point</label>
+                        <div class="mcm-input-wrap">
+                            <select class="mcm-input mcm-select--full" id="mcmRange">
+                                <option value="0 ~ 10 Barg">0 ~ 10 Barg</option>
+                                <option value="-1 ~ 5 Barg">-1 ~ 5 Barg</option>
+                                <option value="0 ~ 25 Barg">0 ~ 25 Barg</option>
+                                <option value="0 ~ 100℃">0 ~ 100℃</option>
+                                <option value="0 ~ 23 m">0 ~ 23 m</option>
+                                <option value="Set @ 5.7 Barg">Set @ 5.7 Barg</option>
+                                <option value="Set @ 7 Barg">Set @ 7 Barg</option>
+                                <option value="Set @ 7.7 Barg">Set @ 7.7 Barg</option>
+                                <option value="Set @ 9 Barg">Set @ 9 Barg</option>
+                                <option value="Set @ 12 Barg">Set @ 12 Barg</option>
+                                <option value="Set @ 14 Barg">Set @ 14 Barg</option>
+                                <option value="600mm Sensor Length">600mm Sensor Length</option>
+                                <option value="__custom__">自定义…</option>
+                            </select>
+                            <div class="mcm-range-custom-row">
+                                <input type="text" class="mcm-input mcm-input-inline" id="mcmRangeCustom" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">Service</label>
-                <input type="text" class="mcm-input" id="mcmService" />
-            </div>
-            <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">Product</label>
-                <input type="text" class="mcm-input" id="mcmProduct" />
-            </div>
-            <div class="mcm-field mcm-field--wide" data-menu="ins">
-                <label class="mcm-label">Data Sheet No.</label>
-                <input type="text" class="mcm-input" id="mcmDataSheet" />
-            </div>
-            <!-- ===== 公共字段 ===== -->
-            <div class="mcm-field mcm-field--wide" data-menu="both">
-                <label class="mcm-label">P&amp;ID Dwg No.</label>
-                <input type="text" class="mcm-input" id="mcmPid" />
-            </div>
-            <!-- ===== IO 专属字段（IO List 表格字段） ===== -->
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">P&amp;ID Revision No.</label>
-                <input type="text" class="mcm-input" id="mcmPidRev" />
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">IO Type</label>
-                <select class="mcm-input mcm-select--full" id="mcmIoType">
-                    <option value="">自动推断</option>
-                    <option value="AI">AI</option>
-                    <option value="AO">AO</option>
-                    <option value="DI">DI</option>
-                    <option value="DO">DO</option>
-                    <option value="PI">PI</option>
-                    <option value="RTD">RTD</option>
-                    <option value="TC">TC</option>
-                </select>
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Signal Type</label>
-                <select class="mcm-input mcm-select--full" id="mcmSignalType">
-                    <option value="">自动推断</option>
-                    <option value="4~20mA">4~20mA</option>
-                    <option value="0~10V">0~10V</option>
-                    <option value="dry contact">dry contact</option>
-                    <option value="24VDC">24VDC</option>
-                    <option value="RS485">RS485</option>
-                    <option value="HART">HART</option>
-                    <option value="RTD">RTD</option>
-                    <option value="TC">TC</option>
-                </select>
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Power</label>
-                <select class="mcm-input mcm-select--full" id="mcmPower">
-                    <option value="">自动推断</option>
-                    <option value="Loop Powered">Loop Powered</option>
-                    <option value="24VDC">24VDC</option>
-                    <option value="220VAC">220VAC</option>
-                    <option value="Battery">Battery</option>
-                </select>
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Zero Status</label>
-                <input type="text" class="mcm-input" id="mcmZeroStatus" />
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">One Status</label>
-                <input type="text" class="mcm-input" id="mcmOneStatus" />
-            </div>
-            <div class="mcm-field mcm-field--wide" data-menu="io">
-                <label class="mcm-label">Alarm Setting</label>
-                <div class="mcm-alarm-grid">
-                    <div class="mcm-alarm-item"><span>LL</span><input type="text" class="mcm-input" id="mcmAlarmLL" /></div>
-                    <div class="mcm-alarm-item"><span>L</span><input type="text" class="mcm-input" id="mcmAlarmL" /></div>
-                    <div class="mcm-alarm-item"><span>H</span><input type="text" class="mcm-input" id="mcmAlarmH" /></div>
-                    <div class="mcm-alarm-item"><span>HH</span><input type="text" class="mcm-input" id="mcmAlarmHH" /></div>
+            <!-- ===== 信号 Signals (IO) ===== -->
+            <div class="mcm-section" data-menu="io">
+                <div class="mcm-section-hdr" data-section="signal">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">信号 Signals</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">IO Type</label>
+                        <select class="mcm-input mcm-select--full" id="mcmIoType">
+                            <option value="">自动推断</option>
+                            <option value="AI">AI</option>
+                            <option value="AO">AO</option>
+                            <option value="DI">DI</option>
+                            <option value="DO">DO</option>
+                            <option value="PI">PI</option>
+                            <option value="RTD">RTD</option>
+                            <option value="TC">TC</option>
+                        </select>
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Signal Type</label>
+                        <select class="mcm-input mcm-select--full" id="mcmSignalType">
+                            <option value="">自动推断</option>
+                            <option value="4~20mA">4~20mA</option>
+                            <option value="0~10V">0~10V</option>
+                            <option value="dry contact">dry contact</option>
+                            <option value="24VDC">24VDC</option>
+                            <option value="RS485">RS485</option>
+                            <option value="HART">HART</option>
+                            <option value="RTD">RTD</option>
+                            <option value="TC">TC</option>
+                        </select>
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Power</label>
+                        <select class="mcm-input mcm-select--full" id="mcmPower">
+                            <option value="">自动推断</option>
+                            <option value="Loop Powered">Loop Powered</option>
+                            <option value="24VDC">24VDC</option>
+                            <option value="220VAC">220VAC</option>
+                            <option value="Battery">Battery</option>
+                        </select>
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Zero Status</label>
+                        <input type="text" class="mcm-input" id="mcmZeroStatus" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">One Status</label>
+                        <input type="text" class="mcm-input" id="mcmOneStatus" />
+                    </div>
                 </div>
             </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Range 0%</label>
-                <input type="text" class="mcm-input" id="mcmRange0" />
+            <!-- ===== 报警范围 Alarm Ranges (IO) ===== -->
+            <div class="mcm-section" data-menu="io">
+                <div class="mcm-section-hdr" data-section="alarm">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">报警范围 Alarm Ranges</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field mcm-field--wide" data-menu="io">
+                        <label class="mcm-label">Alarm Setting</label>
+                        <div class="mcm-alarm-grid">
+                            <div class="mcm-alarm-item"><span>LL</span><input type="text" class="mcm-input" id="mcmAlarmLL" /></div>
+                            <div class="mcm-alarm-item"><span>L</span><input type="text" class="mcm-input" id="mcmAlarmL" /></div>
+                            <div class="mcm-alarm-item"><span>H</span><input type="text" class="mcm-input" id="mcmAlarmH" /></div>
+                            <div class="mcm-alarm-item"><span>HH</span><input type="text" class="mcm-input" id="mcmAlarmHH" /></div>
+                        </div>
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Range 0%</label>
+                        <input type="text" class="mcm-input" id="mcmRange0" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Range 100%</label>
+                        <input type="text" class="mcm-input" id="mcmRange100" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Unit</label>
+                        <input type="text" class="mcm-input" id="mcmUnit" />
+                    </div>
+                </div>
             </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Range 100%</label>
-                <input type="text" class="mcm-input" id="mcmRange100" />
+            <!-- ===== 接线 Wiring (IO) ===== -->
+            <div class="mcm-section" data-menu="io">
+                <div class="mcm-section-hdr" data-section="wiring">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">接线 Wiring</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">RIO Panel No.</label>
+                        <input type="text" class="mcm-input" id="mcmRioPanel" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Slot Number</label>
+                        <input type="text" class="mcm-input" id="mcmSlotNumber" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Channel Number</label>
+                        <input type="text" class="mcm-input" id="mcmChannelNumber" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Cable No.</label>
+                        <input type="text" class="mcm-input" id="mcmCableNo" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Junction Box</label>
+                        <input type="text" class="mcm-input" id="mcmJunctionBox" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Cable Type</label>
+                        <input type="text" class="mcm-input" id="mcmCableType" />
+                    </div>
+                </div>
             </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Unit</label>
-                <input type="text" class="mcm-input" id="mcmUnit" />
+            <!-- ===== 图纸备注 Drawing Notes ===== -->
+            <div class="mcm-section" data-menu="both">
+                <div class="mcm-section-hdr" data-section="drawing">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">图纸备注 Drawing Notes</span>
+                </div>
+                <div class="mcm-section-body">
+                    <div class="mcm-field mcm-field--wide" data-menu="ins">
+                        <label class="mcm-label">Service</label>
+                        <input type="text" class="mcm-input" id="mcmService" />
+                    </div>
+                    <div class="mcm-field mcm-field--wide" data-menu="ins">
+                        <label class="mcm-label">Product</label>
+                        <input type="text" class="mcm-input" id="mcmProduct" />
+                    </div>
+                    <div class="mcm-field mcm-field--wide" data-menu="ins">
+                        <label class="mcm-label">Data Sheet No.</label>
+                        <input type="text" class="mcm-input" id="mcmDataSheet" />
+                    </div>
+                    <div class="mcm-field mcm-field--wide" data-menu="both">
+                        <label class="mcm-label">P&amp;ID Dwg No.</label>
+                        <input type="text" class="mcm-input" id="mcmPid" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">P&amp;ID Revision No.</label>
+                        <input type="text" class="mcm-input" id="mcmPidRev" />
+                    </div>
+                    <div class="mcm-field mcm-field--wide" data-menu="both">
+                        <label class="mcm-label">Remarks</label>
+                        <input type="text" class="mcm-input" id="mcmNote" />
+                    </div>
+                </div>
             </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">RIO Panel No.</label>
-                <input type="text" class="mcm-input" id="mcmRioPanel" />
+            <!-- ===== 自定义 Custom ===== -->
+            <div class="mcm-section" data-menu="both" id="mcmCustomSection">
+                <div class="mcm-section-hdr" data-section="custom">
+                    <i class="fa-solid fa-chevron-down mcm-section-arrow"></i>
+                    <span class="mcm-section-title">自定义 Custom</span>
+                </div>
+                <div class="mcm-section-body" id="mcmCustomFields"></div>
             </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Slot Number</label>
-                <input type="text" class="mcm-input" id="mcmSlotNumber" />
-            </div>
-            <div class="mcm-field" data-menu="io">
-                <label class="mcm-label">Channel Number</label>
-                <input type="text" class="mcm-input" id="mcmChannelNumber" />
-            </div>
-            <!-- ===== 公共字段 ===== -->
-            <div class="mcm-field mcm-field--wide" data-menu="both">
-                <label class="mcm-label">Remarks</label>
-                <input type="text" class="mcm-input" id="mcmNote" />
-            </div>
-            <!-- 自定义属性动态渲染区 -->
-            <div id="mcmCustomFields" data-menu="both"></div>
         </div>
         <div class="mcm-footer">
-            <button class="mcm-btn" id="mcmCancelBtn">取消</button>
-            <button class="mcm-btn mcm-btn-primary" id="mcmOkBtn">确定</button>
+            <button class="mcm-btn" id="mcmCloseBtn2">关闭</button>
+            <button class="mcm-btn mcm-btn-primary" id="mcmSaveBtn">保存</button>
         </div>
     </div>
 
@@ -645,6 +730,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/log.js"></script>
     <script src="assets/instrument-types.js"></script>
     <script src="js/types.js"></script>
     <script src="js/state.js"></script>
@@ -661,5 +747,9 @@
     <script src="js/preview.js"></script>
     <script src="js/main.js"></script>
     <script src="js/events.js"></script>
+<div id="opLogWrap">
+    <div id="opLog"></div>
+    <div id="opLogToggle" title="折叠日志"></div>
+</div>
 </body>
 </html>

@@ -1,3 +1,14 @@
+/**
+ * pdf-loader.js - PDF 导入与处理模块
+ * 负责 PDF 文件的导入、页面渲染为位图、矢量端点提取、空间索引构建、会话恢复，
+ * 以及自动适配视口缩放与平移。
+ */
+
+/**
+ * 导入 PDF 文件：逐文件逐页渲染为位图，提取矢量端点，并建立页面数据结构
+ * @param {FileList|File[]} files - 用户选择的 PDF 文件列表
+ * @returns {Promise<void>}
+ */
 async function importPDF(files) {
     showToast('正在导入 PDF…', true);
     try {
@@ -78,16 +89,25 @@ async function importPDF(files) {
         updateUI();
         requestRender();
         hideToast();
+        addLog('导入成功: ' + newDocs.length + '个文件, ' + pages.length + '页');
         showToast(`成功导入 ${newDocs.length} 个文件，共 ${pages.length} 页`);
     } catch (e) {
         console.error(e);
         hideToast();
+        addLog('导入失败');
         alert('PDF 导入失败：' + (e.message || '未知错误'));
     }
 }
 
+/**
+ * 恢复上次会话的标记数据：根据保存的文档文件名和标记位置，在新导入的 PDF 上重建标记
+ * 同时恢复自定义类型、IO List 选择、已用编号等状态
+ * @param {object} data - 会话数据对象，包含 docs 数组和可选的自定义类型
+ */
 function restoreMarkers(data) {
     if (!data || !Array.isArray(data.docs)) return;
+
+    addLog('恢复会话: ' + data.docs.length + '个文档');
 
     if (Array.isArray(data.customTypes)) {
         for (const ct of data.customTypes) {
@@ -133,6 +153,7 @@ function restoreMarkers(data) {
                 typeName: md.typeName || typeMatch.name,
                 typeFullName: md.typeFullName || typeMatch.fullName,
                 typeAbbr: md.typeAbbr || typeMatch.abbr,
+                _globalOrder: md._globalOrder || ++_globalOrderCounter,
             };
             for (const f of MARKER_OPTIONAL_FIELDS) {
                 const v = md[f];
@@ -140,13 +161,40 @@ function restoreMarkers(data) {
                     marker[f] = v;
                 }
             }
+            // 恢复自定义属性（对象类型）
+            if (md.customAttrs && typeof md.customAttrs === 'object' && Object.keys(md.customAttrs).length > 0) {
+                marker.customAttrs = { ...md.customAttrs };
+            }
 
             markers.push(marker);
         }
     }
 
-    nextMarkerNumber = findNextNumberForType(currentTypeId);
+    // 重建 usedNumbers，确保后续新增标记编号正确
+    // 先收集所有已有的编号
+    for (const m of markers) {
+        if (typeof m.number === 'number' && m.number > 0) {
+            getUsedSet().add(m.number);
+        }
+    }
+    // 为 number: 0 的旧标记分配正确编号
+    for (const m of markers) {
+        if (typeof m.number === 'number' && m.number === 0) {
+            m.number = findNextNumber();
+            getUsedSet().add(m.number);
+        }
+    }
+    nextMarkerNumber = findNextNumber();
     syncNumberInput();
+
+    // 更新全局创建顺序计数器，确保后续新建标记的顺序正确
+    let maxOrder = 0;
+    for (const m of markers) {
+        if (typeof m._globalOrder === 'number' && m._globalOrder > maxOrder) {
+            maxOrder = m._globalOrder;
+        }
+    }
+    _globalOrderCounter = maxOrder;
 
     // 恢复 IO List 类型选择
     if (data.ioListSelected === null) {
@@ -156,6 +204,10 @@ function restoreMarkers(data) {
     }
 }
 
+/**
+ * 自动适配视口：根据所有页面的包围盒计算合适的缩放比例和平移量，
+ * 使所有页面内容在画布中居中完整显示
+ */
 function fitToContent() {
     if (pages.length === 0) return;
 
@@ -181,6 +233,12 @@ function fitToContent() {
 
 // ===== PDF 矢量端点提取（用于 CAD 式端点捕捉）=====
 
+/**
+ * 3x3 仿射变换矩阵乘法（以长度为 6 的数组表示 [a,b,c,d,e,f]）
+ * @param {number[]} m1 - 第一个矩阵
+ * @param {number[]} m2 - 第二个矩阵
+ * @returns {number[]} 相乘结果矩阵
+ */
 function matMul(m1, m2) {
     return [
         m1[0] * m2[0] + m1[2] * m2[1],
@@ -192,11 +250,27 @@ function matMul(m1, m2) {
     ];
 }
 
+/**
+ * 对点 (x, y) 应用仿射变换矩阵
+ * @param {number[]} m - 仿射变换矩阵 [a,b,c,d,e,f]
+ * @param {number} x - X 坐标
+ * @param {number} y - Y 坐标
+ * @returns {[number, number]} 变换后的 [x, y]
+ */
 function applyMat(m, x, y) {
     return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
 }
 
-// 解析 operator list，提取所有路径端点，转换为虚拟坐标
+/**
+ * 解析 PDF 页面操作符列表，提取所有路径端点并转换为虚拟坐标
+ * 遍历 moveTo、lineTo、rectangle、curveTo 等操作符，收集所有路径顶点，
+ * 通过 CTM 和视口变换矩阵映射到虚拟画布坐标，最后去重
+ * @param {object} pdfjs - PDF.js 库实例
+ * @param {object} page - PDF.js 页面对象
+ * @param {number[]} vTransform - 视口变换矩阵 [a,b,c,d,e,f]
+ * @param {number} pageVy - 页面在虚拟画布中的 Y 偏移
+ * @returns {Promise<Array<{x: number, y: number}>>} 去重后的端点列表
+ */
 async function extractEndpoints(pdfjs, page, vTransform, pageVy) {
     try {
         const OPS = pdfjs.OPS;
@@ -252,11 +326,16 @@ async function extractEndpoints(pdfjs, page, vTransform, pageVy) {
         return out;
     } catch (e) {
         console.warn('端点解析失败，捕捉功能将不可用', e);
+        addLog('端点解析失败');
         return [];
     }
 }
 
-// 构建空间网格索引，cellSize 为虚拟像素
+/**
+ * 构建空间网格索引：将端点按 cellSize 划分到网格单元中，加速邻近查询
+ * @param {Array<{x: number, y: number}>} endpoints - 端点列表
+ * @returns {{ cellSize: number, grid: Map<string, Array<{x: number, y: number}>> }}
+ */
 function buildSnapGrid(endpoints) {
     const cellSize = 40;
     const grid = new Map();

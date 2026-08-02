@@ -36,3 +36,76 @@ canvas.grabbing {
 canvas.measure-mode {
     cursor: crosshair;
 }
+
+/* ===== 操作日志面板 ===== */
+#opLogWrap {
+    position: fixed;
+    left: 8px;
+    bottom: 8px;
+    z-index: 100;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 2px;
+}
+#opLogToggle {
+    pointer-events: auto;
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(180, 180, 180, 0.35);
+    cursor: pointer;
+    margin-top: 2px;
+    transition: background 0.15s, width 0.15s;
+}
+#opLogToggle:hover {
+    background: rgba(160, 160, 160, 0.55);
+    width: 30px;
+}
+#opLogWrap.collapsed #opLogToggle {
+    width: 30px;
+    background: rgba(180, 180, 180, 0.45);
+}
+#opLogWrap.collapsed #opLog {
+    display: none;
+}
+#opLog {
+    pointer-events: none;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    max-width: 360px;
+}
+.op-log-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 8px;
+    background: rgba(200, 200, 200, 0.28);
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #333;
+    animation: opLogFadeIn 0.25s ease-out;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.op-log-item:first-child {
+    color: #111;
+    background: rgba(200, 200, 200, 0.45);
+}
+.op-log-time {
+    color: #777;
+    font-size: 9px;
+    flex-shrink: 0;
+}
+.op-log-msg {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@keyframes opLogFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

@@ -1,3 +1,12 @@
+/**
+ * export-excel.js - Excel导出功能，生成仪表统计表格和IO清单
+ * 支持导出 By File、Type Summary、Detail List、IO List、INS List、MTO 和自定义表格
+ */
+
+/**
+ * 设置表头行样式：加粗深色字体 + 浅灰背景 + 垂直居中
+ * @param {ExcelJS.Row} row - 表头行对象
+ */
 function styleHeaderRow(row) {
     row.font = { bold: true, color: { argb: 'FF333333' } };
     row.fill = {
@@ -12,8 +21,12 @@ function styleHeaderRow(row) {
 // 传入任意值，返回已转换的字符串；null/undefined → 空串
 const qExcel = (s) => normalizeQuotes(s == null ? '' : String(s));
 
-// 估算文本显示宽度（ExcelJS 列宽单位近似等于默认字体下字符宽度）
-// 中文/全角字符按 2 计算，英文/数字按 1 计算
+/**
+ * 估算文本显示宽度（ExcelJS 列宽单位近似等于默认字体下字符宽度）
+ * 中文/全角字符按 2 计算，英文/数字按 1 计算
+ * @param {string} text - 待估算的文本
+ * @returns {number} 估算宽度
+ */
 function measureTextWidth(text) {
     if (!text) return 0;
     let w = 0;
@@ -36,8 +49,11 @@ function measureTextWidth(text) {
     return w;
 }
 
-// 自动调整工作表所有列宽：基于表头和单元格内容估算
-// extraHeaders: 可选，按列号（1-based）传入列头文本数组；用于表头未写入 col.header 的工作表（如 IO List）
+/**
+ * 自动调整工作表所有列宽：基于表头和单元格内容估算
+ * @param {ExcelJS.Worksheet} ws - 工作表对象
+ * @param {string[]} [extraHeaders] - 可选，按列号（1-based）传入列头文本数组；用于表头未写入 col.header 的工作表
+ */
 function autoFitColumns(ws, extraHeaders = null) {
     ws.columns.forEach(col => {
         let maxLen = 0;
@@ -69,7 +85,12 @@ function autoFitColumns(ws, extraHeaders = null) {
     });
 }
 
-// 按当前列宽估算数据行所需行高（wrapText 生效后的最长行数 × 15）
+/**
+ * 按当前列宽估算数据行所需行高（wrapText 生效后的最长行数 × 15）
+ * @param {ExcelJS.Worksheet} ws - 工作表对象
+ * @param {ExcelJS.Row} row - 数据行对象
+ * @returns {number} 估算行高
+ */
 function estimateRowHeight(ws, row) {
     let maxLines = 1;
     for (let c = 1; c <= ws.columnCount; c++) {
@@ -88,7 +109,10 @@ function estimateRowHeight(ws, row) {
     return Math.max(22, maxLines * 15);
 }
 
-// 统一应用表格格式：所有单元格 Arial 字体 + 居中 + 细边框
+/**
+ * 统一应用表格格式：所有单元格 Arial 字体 + 居中 + 细边框
+ * @param {ExcelJS.Worksheet} ws - 工作表对象
+ */
 function applyTableFormat(ws) {
     const border = {
         top: { style: 'thin', color: { argb: 'FF808080' } },
@@ -116,7 +140,11 @@ const IO_LIST_FONT_BOLD = { name: 'Arial', size: 10, bold: true };
 // ===== IO List 工作表（第 4 个表）=====
 // 列定义已迁移至 excel-config.js，使用 getSheetColumnsWithCustom('ioList') 动态获取
 
-// 根据仪表代号推断 IO 信号默认值
+/**
+ * 根据仪表代号推断 IO 信号默认值（IO Type、Signal Type、Power）
+ * @param {string} typeCode - 仪表类型代号（如 SV、PCV、PI 等）
+ * @returns {{ ioType: string, signalType: string, power: string }} IO信号默认值
+ */
 function getIOListSignalDefaults(typeCode) {
     const code = String(typeCode || '').toUpperCase();
     // 电磁阀 / 电动阀 / 开关阀
@@ -138,8 +166,11 @@ function getIOListSignalDefaults(typeCode) {
     return { ioType: '', signalType: '', power: '' };
 }
 
-// 写入 IO List 表头：根据 excel-config.js 动态生成
-// 支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列 等）
+/**
+ * 写入 IO List 表头：根据 excel-config.js 动态生成
+ * 支持分组合并（Alarm Setting 跨 4 列，Range 跨 2 列 等）
+ * @param {ExcelJS.Worksheet} ws - IO List 工作表对象
+ */
 function writeIOListHeader(ws) {
     const cols = getSheetColumnsWithCustom('ioList');
     const totalCols = cols.length;
@@ -210,7 +241,11 @@ function writeIOListHeader(ws) {
     try { ws.mergeCells(3, 1, 3, totalCols); } catch (e) {}
 }
 
-// 创建 IO List 工作表
+/**
+ * 创建 IO List 工作表并填充数据
+ * @param {ExcelJS.Workbook} wb - 工作簿对象
+ * @returns {ExcelJS.Worksheet} IO List 工作表
+ */
 function addIOList(wb) {
     const cols = getSheetColumnsWithCustom('ioList');
     const totalCols = cols.length;
@@ -236,7 +271,11 @@ function addIOList(wb) {
     return ws;
 }
 
-// 给 IO List 表头行加边框
+/**
+ * 给 IO List 表头行加边框
+ * @param {ExcelJS.Worksheet} ws - IO List 工作表对象
+ * @param {number} colCount - 列数
+ */
 function applyIOListHeaderBorders(ws, colCount) {
     const border = {
         top: { style: 'thin', color: { argb: 'FF808080' } },
@@ -256,7 +295,12 @@ function applyIOListHeaderBorders(ws, colCount) {
     }
 }
 
-// 填充 IO List 标记数据（仅包含勾选导出的类型）
+/**
+ * 填充 IO List 标记数据（仅包含勾选导出的类型）
+ * @param {ExcelJS.Worksheet} ws - IO List 工作表对象
+ * @param {number} startRow - 数据起始行号
+ * @param {Array} cols - 列定义数组
+ */
 function populateIOListData(ws, startRow, cols) {
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
     const sorted = [...filtered].sort((a, b) => {
@@ -293,6 +337,12 @@ function populateIOListData(ws, startRow, cols) {
     }
 }
 
+/**
+ * 下载 Excel 文件到本地
+ * @param {ArrayBuffer} buffer - Excel 二进制数据
+ * @param {string} filename - 下载文件名
+ * @returns {Promise<void>}
+ */
 async function downloadExcelBuffer(buffer, filename) {
     const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -307,11 +357,17 @@ async function downloadExcelBuffer(buffer, filename) {
     URL.revokeObjectURL(url);
 }
 
+/**
+ * 导出 Excel 文件入口
+ * 检查标记是否就绪，然后调用核心导出逻辑
+ * @returns {Promise<void>}
+ */
 async function exportExcel() {
     if (markers.length === 0) {
         alert('还没有标记，请先在图纸上点击标注');
         return;
     }
+    addLog('开始导出Excel统计表格...');
     await runExportTask(
         [exportExcelBtn, exportExcelBottomBtn],
         exportExcelCore,
@@ -321,6 +377,11 @@ async function exportExcel() {
     );
 }
 
+/**
+ * 同时导出 Excel 和 PDF（标注版）
+ * 检查标记和文档是否就绪，然后依次执行导出
+ * @returns {Promise<void>}
+ */
 async function exportBoth() {
     if (markers.length === 0) {
         alert('还没有标记，请先在图纸上点击标注');
@@ -330,6 +391,7 @@ async function exportBoth() {
         alert('还没有导入PDF文件');
         return;
     }
+    addLog('开始同步导出Excel和PDF...');
     await runExportTask(
         [exportBothBtn, exportExcelBtn, exportExcelBottomBtn, exportBtn, exportPdfFromStatsBtn],
         async () => {
@@ -342,6 +404,11 @@ async function exportBoth() {
     );
 }
 
+/**
+ * Excel 导出核心逻辑：创建 By File、Type Summary、Detail List、IO List、INS List、MTO 和自定义表格
+ * 根据标记数据生成完整的工作簿
+ * @returns {Promise<void>}
+ */
 async function exportExcelCore() {
     const ExcelJS = await loadExcelJS();
 
@@ -349,6 +416,8 @@ async function exportExcelCore() {
     wb.creator = 'PDF Annotator';
     wb.created = new Date();
 
+    // Sheet 1: By File - 按文件/页面统计各类型标记数量
+    addLog('导出Excel: By File');
     const wsByFile = wb.addWorksheet('By File', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
@@ -508,6 +577,8 @@ async function exportExcelCore() {
     });
     grand.font = { bold: true };
 
+    // Sheet 2: Type Summary - 按类型统计
+    addLog('导出Excel: Type Summary');
     const wsType = wb.addWorksheet('Type Summary', {
         views: [{ state: 'frozen', ySplit: 1 }],
     });
@@ -552,6 +623,8 @@ async function exportExcelCore() {
     const typeTotal = wsType.addRow({ type: 'Total', desc: '', count: markers.length });
     typeTotal.font = { bold: true };
 
+    // Sheet 3: Detail List - 明细清单
+    addLog('导出Excel: Detail List');
     const detailCols = getSheetColumnsWithCustom('detailList').filter(c => c.type !== 'locate');
     const wsDetail = wb.addWorksheet('Detail List', {
         views: [{ state: 'frozen', ySplit: 1 }],
@@ -593,12 +666,14 @@ async function exportExcelCore() {
     applyTableFormat(wsType);
     applyTableFormat(wsDetail);
 
-    // Sheet 4: IO List
+    // Sheet 4: IO List - IO清单
+    addLog('导出Excel: IO List');
     addIOList(wb);
 
-    // Sheet 5: INS List（结构与明细清单一致，仅未勾选导出到 IO List 的标记）
+    // Sheet 5: INS List - 非IO仪表清单（结构与明细清单一致，仅未勾选导出到 IO List 的标记）
     const insMarkers = sorted.filter(m => !isTypeInIOList(m.typeId));
     if (insMarkers.length > 0) {
+        addLog('导出Excel: INS List');
         const insCols = getSheetColumnsWithCustom('insList');
         const wsIns = wb.addWorksheet('INS List', {
             views: [{ state: 'frozen', ySplit: 1 }],
@@ -627,13 +702,26 @@ async function exportExcelCore() {
     }
 
     // 自定义表格（用户创建的）
+    addLog('导出Excel: 自定义表格');
     addCustomTableSheets(wb, sorted);
+
+    // Sheet: MTO（口径汇总）
+    addLog('导出Excel: MTO');
+    addMTOSheet(wb);
 
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `Instruments_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    addLog('Excel导出完成，共导出 ' + markers.length + ' 个标记');
 }
 
 // ===== 自定义表格导出 =====
+
+/**
+ * 导出用户创建的自定义表格工作表
+ * 每个自定义表格包含 S/N、Tag No. 和用户定义的自定义字段
+ * @param {ExcelJS.Workbook} wb - 工作簿对象
+ * @param {Array} sorted - 已排序的标记数组
+ */
 function addCustomTableSheets(wb, sorted) {
     const tables = getCustomTables();
     if (!tables || tables.length === 0) return;
@@ -687,4 +775,112 @@ function addCustomTableSheets(wb, sorted) {
         autoFitColumns(ws, colDefs.map(c => c.header));
         applyTableFormat(ws);
     }
+}
+
+// ===== MTO 口径汇总导出 =====
+
+/**
+ * 创建 MTO（Material Take-Off）口径汇总工作表
+ * 按 process connection 口径分组统计 IO 和 INS 仪表数量
+ * @param {ExcelJS.Workbook} wb - 工作簿对象
+ */
+function addMTOSheet(wb) {
+    if (markers.length === 0) return;
+
+    // 按 sizeNote 分组统计
+    const sizeMap = new Map();
+    for (const m of markers) {
+        const size = (m.sizeNote || m.size || '').trim();
+        const key = size || '(未指定)';
+        if (!sizeMap.has(key)) {
+            sizeMap.set(key, { ioCount: 0, insCount: 0, types: new Map() });
+        }
+        const entry = sizeMap.get(key);
+        if (isTypeInIOList(m.typeId)) {
+            entry.ioCount++;
+        } else {
+            entry.insCount++;
+        }
+        const typeName = m.typeName || '?';
+        entry.types.set(typeName, (entry.types.get(typeName) || 0) + 1);
+    }
+
+    // 按口径排序
+    const sorted = [...sizeMap.entries()].sort((a, b) => {
+        if (a[0] === '(未指定)') return 1;
+        if (b[0] === '(未指定)') return -1;
+        const na = parseFloat(a[0]);
+        const nb = parseFloat(b[0]);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a[0].localeCompare(b[0]);
+    });
+
+    // 收集所有类型名
+    const allTypes = new Set();
+    for (const [, entry] of sizeMap) {
+        for (const t of entry.types.keys()) allTypes.add(t);
+    }
+    const typeOrder = [...allTypes].sort();
+
+    const ws = wb.addWorksheet('MTO', {
+        views: [{ state: 'frozen', ySplit: 1 }],
+    });
+
+    // 动态列定义
+    const colDefs = [
+        { header: '口径', key: 'size', width: 14 },
+        { header: 'IO 数量', key: 'ioCount', width: 10 },
+        { header: 'INS 数量', key: 'insCount', width: 10 },
+        { header: '合计', key: 'total', width: 8 },
+        ...typeOrder.map(t => ({ header: t, key: 'type_' + t, width: 10 })),
+    ];
+
+    colDefs.forEach((col, idx) => {
+        ws.getColumn(idx + 1).key = col.key;
+        ws.getColumn(idx + 1).width = col.width;
+    });
+
+    const hdrRow = ws.getRow(1);
+    colDefs.forEach((col, idx) => {
+        hdrRow.getCell(idx + 1).value = col.header;
+    });
+    styleHeaderRow(hdrRow);
+
+    let totalIO = 0, totalINS = 0;
+    for (const [size, entry] of sorted) {
+        const total = entry.ioCount + entry.insCount;
+        totalIO += entry.ioCount;
+        totalINS += entry.insCount;
+        const rowData = {
+            size,
+            ioCount: entry.ioCount || '',
+            insCount: entry.insCount || '',
+            total,
+        };
+        for (const t of typeOrder) {
+            const cnt = entry.types.get(t) || 0;
+            rowData['type_' + t] = cnt || '';
+        }
+        ws.addRow(rowData);
+    }
+
+    // 合计行
+    const grandTotal = totalIO + totalINS;
+    const totalRow = ws.addRow({
+        size: '合计',
+        ioCount: totalIO,
+        insCount: totalINS,
+        total: grandTotal,
+    });
+    for (const t of typeOrder) {
+        let typeTotal = 0;
+        for (const [, entry] of sizeMap) {
+            typeTotal += entry.types.get(t) || 0;
+        }
+        totalRow.getCell(4 + typeOrder.indexOf(t) + 1).value = typeTotal || '';
+    }
+    totalRow.font = { bold: true };
+
+    autoFitColumns(ws, colDefs.map(c => c.header));
+    applyTableFormat(ws);
 }

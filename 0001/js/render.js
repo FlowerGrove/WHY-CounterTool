@@ -1,9 +1,24 @@
+/**
+ * render.js - Canvas 渲染模块
+ * 负责在画布上绘制 PDF 页面、标记圆圈、测量折线、校准辅助线、统计面板等所有可视化内容。
+ * 通过 requestAnimationFrame 实现按需渲染，避免不必要的重绘开销。
+ */
+
 let renderReq = null;
 
-// 定位闪烁：定位后标记周围画一圈渐隐圆环
-let locateFlash = null; // { marker, t0 }
+/**
+ * 定位闪烁状态
+ * @type {{ marker: object, t0: number } | null}
+ * @description 标记定位后在其周围绘制渐隐圆环动画，持续约 1.2 秒
+ */
+let locateFlash = null;
 
+/**
+ * 定位闪烁动画：点击详情列表后，在对应标记周围绘制渐隐圆环
+ * @param {object} marker - 要定位的标记对象
+ */
 function flashLocate(marker) {
+    addLog('定位标记 #' + getMarkerTagNumber(marker));
     locateFlash = { marker, t0: performance.now() };
     requestRender();
     requestAnimationFrame(function tick(now) {
@@ -18,6 +33,9 @@ function flashLocate(marker) {
     });
 }
 
+/**
+ * 请求渲染：使用 requestAnimationFrame 合并多次渲染请求，避免重复绘制
+ */
 function requestRender() {
     if (renderReq) return;
     renderReq = requestAnimationFrame(() => {
@@ -26,6 +44,9 @@ function requestRender() {
     });
 }
 
+/**
+ * 主渲染函数：绘制背景、所有页面图片、标记、定位闪烁、测量折线、校准辅助线等
+ */
 function render() {
     ctx.fillStyle = '#e8e8e8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -44,8 +65,18 @@ function render() {
         }
     }
 
-    for (const m of markers) {
-        drawMarker(ctx, m);
+    const idxMap = getDetailListIndexMap();
+    // DEBUG: 检查是否有标记缺失序号
+    const missingBadges = [];
+    for (let i = 0; i < markers.length; i++) {
+        const idx = idxMap.get(markers[i]);
+        if (idx == null) {
+            missingBadges.push(markers[i].typeName + '#' + markers[i].number);
+        }
+        drawMarker(ctx, markers[i], idx);
+    }
+    if (missingBadges.length > 0) {
+        console.warn('[DEBUG render] 缺失序号的标记: ' + missingBadges.join(', '));
     }
 
     // 定位闪烁圆环（标记周围渐隐，虚拟坐标下绘制）
@@ -82,7 +113,11 @@ function render() {
     ctx.restore();
 }
 
-// 绘制校准阶段：已拾取的点 + 正交投影预览线
+/**
+ * 绘制校准阶段：已拾取的校准点 + 正交投影预览线
+ * 用于测量模式下的标尺校准，显示两个校准点和它们之间的连线
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ */
 function drawCalibrate(ctx) {
     if (calibratePoints.length === 0 && !calibratePreview) return;
 
@@ -185,7 +220,13 @@ function drawCalibrate(ctx) {
     ctx.restore();
 }
 
-// 绘制端点捕捉指示器（绿色方框 + 十字）
+/**
+ * 绘制端点捕捉指示器：绿色方框 + 十字准星
+ * 当鼠标靠近矢量端点时显示，帮助精确对齐测量点
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {number} x - 捕捉点的虚拟 X 坐标
+ * @param {number} y - 捕捉点的虚拟 Y 坐标
+ */
 function drawSnapHint(ctx, x, y) {
     const s = 10 / zoom;
     ctx.save();
@@ -204,6 +245,14 @@ function drawSnapHint(ctx, x, y) {
     ctx.restore();
 }
 
+/**
+ * 绘制页面说明文字：在页面下方显示文件名和尺寸信息
+ * @param {object} page - 页面数据对象
+ * @param {number} dx - 页面左上角虚拟 X 坐标
+ * @param {number} dy - 页面左上角虚拟 Y 坐标
+ * @param {number} dw - 页面宽度（虚拟像素）
+ * @param {number} dh - 页面高度（虚拟像素）
+ */
 function drawPageCaption(page, dx, dy, dw, dh) {
     const mmW = (page.origWidth * 25.4 / 72).toFixed(1);
     const mmH = (page.origHeight * 25.4 / 72).toFixed(1);
@@ -250,7 +299,13 @@ function drawPageCaption(page, dx, dy, dw, dh) {
     ctx.restore();
 }
 
-function drawMarker(ctx, m) {
+/**
+ * 绘制标记圆圈：彩色圆环 + 类型缩写 + 仪表编号 + 尺寸备注 + 通用备注
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {object} m - 标记对象
+ * @param {number|null} globalIndex - 全局计数编号（详情列表中的序号），为 null 时不显示右上角绿标
+ */
+function drawMarker(ctx, m, globalIndex) {
     const rgb = hexToRgb(m.color);
     const circleText = m.typeAbbr || getTypeById(m.typeId).abbr;
     const tn = getMarkerTagNumber(m);
@@ -265,6 +320,26 @@ function drawMarker(ctx, m) {
     ctx.lineWidth = markerLineWidth;
     ctx.strokeStyle = `rgb(${rgb.r * 255},${rgb.g * 255},${rgb.b * 255})`;
     ctx.stroke();
+
+    // 右上角全局计数标记（绿色小圆）
+    if (globalIndex != null) {
+        const badgeR = Math.max(5, markerRadius * 0.32);
+        const angle = -Math.PI / 4; // 45° 右上
+        const bx = Math.cos(angle) * (markerRadius + badgeR * 0.1);
+        const by = Math.sin(angle) * (markerRadius + badgeR * 0.1);
+        ctx.beginPath();
+        ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+        ctx.fillStyle = '#2e7d32';
+        ctx.fill();
+        // 数字
+        const numStr = String(globalIndex);
+        const numSize = Math.max(6, badgeR * 1.3);
+        ctx.font = `bold ${numSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(numStr, bx, by + 0.5);
+    }
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -321,7 +396,16 @@ function drawMarker(ctx, m) {
     ctx.restore();
 }
 
-// 多边形斜线填充：用 clip 限定区域，再绘制等间距斜线
+/**
+ * 多边形斜线填充：用 clip 限定区域，再绘制等间距 45° 斜线
+ * 用于测量面积时显示填充效果
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {Array<{x: number, y: number}>} points - 多边形顶点数组
+ * @param {object} opts - 选项
+ * @param {number} [opts.spacing=8] - 斜线间距
+ * @param {number} [opts.opacity=0.35] - 斜线透明度
+ * @param {string} [opts.color='25, 118, 210'] - 斜线颜色（RGB 格式）
+ */
 function fillHatch(ctx, points, opts) {
     if (!points || points.length < 3) return;
     const spacing = Math.max(2, opts.spacing || 8);
@@ -369,6 +453,14 @@ function fillHatch(ctx, points, opts) {
     ctx.restore();
 }
 
+/**
+ * 绘制测量折线：包含线段、顶点编号、段长标注、总长标签、面积标签、段编号
+ * 已完成段显示为蓝色实线，进行中段显示为红色虚线
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {Array<{x: number, y: number}>} points - 折线顶点数组
+ * @param {boolean} isCompleted - 是否为已完成段
+ * @param {string|null} segmentLabel - 段编号标签（如 'M1'），null 时不显示
+ */
 function drawPolyline(ctx, points, isCompleted, segmentLabel) {
     if (!points || points.length === 0) return;
 
@@ -564,6 +656,17 @@ function drawPolyline(ctx, points, isCompleted, segmentLabel) {
     ctx.restore();
 }
 
+/**
+ * 绘制测量点标记：红色外圈光晕 + 白色内圈 + 红色编号数字
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {number} x - 点的虚拟 X 坐标
+ * @param {number} y - 点的虚拟 Y 坐标
+ * @param {number} radius - 内圈半径
+ * @param {number} outerRadius - 外圈光晕半径
+ * @param {number} lineWidth - 描边线宽
+ * @param {string} label - 编号文字
+ * @param {number} labelSize - 文字字号
+ */
 function drawMeasurePoint(ctx, x, y, radius, outerRadius, lineWidth, label, labelSize) {
     // 外圈光晕（淡红色）
     ctx.beginPath();
@@ -595,6 +698,15 @@ function drawMeasurePoint(ctx, x, y, radius, outerRadius, lineWidth, label, labe
     ctx.fillText(label, x, y + 0.5);
 }
 
+/**
+ * 绘制圆角矩形（填充）
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {number} x - 矩形左上角 X 坐标
+ * @param {number} y - 矩形左上角 Y 坐标
+ * @param {number} width - 矩形宽度
+ * @param {number} height - 矩形高度
+ * @param {number} radius - 圆角半径
+ */
 function roundRect(ctx, x, y, width, height, radius) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -609,6 +721,15 @@ function roundRect(ctx, x, y, width, height, radius) {
     ctx.closePath();
 }
 
+/**
+ * 绘制圆角矩形（描边）
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D 渲染上下文
+ * @param {number} x - 矩形左上角 X 坐标
+ * @param {number} y - 矩形左上角 Y 坐标
+ * @param {number} width - 矩形宽度
+ * @param {number} height - 矩形高度
+ * @param {number} radius - 圆角半径
+ */
 function strokeRoundRect(ctx, x, y, width, height, radius) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -624,8 +745,12 @@ function strokeRoundRect(ctx, x, y, width, height, radius) {
     ctx.stroke();
 }
 
+/**
+ * 更新界面：刷新页面计数显示、拖放提示、统计面板
+ */
 function updateUI() {
-    if (pages.length > 0) {
+    const hasPages = pages.length > 0;
+    if (hasPages) {
         const docCount = documents.length;
         pageCountEl.textContent = docCount > 1
             ? `${docCount} 个文件 · ${pages.length} 页`
@@ -633,12 +758,21 @@ function updateUI() {
     } else {
         pageCountEl.textContent = '';
     }
-    pageCountEl.classList.toggle('visible', pages.length > 0);
-    dropHint.classList.toggle('hidden', pages.length > 0);
+    pageCountEl.classList.toggle('visible', hasPages);
+    dropHint.classList.toggle('hidden', hasPages);
+
+    // 导入文件后才显示左侧仪表栏和底部工具栏
+    document.getElementById('typeDock').classList.toggle('visible', hasPages);
+    document.querySelector('.bottom-bar').classList.toggle('visible', hasPages);
 
     updateStats();
 }
 
+/**
+ * 按文件分组渲染统计面板 HTML
+ * 当有多个文件时使用此视图，按文件→类型二级分组显示标记数量
+ * @returns {string} 统计面板 HTML 字符串
+ */
 function renderStatsByFile() {
     const byDoc = new Map();
     for (const m of markers) {
@@ -685,6 +819,11 @@ function renderStatsByFile() {
     return html;
 }
 
+/**
+ * 按页面分组渲染统计面板 HTML
+ * 当单个文件包含多页时使用此视图，按页面→类型二级分组显示标记数量
+ * @returns {string} 统计面板 HTML 字符串
+ */
 function renderStatsByPage() {
     const doc = documents[0];
 
@@ -742,6 +881,10 @@ function renderStatsByPage() {
     return html;
 }
 
+/**
+ * 更新统计面板：根据文件数量自动选择按文件 / 按页面视图
+ * 统计各类型标记的数量并显示在侧边栏中
+ */
 function updateStats() {
     if (markers.length === 0) {
         statsList.innerHTML = '<div class="stats-empty">暂无标记</div>';

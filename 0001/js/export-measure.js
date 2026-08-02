@@ -1,11 +1,21 @@
-// 测量数据导出（Excel + PDF），与仪表标记导出完全独立
+/**
+ * export-measure.js - 测量数据导出功能，支持Excel和PDF格式
+ * 与仪表标记导出完全独立，提供测量段的长度、面积统计和可视化标注
+ */
 
 // ===== Excel 导出 =====
+
+/**
+ * 导出测量数据 Excel 文件入口
+ * 检查测量数据是否就绪，然后调用核心导出逻辑
+ * @returns {Promise<void>}
+ */
 async function exportMeasureExcel() {
     if (measurements.length === 0) {
         alert('还没有测量数据，请先完成至少一段测量');
         return;
     }
+    addLog('开始导出测量数据Excel...');
     await runExportTask(
         [exportMeasureExcelBtn, exportMeasurePdfBtn],
         exportMeasureExcelCore,
@@ -15,6 +25,11 @@ async function exportMeasureExcel() {
     );
 }
 
+/**
+ * 测量数据 Excel 导出核心逻辑
+ * 创建工作簿包含三个工作表：Measurements 汇总、Segment Detail 明细、Scale Info 比例信息
+ * @returns {Promise<void>}
+ */
 async function exportMeasureExcelCore() {
     const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
@@ -146,9 +161,16 @@ async function exportMeasureExcelCore() {
 
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `Measurements_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    addLog('测量数据Excel导出完成，共导出 ' + measurements.length + ' 段测量');
 }
 
 // ===== PDF 导出 =====
+
+/**
+ * 导出测量数据 PDF 文件入口
+ * 检查测量数据和文档是否就绪，然后调用核心导出逻辑
+ * @returns {Promise<void>}
+ */
 async function exportMeasurePdf() {
     if (measurements.length === 0) {
         alert('还没有测量数据，请先完成至少一段测量');
@@ -158,6 +180,7 @@ async function exportMeasurePdf() {
         alert('还没有导入PDF文件');
         return;
     }
+    addLog('开始导出测量数据PDF...');
     await runExportTask(
         [exportMeasureExcelBtn, exportMeasurePdfBtn],
         exportMeasurePdfCore,
@@ -167,6 +190,11 @@ async function exportMeasurePdf() {
     );
 }
 
+/**
+ * 测量数据 PDF 导出核心逻辑：逐页在PDF上绘制测量线段、点标记、长度标注和面积标注
+ * 支持多边形斜线填充和页面旋转
+ * @returns {Promise<void>}
+ */
 async function exportMeasurePdfCore() {
     await loadPdfLib();
     const PDFLib = window.PDFLib;
@@ -351,11 +379,19 @@ async function exportMeasurePdfCore() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    addLog('测量数据PDF导出完成，共导出 ' + measurements.length + ' 段测量');
 }
 
-// PDF 多边形斜线填充：用 clip + 等间距斜线实现
-// pdf-lib 没有 clip 高级 API，这里改用「逐条线段裁剪到多边形」的简化方案：
-// 对每条 45° 斜线，扫描其与多边形所有边的交点，取在多边形内部的区段绘制
+/**
+ * PDF 多边形斜线填充：用 45° 等间距斜线填充多边形区域
+ * 对每条斜线扫描其与多边形所有边的交点，取在多边形内部的区段绘制
+ * @param {PDFPage} page - PDF页面对象
+ * @param {Object} PDFLib - PDFLib 库引用
+ * @param {Array<{x:number, y:number}>} pts - 多边形顶点数组
+ * @param {number} spacing - 斜线间距
+ * @param {number} opacity - 透明度 (0-1)
+ * @param {number} renderScale - 渲染缩放比例
+ */
 function drawPdfHatch(page, PDFLib, pts, spacing, opacity, renderScale) {
     if (!pts || pts.length < 3 || spacing <= 0) return;
 

@@ -1,3 +1,9 @@
+/**
+ * excel-config.js - Excel列定义配置，集中管理所有表格的列定义和自定义字段
+ * 支持用户自定义选择显示列、自定义字段、自定义属性、自定义表格等
+ * 所有配置存储在 localStorage 中
+ */
+
 // ===== Excel 列定义配置 =====
 // 所有表格的列定义集中管理，支持用户自定义选择显示哪些列
 // 存储在 localStorage KEY: 'elecPdfMarkerExcelColumns_v1'
@@ -62,8 +68,8 @@ const COLUMN_DEFS = {
     { key: 'ioType',       header: 'IO Type',          header2: 'IO Type',          width: 10, editable: true, field: 'ioType', getter: (m) => { const defs = getIOListSignalDefaults(m.typeCode); return m.ioType || defs.ioType || ''; } },
     { key: 'signalType',   header: 'Signal Type',      header2: 'Signal Type',      width: 14, editable: true, field: 'signalType', getter: (m) => { const defs = getIOListSignalDefaults(m.typeCode); return m.signalType || defs.signalType || ''; } },
     { key: 'power',        header: 'Power',            header2: 'Power',            width: 12, editable: true, field: 'power', getter: (m) => { const defs = getIOListSignalDefaults(m.typeCode); return m.power || defs.power || ''; } },
-    { key: 'zeroStatus',   header: 'Zero Stauts',      header2: 'Zero Stauts',      width: 12, editable: true, field: 'zeroStatus', getter: (m) => m.zeroStatus || '' },
-    { key: 'oneStatus',    header: 'One Stauts',       header2: 'One Stauts',       width: 12, editable: true, field: 'oneStatus',  getter: (m) => m.oneStatus || '' },
+    { key: 'zeroStatus',   header: 'Zero Status',      header2: 'Zero Status',      width: 12, editable: true, field: 'zeroStatus', getter: (m) => m.zeroStatus || '' },
+    { key: 'oneStatus',    header: 'One Status',       header2: 'One Status',       width: 12, editable: true, field: 'oneStatus',  getter: (m) => m.oneStatus || '' },
     { key: 'alarmLL',      header: 'Alarm Setting',    header2: 'LL',               width: 8,  colSpan: 4,  editable: true, field: 'alarmLL',  getter: (m) => m.alarmLL || '' },
     { key: 'alarmL',       header: '',                  header2: 'L',                width: 8,              editable: true, field: 'alarmL',   getter: (m) => m.alarmL || '' },
     { key: 'alarmH',       header: '',                  header2: 'H',                width: 8,              editable: true, field: 'alarmH',   getter: (m) => m.alarmH || '' },
@@ -74,11 +80,20 @@ const COLUMN_DEFS = {
     { key: 'rioPanel',     header: 'RIO Panel No.',     header2: 'RIO Panel No.',    width: 14, editable: true, field: 'rioPanel', getter: (m) => m.rioPanel || '' },
     { key: 'slotNumber',   header: 'Slot Number',       header2: 'Slot Number',      width: 12, editable: true, field: 'slotNumber', getter: (m) => m.slotNumber || '' },
     { key: 'channelNumber',header: 'Channel Number',    header2: 'Channel Number',   width: 14, editable: true, field: 'channelNumber', getter: (m) => m.channelNumber || '' },
+    { key: 'cableNo',      header: 'Cable No.',         header2: 'Cable No.',        width: 16, editable: true, field: 'cableNo',      getter: (m) => m.cableNo || '' },
+    { key: 'junctionBox',  header: 'Junction Box',      header2: 'Junction Box',     width: 16, editable: true, field: 'junctionBox',  getter: (m) => m.junctionBox || '' },
+    { key: 'cableType',    header: 'Cable Type',        header2: 'Cable Type',       width: 14, editable: true, field: 'cableType',    getter: (m) => m.cableType || '' },
     { key: 'note',         header: 'Remarks',            header2: 'Remarks',          width: 20, editable: true, field: 'note',  getter: (m) => m.note || '' },
   ],
 };
 
 // ===== 默认可见列（全选） =====
+
+/**
+ * 获取指定工作表的默认列定义（全选所有列）
+ * @param {string} sheetName - 工作表名称（detailList/ioList/insList）
+ * @returns {string[]} 列 key 数组
+ */
 function getDefaultColumns(sheetName) {
   return COLUMN_DEFS[sheetName] ? COLUMN_DEFS[sheetName].map(c => c.key) : [];
 }
@@ -118,6 +133,9 @@ const ALL_MARKER_ATTRIBUTES = [
   { key: 'rioPanel',      label: 'RIO Panel No.',         desc: '远程 IO 盘柜编号', group: 'IO List' },
   { key: 'slotNumber',    label: 'Slot Number',           desc: '槽位号', group: 'IO List' },
   { key: 'channelNumber', label: 'Channel Number',        desc: '通道号', group: 'IO List' },
+  { key: 'cableNo',      label: 'Cable No.',             desc: '电缆编号', group: 'IO List' },
+  { key: 'junctionBox',  label: 'Junction Box',          desc: '接线箱编号', group: 'IO List' },
+  { key: 'cableType',    label: 'Cable Type',            desc: '电缆类型规格', group: 'IO List' },
 ];
 
 // ===== marker 可绑定字段注册表 =====
@@ -146,6 +164,9 @@ const MARKER_FIELD_OPTIONS = [
   { key: 'rioPanel', label: 'RIO Panel No.' },
   { key: 'slotNumber', label: 'Slot Number' },
   { key: 'channelNumber', label: 'Channel Number' },
+  { key: 'cableNo', label: 'Cable No.' },
+  { key: 'junctionBox', label: 'Junction Box' },
+  { key: 'cableType', label: 'Cable Type' },
   { key: 'pidRev', label: 'P&ID Revision No.' },
   { key: 'tagNumber', label: 'Tag Number (手动编号)' },
   { key: 'sizeNote', label: 'Size Note (口径)' },
@@ -153,6 +174,10 @@ const MARKER_FIELD_OPTIONS = [
 
 let _customFieldDefs = null;
 
+/**
+ * 获取用户自定义字段定义列表（从 localStorage 读取，带缓存）
+ * @returns {Array<{key: string, label: string, sheet: string, bindField: string}>}
+ */
 function getCustomFieldDefs() {
   if (_customFieldDefs) return _customFieldDefs;
   try {
@@ -164,6 +189,10 @@ function getCustomFieldDefs() {
   return _customFieldDefs;
 }
 
+/**
+ * 保存用户自定义字段定义到 localStorage
+ * @param {Array} defs - 自定义字段定义数组
+ */
 function saveCustomFieldDefs(defs) {
   _customFieldDefs = defs;
   try {
@@ -171,20 +200,37 @@ function saveCustomFieldDefs(defs) {
   } catch { /* ignore */ }
 }
 
+/**
+ * 添加自定义字段定义
+ * @param {string} sheetName - 目标工作表名称
+ * @param {string} label - 列头标签
+ * @param {string} bindField - 绑定的 marker 字段名
+ * @returns {string} 新字段的唯一 key
+ */
 function addCustomFieldDef(sheetName, label, bindField) {
   const defs = getCustomFieldDefs();
   const key = 'cf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   defs.push({ key, label, sheet: sheetName, bindField });
   saveCustomFieldDefs(defs);
+  addLog('添加自定义列: ' + label + ' (绑定字段: ' + bindField + ')');
   return key;
 }
 
+/**
+ * 删除自定义字段定义
+ * @param {string} key - 自定义字段的唯一 key
+ */
 function removeCustomFieldDef(key) {
   const defs = getCustomFieldDefs().filter(d => d.key !== key);
   saveCustomFieldDefs(defs);
+  addLog('删除自定义列: ' + key);
 }
 
-// 获取指定工作表的自定义字段，转换为列定义
+/**
+ * 获取指定工作表的自定义字段，转换为列定义格式
+ * @param {string} sheetName - 工作表名称
+ * @returns {Array} 自定义列定义数组
+ */
 function getCustomFieldColumns(sheetName) {
   const defs = getCustomFieldDefs().filter(d => d.sheet === sheetName);
   return defs.map(cf => ({
@@ -207,6 +253,11 @@ function getCustomFieldColumns(sheetName) {
 // 结构: { detailList: ['sn','tagNo','location',...], ioList: [...], insList: [...] }
 let _columnSettings = null;
 
+/**
+ * 加载用户列选择配置（从 localStorage 读取，带缓存）
+ * 默认全选所有列
+ * @returns {Object} 列配置对象 { detailList: [...], ioList: [...], insList: [...] }
+ */
 function loadColumnSettings() {
   if (_columnSettings) return _columnSettings;
   try {
@@ -225,6 +276,10 @@ function loadColumnSettings() {
   return _columnSettings;
 }
 
+/**
+ * 保存用户列选择配置到 localStorage
+ * @param {Object} settings - 列配置对象
+ */
 function saveColumnSettings(settings) {
   _columnSettings = settings;
   try {
@@ -232,7 +287,11 @@ function saveColumnSettings(settings) {
   } catch { /* ignore */ }
 }
 
-// 获取某张表的启用的列定义列表（按用户配置过滤，自动合并新增列）
+/**
+ * 获取某张表启用的列定义列表（按用户配置过滤，自动合并新增列）
+ * @param {string} sheetName - 工作表名称
+ * @returns {Array} 启用的列定义数组
+ */
 function getEnabledColumns(sheetName) {
   const defs = COLUMN_DEFS[sheetName];
   if (!defs) return [];
@@ -259,14 +318,22 @@ function getEnabledColumns(sheetName) {
     .filter(Boolean);
 }
 
-// 获取某张表的 Excel 列定义（保持与原始列数一致的索引映射）
+/**
+ * 获取某张表的 Excel 列定义（保持与原始列数一致的索引映射）
+ * @param {string} sheetName - 工作表名称
+ * @returns {Array} 列定义数组
+ */
 function getExcelColumnDefs(sheetName) {
   return getEnabledColumns(sheetName);
 }
 
 
 
-// 获取包含自定义字段的完整列定义
+/**
+ * 获取包含自定义字段的完整列定义（内置 + 自定义字段 + 自定义属性）
+ * @param {string} sheetName - 工作表名称
+ * @returns {Array} 完整列定义数组
+ */
 function getSheetColumnsWithCustom(sheetName) {
   const base = getEnabledColumns(sheetName);
   const custom = getCustomFieldColumns(sheetName);
@@ -275,7 +342,12 @@ function getSheetColumnsWithCustom(sheetName) {
 }
 
 // ===== 工具函数：获取列的实际索引（Excel 列号） =====
-// 返回 { colIndex: 1-based, columnDefs: 列定义数组 }
+/**
+ * 获取指定列的实际索引（1-based Excel 列号）
+ * @param {string} sheetName - 工作表名称
+ * @param {string} key - 列 key
+ * @returns {number} 列索引（1-based），未找到返回 -1
+ */
 function getColumnIndex(sheetName, key) {
   const cols = getEnabledColumns(sheetName);
   const idx = cols.findIndex(c => c.key === key);
@@ -289,6 +361,10 @@ const CUSTOM_ATTRS_KEY = 'elecPdfMarkerCustomAttrs_v1';
 
 let _customAttrDefs = null;
 
+/**
+ * 获取自定义 marker 属性定义列表（从 localStorage 读取，带缓存）
+ * @returns {Array<{key: string, label: string, description: string, enabled: boolean}>}
+ */
 function getCustomAttrDefs() {
   if (_customAttrDefs) return _customAttrDefs;
   try {
@@ -302,6 +378,10 @@ function getCustomAttrDefs() {
   return _customAttrDefs;
 }
 
+/**
+ * 保存自定义 marker 属性定义到 localStorage
+ * @param {Array} defs - 属性定义数组
+ */
 function saveCustomAttrDefs(defs) {
   _customAttrDefs = defs;
   try {
@@ -309,14 +389,26 @@ function saveCustomAttrDefs(defs) {
   } catch { /* ignore */ }
 }
 
+/**
+ * 添加自定义 marker 属性定义
+ * @param {string} label - 属性标签
+ * @param {string} description - 属性描述
+ * @returns {string} 新属性的唯一 key
+ */
 function addCustomAttrDef(label, description) {
   const defs = getCustomAttrDefs();
   const key = 'ca_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   defs.push({ key, label, description: description || '', enabled: true });
   saveCustomAttrDefs(defs);
+  addLog('添加自定义属性: ' + label);
   return key;
 }
 
+/**
+ * 更新自定义 marker 属性定义
+ * @param {string} key - 属性唯一 key
+ * @param {Object} updates - 要更新的字段
+ */
 function updateCustomAttrDef(key, updates) {
   const defs = getCustomAttrDefs();
   const idx = defs.findIndex(d => d.key === key);
@@ -325,19 +417,34 @@ function updateCustomAttrDef(key, updates) {
   saveCustomAttrDefs(defs);
 }
 
+/**
+ * 删除自定义 marker 属性定义
+ * @param {string} key - 属性唯一 key
+ */
 function removeCustomAttrDef(key) {
   const defs = getCustomAttrDefs().filter(d => d.key !== key);
   saveCustomAttrDefs(defs);
+  addLog('删除自定义属性: ' + key);
 }
 
-// 获取 marker 上的自定义属性值
+/**
+ * 获取 marker 上的自定义属性值
+ * @param {Object} marker - 标记对象
+ * @param {string} attrKey - 属性 key
+ * @returns {string} 属性值
+ */
 function getCustomAttrValue(marker, attrKey) {
   if (!marker.customAttrs) return '';
   const v = marker.customAttrs[attrKey];
   return (v === undefined || v === null) ? '' : String(v);
 }
 
-// 设置 marker 上的自定义属性值
+/**
+ * 设置 marker 上的自定义属性值
+ * @param {Object} marker - 标记对象
+ * @param {string} attrKey - 属性 key
+ * @param {string} value - 属性值
+ */
 function setCustomAttrValue(marker, attrKey, value) {
   if (!marker.customAttrs) marker.customAttrs = {};
   if (value === '' || value === null || value === undefined) {
@@ -347,7 +454,10 @@ function setCustomAttrValue(marker, attrKey, value) {
   }
 }
 
-// 获取所有可用于列绑定的字段（内置 + 已启用的自定义属性）
+/**
+ * 获取所有可用于列绑定的字段（内置 + 已启用的自定义属性）
+ * @returns {Array<{key: string, label: string}>}
+ */
 function getAllBindableFields() {
   const custom = getCustomAttrDefs()
     .filter(d => d.enabled !== false)
@@ -355,7 +465,10 @@ function getAllBindableFields() {
   return [...MARKER_FIELD_OPTIONS, ...custom];
 }
 
-// 获取已启用的自定义属性对应的列定义
+/**
+ * 获取已启用的自定义属性对应的列定义
+ * @returns {Array} 自定义属性列定义数组
+ */
 function getCustomAttrColumns() {
   return getCustomAttrDefs()
     .filter(d => d.enabled !== false)
@@ -378,6 +491,10 @@ const BUILTIN_ATTR_STATE_KEY = 'elecPdfMarkerBuiltinAttrState_v1';
 
 let _builtinAttrState = null;
 
+/**
+ * 获取内置属性状态（从 localStorage 读取，带缓存）
+ * @returns {Object} 属性状态对象 { key: { enabled: boolean, hidden: boolean } }
+ */
 function getBuiltinAttrState() {
   if (_builtinAttrState) return _builtinAttrState;
   try {
@@ -389,6 +506,10 @@ function getBuiltinAttrState() {
   return _builtinAttrState;
 }
 
+/**
+ * 保存内置属性状态到 localStorage
+ * @param {Object} state - 属性状态对象
+ */
 function saveBuiltinAttrState(state) {
   _builtinAttrState = state;
   try {
@@ -396,7 +517,11 @@ function saveBuiltinAttrState(state) {
   } catch { /* ignore */ }
 }
 
-// 获取内置属性的启用状态，默认 true
+/**
+ * 判断内置属性是否启用，默认 true
+ * @param {string} key - 属性 key
+ * @returns {boolean}
+ */
 function isBuiltinAttrEnabled(key) {
   const state = getBuiltinAttrState();
   const s = state[key];
@@ -404,7 +529,11 @@ function isBuiltinAttrEnabled(key) {
   return s.enabled !== false;
 }
 
-// 获取内置属性的隐藏状态，默认 false
+/**
+ * 判断内置属性是否隐藏，默认 false
+ * @param {string} key - 属性 key
+ * @returns {boolean}
+ */
 function isBuiltinAttrHidden(key) {
   const state = getBuiltinAttrState();
   const s = state[key];
@@ -412,7 +541,11 @@ function isBuiltinAttrHidden(key) {
   return s.hidden === true;
 }
 
-// 更新单个内置属性状态
+/**
+ * 更新单个内置属性状态
+ * @param {string} key - 属性 key
+ * @param {Object} updates - 要更新的字段 { enabled, hidden }
+ */
 function updateBuiltinAttrState(key, updates) {
   const state = getBuiltinAttrState();
   if (!state[key]) state[key] = {};
@@ -420,7 +553,9 @@ function updateBuiltinAttrState(key, updates) {
   saveBuiltinAttrState(state);
 }
 
-// 恢复所有隐藏的内置属性
+/**
+ * 恢复所有隐藏的内置属性
+ */
 function restoreAllBuiltinAttrs() {
   const state = getBuiltinAttrState();
   for (const k of Object.keys(state)) {
@@ -429,12 +564,18 @@ function restoreAllBuiltinAttrs() {
   saveBuiltinAttrState(state);
 }
 
-// 获取可见的内置属性列表（排除隐藏的）
+/**
+ * 获取可见的内置属性列表（排除隐藏的）
+ * @returns {Array} 属性定义数组
+ */
 function getVisibleBuiltinAttrs() {
   return ALL_MARKER_ATTRIBUTES.filter(a => !isBuiltinAttrHidden(a.key));
 }
 
-// 是否有隐藏的内置属性
+/**
+ * 是否有隐藏的内置属性
+ * @returns {boolean}
+ */
 function hasHiddenBuiltinAttrs() {
   return ALL_MARKER_ATTRIBUTES.some(a => isBuiltinAttrHidden(a.key));
 }
@@ -446,6 +587,10 @@ const CUSTOM_TABLES_KEY = 'elecPdfMarkerCustomTables_v1';
 
 let _customTables = null;
 
+/**
+ * 获取自定义表格列表（从 localStorage 读取，带缓存）
+ * @returns {Array<{id: string, name: string, columns: Array}>}
+ */
 function getCustomTables() {
   if (_customTables) return _customTables;
   try {
@@ -454,20 +599,36 @@ function getCustomTables() {
   return _customTables;
 }
 
+/**
+ * 保存自定义表格列表到 localStorage
+ * @param {Array} tables - 表格数组
+ */
 function saveCustomTables(tables) {
   _customTables = tables;
   try { localStorage.setItem(CUSTOM_TABLES_KEY, JSON.stringify(tables)); } catch {}
 }
 
+/**
+ * 添加自定义表格
+ * @param {string} name - 表格名称
+ * @param {Array} columns - 列定义数组
+ * @returns {string} 新表格的唯一 id
+ */
 function addCustomTable(name, columns) {
   const tables = getCustomTables();
   const id = 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   tables.push({ id, name, columns });
   saveCustomTables(tables);
+  addLog('添加自定义表格: ' + name);
   return id;
 }
 
+/**
+ * 删除自定义表格
+ * @param {string} id - 表格唯一 id
+ */
 function removeCustomTable(id) {
   const tables = getCustomTables().filter(t => t.id !== id);
   saveCustomTables(tables);
+  addLog('删除自定义表格: ' + id);
 }
