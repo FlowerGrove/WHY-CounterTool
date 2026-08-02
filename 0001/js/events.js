@@ -332,17 +332,21 @@ document.addEventListener('mousemove', (e) => {
             requestRender();
         }
 
-        // 校准阶段：计算正交投影预览点
+        // 校准阶段：计算正交投影预览点（Shift 按下时自由预览）
         if (measurePhase === 'calibrate' && calibratePoints.length === 1) {
             const p1 = calibratePoints[0];
             const sx = snap ? snap.x : v.x;
             const sy = snap ? snap.y : v.y;
-            const dx = Math.abs(sx - p1.x);
-            const dy = Math.abs(sy - p1.y);
-            // 正交约束：水平距离大则投影到水平线，否则投影到垂直线
-            const projected = dx > dy
-                ? { x: sx, y: p1.y }
-                : { x: p1.x, y: sy };
+            const shiftKey = window._shiftDown || false;
+            const projected = shiftKey
+                ? { x: sx, y: sy }
+                : (() => {
+                    const dx = Math.abs(sx - p1.x);
+                    const dy = Math.abs(sy - p1.y);
+                    return dx > dy
+                        ? { x: sx, y: p1.y }
+                        : { x: p1.x, y: sy };
+                })();
             if (!calibratePreview || calibratePreview.x !== projected.x || calibratePreview.y !== projected.y) {
                 calibratePreview = projected;
                 requestRender();
@@ -376,7 +380,12 @@ function handleCanvasTap(vx, vy) {
         }
     } else if (eraseMode) {
         const hit = findMarkerAtVirtual(vx, vy);
-        if (hit) { addLog('删除标记'); deleteMarker(hit); }
+        if (hit) {
+            if (confirm(`确定删除标记「${hit.typeName || '?'} #${hit.number}」？`)) {
+                addLog('删除标记');
+                deleteMarker(hit);
+            }
+        }
     } else {
         addLog('添加标记');
         addMarker(vx, vy);
@@ -392,16 +401,21 @@ function handleCanvasTap(vx, vy) {
 function handleCalibrateTap(vx, vy) {
     if (calibratePoints.length === 0) {
         calibratePoints.push({ x: vx, y: vy });
-        showToast('🎯 校准：已拾取第1点，移动鼠标点击第2点（自动水平/垂直对齐）');
+        showToast('🎯 校准：已拾取第1点，移动鼠标点击第2点（自动水平/垂直对齐，按住Shift可自由放置）');
         requestRender();
     } else {
-        // 第二点使用正交投影
+        // 第二点：Shift 按下时自由放置，否则正交投影
         const p1 = calibratePoints[0];
-        const dx = Math.abs(vx - p1.x);
-        const dy = Math.abs(vy - p1.y);
-        const projected = dx > dy
-            ? { x: vx, y: p1.y }
-            : { x: p1.x, y: vy };
+        const shiftKey = window._shiftDown || false;
+        const projected = shiftKey
+            ? { x: vx, y: vy }
+            : (() => {
+                const dx = Math.abs(vx - p1.x);
+                const dy = Math.abs(vy - p1.y);
+                return dx > dy
+                    ? { x: vx, y: p1.y }
+                    : { x: p1.x, y: vy };
+            })();
         calibratePoints.push(projected);
         calibratePreview = null;
         requestRender();
@@ -479,6 +493,11 @@ function clearAllMeasurements() {
         showToast('请先完成校准');
         return;
     }
+    if (measurements.length === 0 && currentPolylinePoints.length === 0) {
+        showToast('没有可清空的测量段');
+        return;
+    }
+    pushHistory({ type: 'measureClear', measurements: measurements.slice() });
     currentPolylinePoints = [];
     isPolylineComplete = false;
     measurements = [];
@@ -639,8 +658,13 @@ document.addEventListener('mouseup', (e) => {
         requestRender();
     } else if (e.button === 0 && mouseDownPos) {
         const upPos = getEventPos(e);
-        const v = screenToVirtual(upPos.x, upPos.y);
-        handleCanvasTap(v.x, v.y);
+        // 拖拽防误触：移动超过 5px 视为拖拽，不触发点击
+        const dx = upPos.x - mouseDownPos.x;
+        const dy = upPos.y - mouseDownPos.y;
+        if (Math.hypot(dx, dy) < 5) {
+            const v = screenToVirtual(upPos.x, upPos.y);
+            handleCanvasTap(v.x, v.y);
+        }
     }
     mouseDownPos = null;
     mouseDownButton = -1;
@@ -978,6 +1002,8 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 document.addEventListener('keydown', (e) => {
+    if (e.key === 'Shift') window._shiftDown = true;
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         // 校准弹窗/设置面板中的输入框允许 Escape 关闭
         if (e.key === 'Escape') {
@@ -1003,6 +1029,10 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         redo();
     }
+});
+
+document.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') window._shiftDown = false;
 });
 
 radiusSlider.addEventListener('input', () => {
@@ -1152,9 +1182,10 @@ function updateMeasureSummary() {
 function deleteMeasurement(id) {
     const idx = measurements.findIndex(m => m.id === id);
     if (idx === -1) return;
-    measurements.splice(idx, 1);
+    const removed = measurements.splice(idx, 1)[0];
     // 重新编号（保持 M1/M2/... 连续）
     measurements.forEach((m, i) => { m.id = i + 1; });
+    pushHistory({ type: 'measureDelete', measurement: removed });
     addLog('删除测量段');
     updateMeasureUI();
     requestRender();
@@ -1201,7 +1232,14 @@ function updateMeasureScaleDisplay() {
     }
 }
 
+// 保存校准状态，避免切换模式时丢失
+let savedCalibration = null;
+
 eraserBtn.addEventListener('click', () => {
+    // 退出测量模式前保存校准状态
+    if (polylineMode && measurePhase === 'measure') {
+        savedCalibration = { measureMode, measureScale, measureRawScale };
+    }
     eraseMode = !eraseMode;
     polylineMode = false;
     currentPolylinePoints = [];
@@ -1223,16 +1261,33 @@ measureBtn.addEventListener('click', () => {
         eraseMode = false;
         currentPolylinePoints = [];
         isPolylineComplete = false;
-        measurements = [];
         snapHint = null;
-        // 进入测量模式：先校准，校准后测量
-        measurePhase = 'calibrate';
-        calibratePoints = [];
-        calibratePreview = null;
-        addLog('切换测量模式');
-        if (pages.length === 0) { showToast('请先导入PDF文件'); }
-        else { showToast('🎯 第一步·校准：点击两个已知距离的点（自动水平/垂直对齐）'); }
+        // 恢复上次保存的校准状态
+        if (savedCalibration && savedCalibration.measureScale > 1) {
+            measureMode = savedCalibration.measureMode;
+            measureScale = savedCalibration.measureScale;
+            measureRawScale = savedCalibration.measureRawScale;
+            measurePhase = 'measure';
+            calibratePoints = [];
+            calibratePreview = null;
+            measurements = [];
+            addLog('切换测量模式（已恢复校准）');
+            showToast('📏 测量模式（已恢复上次校准比例 1:' + measureScale + '）');
+        } else {
+            // 进入测量模式：先校准，校准后测量
+            measurePhase = 'calibrate';
+            calibratePoints = [];
+            calibratePreview = null;
+            measurements = [];
+            addLog('切换测量模式');
+            if (pages.length === 0) { showToast('请先导入PDF文件'); }
+            else { showToast('🎯 第一步·校准：点击两个已知距离的点（自动水平/垂直对齐）'); }
+        }
     } else {
+        // 退出测量模式前保存校准状态
+        if (measurePhase === 'measure') {
+            savedCalibration = { measureMode, measureScale, measureRawScale };
+        }
         currentPolylinePoints = [];
         isPolylineComplete = false;
         measurements = [];
@@ -1343,6 +1398,9 @@ function completeCurrentPolyline() {
         pageIndex: hitPage ? hitPage.pageIndex : null
     };
     measurements.push(measurement);
+
+    // 记录历史用于撤销
+    pushHistory({ type: 'measureAdd', measurement });
 
     // 清空当前，自动开始下一段
     currentPolylinePoints = [];
@@ -1768,13 +1826,13 @@ function renderCfAttrList() {
 
     // 描述点击编辑
     list.querySelectorAll('.cf-manage-item-desc--editable').forEach(span => {
-        span.addEventListener('click', (e) => {
+        span.addEventListener('click', async (e) => {
             e.stopPropagation();
             const key = span.dataset.key;
             const defs = getCustomAttrDefs();
             const d = defs.find(x => x.key === key);
             if (!d) return;
-            const newDesc = prompt('编辑属性描述：', d.description || '');
+            const newDesc = await showPromptDialog('编辑属性描述', d.description || '', '属性说明');
             if (newDesc === null) return; // 取消
             updateCustomAttrDef(key, { description: newDesc.trim() });
             renderCfAttrList();

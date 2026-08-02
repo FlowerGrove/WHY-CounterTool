@@ -121,6 +121,41 @@ function checkPendingRestore() {
     }
 }
 
+document.getElementById('sessionBannerRestore').addEventListener('click', () => {
+    document.getElementById('sessionBanner').classList.remove('visible');
+    if (pendingRestore) {
+        restoreSession(pendingRestore);
+        pendingRestore = null;
+    }
+});
+
+/**
+ * 恢复上次会话数据
+ * 如果文档已加载则直接恢复标记，否则提示先导入 PDF
+ * @param {Object} data - 会话数据
+ */
+function restoreSession(data) {
+    if (documents.length === 0) {
+        showToast('请先导入对应的 PDF 文件');
+        // 保留 pendingRestore 以便导入 PDF 后自动恢复
+        pendingRestore = data;
+        return;
+    }
+    restoreMarkers(data);
+    clearAutosave();
+    updateUI();
+    requestRender();
+    showToast('已恢复上次会话的标记');
+}
+
 document.getElementById('sessionBannerDismiss').addEventListener('click', () => {
     document.getElementById('sessionBanner').classList.remove('visible');
+});
+
+document.getElementById('sessionBannerClear').addEventListener('click', () => {
+    document.getElementById('sessionBanner').classList.remove('visible');
+    pendingRestore = null;
+    clearAutosave();
+    addLog('已永久清除上次会话数据');
+    showToast('已清除恢复记录');
 });

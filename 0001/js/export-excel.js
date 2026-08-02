@@ -304,11 +304,7 @@ function applyIOListHeaderBorders(ws, colCount) {
 function populateIOListData(ws, startRow, cols) {
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
     const sorted = [...filtered].sort((a, b) => {
-        const fa = getDocFileName(a.docId);
-        const fb = getDocFileName(b.docId);
-        if (fa !== fb) return fa.localeCompare(fb, 'zh');
-        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-        return a.number - b.number;
+        return (a._globalOrder || 0) - (b._globalOrder || 0);
     });
 
     const border = {

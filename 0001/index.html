@@ -31,7 +31,9 @@
 
     <div class="session-banner" id="sessionBanner">
         <span id="sessionBannerText">检测到上次未保存的标注记录</span>
-        <button type="button" id="sessionBannerDismiss">知道了</button>
+        <button type="button" id="sessionBannerRestore">恢复</button>
+        <button type="button" id="sessionBannerDismiss">忽略</button>
+        <button type="button" id="sessionBannerClear" title="永久清除并忽略">不再提示</button>
     </div>
 
     <!-- 左侧类型浮动栏 -->
@@ -725,6 +727,18 @@
 
     <div class="toast" id="toast"></div>
     <div class="global-tooltip" id="globalTooltip"></div>
+
+    <!-- 简单输入对话框（替代 prompt()） -->
+    <div class="prompt-dialog-backdrop" id="promptDialogBackdrop" hidden>
+        <div class="prompt-dialog" role="dialog">
+            <div class="prompt-dialog__title" id="promptDialogTitle">输入</div>
+            <input type="text" class="prompt-dialog__input" id="promptDialogInput" maxlength="30" />
+            <div class="prompt-dialog__actions">
+                <button type="button" class="btn-secondary" id="promptDialogCancel">取消</button>
+                <button type="button" class="btn-primary" id="promptDialogConfirm">确定</button>
+            </div>
+        </div>
+    </div>
 
     <input type="file" id="fileInput" accept=".pdf,application/pdf" multiple />
 

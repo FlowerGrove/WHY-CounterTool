@@ -1,10 +1,11 @@
 // ===== 操作日志系统 =====
-// 所有用户操作都会被记录到屏幕左下角，游戏风格，简洁不复杂
+// 所有用户操作都会被记录到屏幕右下角，显示 3 条，旧条目 5s 后自动消失
 
-const MAX_LOG_ENTRIES = 50; // 最多保留 50 条日志
-const LOG_DISPLAY_COUNT = 6; // 屏幕上同时显示 6 条
+const LOG_DISPLAY_COUNT = 3; // 屏幕上同时显示 3 条
+const LOG_FADE_DELAY = 5000; // 5s 后自动消失
 let _logEntries = []; // 日志缓冲区 [{msg, time, id}]
 let _logIdCounter = 0; // 日志条目自增 ID
+let _logTimers = new Map(); // 条目 ID → 自动消失定时器
 
 // 添加一条操作日志
 // msg: 日志文本（支持简单 HTML 如 <b>标记</b>）
@@ -15,21 +16,32 @@ function addLog(msg) {
         id: ++_logIdCounter,
     };
     _logEntries.push(entry);
-    // 超出上限时移除旧条目
-    while (_logEntries.length > MAX_LOG_ENTRIES) {
-        _logEntries.shift();
+    // 超出显示条数时移除旧条目
+    while (_logEntries.length > LOG_DISPLAY_COUNT) {
+        _removeEntry(_logEntries[0].id);
     }
     _renderLog();
+    // 5s 后自动消失
+    _logTimers.set(entry.id, setTimeout(() => _removeEntry(entry.id), LOG_FADE_DELAY));
     // 同时输出到控制台便于调试
     console.log('[LOG]', entry.time, msg.replace(/<[^>]*>/g, ''));
 }
 
-// 渲染日志到屏幕左下角
+function _removeEntry(id) {
+    const idx = _logEntries.findIndex(e => e.id === id);
+    if (idx !== -1) _logEntries.splice(idx, 1);
+    if (_logTimers.has(id)) {
+        clearTimeout(_logTimers.get(id));
+        _logTimers.delete(id);
+    }
+    _renderLog();
+}
+
+// 渲染日志到屏幕右下角
 function _renderLog() {
     const container = document.getElementById('opLog');
     if (!container) return;
-    // 取最后 N 条显示，最新在上面
-    const display = _logEntries.slice(-LOG_DISPLAY_COUNT).reverse();
+    const display = [..._logEntries].reverse();
     container.innerHTML = display.map(e =>
         `<div class="op-log-item" data-logid="${e.id}">
             <span class="op-log-time">${e.time}</span>
@@ -41,6 +53,8 @@ function _renderLog() {
 // 清空日志
 function clearLog() {
     _logEntries = [];
+    _logTimers.forEach(t => clearTimeout(t));
+    _logTimers.clear();
     const container = document.getElementById('opLog');
     if (container) container.innerHTML = '';
 }

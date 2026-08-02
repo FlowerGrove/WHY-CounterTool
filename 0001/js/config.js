@@ -53,12 +53,13 @@ const defaultSettings = {
 };
 
 // ---- 移动端检测 ----
-const isMobile = window.innerWidth < 768 || window.devicePixelRatio > 2 ||
+// 仅通过触摸能力和屏幕宽度判断，移除 devicePixelRatio 检查（4K/Retina 桌面显示器会误判）
+const isMobile = window.innerWidth < 768 ||
     ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 // ---- 标记尺寸参数（移动端/桌面端） ----
-const MOBILE_RADIUS = 35;
-const MOBILE_FONT_SIZE = 30;
+const MOBILE_RADIUS = 42;
+const MOBILE_FONT_SIZE = 36;
 const DESKTOP_RADIUS = 35;
 const DESKTOP_FONT_SIZE = 30;
 

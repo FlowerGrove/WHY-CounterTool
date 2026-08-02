@@ -111,6 +111,21 @@ function undo() {
         } else {
             applyHistoryBulkUpdate(last.marker, last, true);
         }
+    } else if (last.type === 'measureAdd') {
+        // 撤销测量段添加：从 measurements 中移除
+        const idx = measurements.findIndex(m => m.id === last.measurement.id);
+        if (idx !== -1) measurements.splice(idx, 1);
+        currentPolylinePoints = last.measurement.points.slice();
+        isPolylineComplete = false;
+    } else if (last.type === 'measureDelete') {
+        // 撤销测量段删除：恢复该测量段
+        measurements.push(last.measurement);
+        measurements.sort((a, b) => a.id - b.id);
+    } else if (last.type === 'measureClear') {
+        // 撤销清空测量：恢复所有测量段
+        measurements = last.measurements.slice();
+        currentPolylinePoints = [];
+        isPolylineComplete = false;
     }
     redoStack.push(last);
     addLog('撤销');
@@ -145,6 +160,21 @@ function redo() {
         } else {
             applyHistoryBulkUpdate(entry.marker, entry, false);
         }
+    } else if (entry.type === 'measureAdd') {
+        // 重做测量段添加：重新添加到 measurements
+        measurements.push(entry.measurement);
+        measurements.sort((a, b) => a.id - b.id);
+        currentPolylinePoints = [];
+        isPolylineComplete = false;
+    } else if (entry.type === 'measureDelete') {
+        // 重做测量段删除：从 measurements 中移除
+        const idx = measurements.findIndex(m => m.id === entry.measurement.id);
+        if (idx !== -1) measurements.splice(idx, 1);
+    } else if (entry.type === 'measureClear') {
+        // 重做清空测量
+        measurements = [];
+        currentPolylinePoints = [];
+        isPolylineComplete = false;
     }
     history.push(entry);
     addLog('重做');

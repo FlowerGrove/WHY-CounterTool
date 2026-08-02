@@ -84,8 +84,8 @@ function formatSizeNote(s) {
     if (!s) return '';
     const str = String(s).trim();
     if (!str) return '';
-    if (/ANSI|NPT|FLANGED|THREADED|SW|RTJ/i.test(str)) return str;
-    if (/[""]/.test(str)) return str;
+    if (/\b(ANSI|NPT|FLANGED|THREADED|SW|RTJ)\b/i.test(str)) return str;
+    if (/"/.test(str)) return str;
     const parts = str.split(/\s*[xX]\s*/);
     return parts.map(p => p ? `${p}"` : '').join('x');
 }
@@ -303,4 +303,64 @@ function calculatePolylineArea(points) {
     if (!points || points.length < 3) return null;
     const pixelArea = calculatePolygonArea(points);
     return formatArea(pixelArea);
+}
+
+/**
+ * 显示自定义输入对话框（替代原生 prompt()）
+ * @param {string} title - 对话框标题
+ * @param {string} [defaultValue=''] - 默认值
+ * @param {string} [placeholder=''] - 占位文本
+ * @returns {Promise<string|null>} 用户输入值或 null（取消时）
+ */
+function showPromptDialog(title, defaultValue = '', placeholder = '') {
+    return new Promise((resolve) => {
+        const backdrop = document.getElementById('promptDialogBackdrop');
+        const titleEl = document.getElementById('promptDialogTitle');
+        const input = document.getElementById('promptDialogInput');
+        const confirmBtn = document.getElementById('promptDialogConfirm');
+        const cancelBtn = document.getElementById('promptDialogCancel');
+
+        titleEl.textContent = title;
+        input.value = defaultValue;
+        input.placeholder = placeholder;
+
+        function cleanup() {
+            backdrop.hidden = true;
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            backdrop.removeEventListener('click', onBackdrop);
+            input.removeEventListener('keydown', onKeydown);
+        }
+
+        function onConfirm() {
+            const val = input.value;
+            cleanup();
+            resolve(val);
+        }
+
+        function onCancel() {
+            cleanup();
+            resolve(null);
+        }
+
+        function onBackdrop(e) {
+            if (e.target === backdrop) {
+                cleanup();
+                resolve(null);
+            }
+        }
+
+        function onKeydown(e) {
+            if (e.key === 'Enter') { e.preventDefault(); onConfirm(); }
+            if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+        }
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        backdrop.addEventListener('click', onBackdrop);
+        input.addEventListener('keydown', onKeydown);
+
+        backdrop.hidden = false;
+        setTimeout(() => input.focus(), 50);
+    });
 }
