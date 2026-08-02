@@ -1,6 +1,6 @@
 /**
  * export-excel.js - Excel导出功能，生成仪表统计表格和IO清单
- * 支持导出 By File、Type Summary、Detail List、IO List、INS List、MTO 和自定义表格
+ * 支持导出 By File、Type Summary、Detail List、IO List、INS List 和自定义表格
  */
 
 /**
@@ -172,7 +172,7 @@ function getIOListSignalDefaults(typeCode) {
  * @param {ExcelJS.Worksheet} ws - IO List 工作表对象
  */
 function writeIOListHeader(ws) {
-    const cols = getSheetColumnsWithCustom('ioList');
+    const cols = getSheetColumnsWithCustom('ioList').filter(c => c.type !== 'locate');
     const totalCols = cols.length;
 
     // 设置列 key
@@ -247,7 +247,7 @@ function writeIOListHeader(ws) {
  * @returns {ExcelJS.Worksheet} IO List 工作表
  */
 function addIOList(wb) {
-    const cols = getSheetColumnsWithCustom('ioList');
+    const cols = getSheetColumnsWithCustom('ioList').filter(c => c.type !== 'locate');
     const totalCols = cols.length;
 
     const ws = wb.addWorksheet('IO List', {
@@ -401,7 +401,7 @@ async function exportBoth() {
 }
 
 /**
- * Excel 导出核心逻辑：创建 By File、Type Summary、Detail List、IO List、INS List、MTO 和自定义表格
+ * Excel 导出核心逻辑：创建 By File、Type Summary、Detail List、IO List、INS List 和自定义表格
  * 根据标记数据生成完整的工作簿
  * @returns {Promise<void>}
  */
@@ -664,7 +664,7 @@ async function exportExcelCore() {
     const insMarkers = sorted.filter(m => !isTypeInIOList(m.typeId));
     if (insMarkers.length > 0) {
         addLog('导出Excel: INS List');
-        const insCols = getSheetColumnsWithCustom('insList');
+        const insCols = getSheetColumnsWithCustom('insList').filter(c => c.type !== 'locate');
         const wsIns = wb.addWorksheet('INS List', {
             views: [{ state: 'frozen', ySplit: 1 }],
         });
@@ -694,10 +694,6 @@ async function exportExcelCore() {
     // 自定义表格（用户创建的）
     addLog('导出Excel: 自定义表格');
     addCustomTableSheets(wb, sorted);
-
-    // Sheet: MTO（口径汇总）
-    addLog('导出Excel: MTO');
-    addMTOSheet(wb);
 
     const buf = await wb.xlsx.writeBuffer();
     await downloadExcelBuffer(buf, `Instruments_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -765,112 +761,4 @@ function addCustomTableSheets(wb, sorted) {
         autoFitColumns(ws, colDefs.map(c => c.header));
         applyTableFormat(ws);
     }
-}
-
-// ===== MTO 口径汇总导出 =====
-
-/**
- * 创建 MTO（Material Take-Off）口径汇总工作表
- * 按 process connection 口径分组统计 IO 和 INS 仪表数量
- * @param {ExcelJS.Workbook} wb - 工作簿对象
- */
-function addMTOSheet(wb) {
-    if (markers.length === 0) return;
-
-    // 按 sizeNote 分组统计
-    const sizeMap = new Map();
-    for (const m of markers) {
-        const size = (m.sizeNote || m.size || '').trim();
-        const key = size || '(未指定)';
-        if (!sizeMap.has(key)) {
-            sizeMap.set(key, { ioCount: 0, insCount: 0, types: new Map() });
-        }
-        const entry = sizeMap.get(key);
-        if (isTypeInIOList(m.typeId)) {
-            entry.ioCount++;
-        } else {
-            entry.insCount++;
-        }
-        const typeName = m.typeName || '?';
-        entry.types.set(typeName, (entry.types.get(typeName) || 0) + 1);
-    }
-
-    // 按口径排序
-    const sorted = [...sizeMap.entries()].sort((a, b) => {
-        if (a[0] === '(未指定)') return 1;
-        if (b[0] === '(未指定)') return -1;
-        const na = parseFloat(a[0]);
-        const nb = parseFloat(b[0]);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return a[0].localeCompare(b[0]);
-    });
-
-    // 收集所有类型名
-    const allTypes = new Set();
-    for (const [, entry] of sizeMap) {
-        for (const t of entry.types.keys()) allTypes.add(t);
-    }
-    const typeOrder = [...allTypes].sort();
-
-    const ws = wb.addWorksheet('MTO', {
-        views: [{ state: 'frozen', ySplit: 1 }],
-    });
-
-    // 动态列定义
-    const colDefs = [
-        { header: '口径', key: 'size', width: 14 },
-        { header: 'IO 数量', key: 'ioCount', width: 10 },
-        { header: 'INS 数量', key: 'insCount', width: 10 },
-        { header: '合计', key: 'total', width: 8 },
-        ...typeOrder.map(t => ({ header: t, key: 'type_' + t, width: 10 })),
-    ];
-
-    colDefs.forEach((col, idx) => {
-        ws.getColumn(idx + 1).key = col.key;
-        ws.getColumn(idx + 1).width = col.width;
-    });
-
-    const hdrRow = ws.getRow(1);
-    colDefs.forEach((col, idx) => {
-        hdrRow.getCell(idx + 1).value = col.header;
-    });
-    styleHeaderRow(hdrRow);
-
-    let totalIO = 0, totalINS = 0;
-    for (const [size, entry] of sorted) {
-        const total = entry.ioCount + entry.insCount;
-        totalIO += entry.ioCount;
-        totalINS += entry.insCount;
-        const rowData = {
-            size,
-            ioCount: entry.ioCount || '',
-            insCount: entry.insCount || '',
-            total,
-        };
-        for (const t of typeOrder) {
-            const cnt = entry.types.get(t) || 0;
-            rowData['type_' + t] = cnt || '';
-        }
-        ws.addRow(rowData);
-    }
-
-    // 合计行
-    const grandTotal = totalIO + totalINS;
-    const totalRow = ws.addRow({
-        size: '合计',
-        ioCount: totalIO,
-        insCount: totalINS,
-        total: grandTotal,
-    });
-    for (const t of typeOrder) {
-        let typeTotal = 0;
-        for (const [, entry] of sizeMap) {
-            typeTotal += entry.types.get(t) || 0;
-        }
-        totalRow.getCell(4 + typeOrder.indexOf(t) + 1).value = typeTotal || '';
-    }
-    totalRow.font = { bold: true };
-
-    autoFitColumns(ws, colDefs.map(c => c.header));
-    applyTableFormat(ws);
 }

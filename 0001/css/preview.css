@@ -892,6 +892,87 @@
     background: rgba(26, 115, 232, 0.05);
 }
 
+/* 批量导入字段 */
+.ins-field-batch-toggle {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px dashed #ccc;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: flex-start;
+    font-family: inherit;
+}
+.ins-field-batch-toggle:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.05);
+}
+.ins-field-batch-toggle i {
+    margin-right: 4px;
+}
+
+.ins-field-batch {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.ins-field-batch[hidden] { display: none; }
+
+.ins-field-batch textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    background: #fafafa;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.ins-field-batch textarea:focus {
+    border-color: #1a73e8;
+    background: #fff;
+}
+
+.ins-field-batch__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ins-field-batch__hint {
+    font-size: 11px;
+    color: #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ins-field-batch-btn {
+    padding: 4px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+.ins-field-batch-btn:hover {
+    background: #1557b0;
+}
+
 .ins-field-dropdown__footer {
     flex-shrink: 0;
     display: flex;
@@ -1529,4 +1610,25 @@
 }
 .preview-table tr.pv-row-selected td {
     background: rgba(26, 115, 232, 0.04);
+}
+
+/* ===== Summary 合并视图 ===== */
+.preview-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 12px 0;
+}
+
+.preview-summary__title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8eaed;
+}
+
+.preview-summary__section {
+    /* 每个统计区域独立 */
 }

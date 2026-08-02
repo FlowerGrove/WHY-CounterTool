@@ -79,6 +79,7 @@ function _fillMarkerContextMenuFields(marker) {
     // 根据内置属性启用状态隐藏已禁用的字段
     const builtinFieldMap = {
         mcmTagNumber: 'tagNumber', mcmDcsTag: 'dcsTag', mcmLocation: 'location',
+        mcmTypeFullName: 'typeFullName', mcmRevision: 'revision',
         mcmSize: 'sizeNote', mcmSizeField: 'sizeNote', mcmRange: 'range', mcmRangeField: 'range',
         mcmService: 'service', mcmProduct: 'product', mcmDataSheet: 'dataSheet',
         mcmPid: 'pid', mcmPidRev: 'pidRev', mcmNote: 'note',
@@ -108,6 +109,7 @@ function _fillMarkerContextMenuFields(marker) {
     // ===== 公共字段 =====
     document.getElementById('mcmTagNumber').value = marker.tagNumber || '';
     document.getElementById('mcmLocation').value = marker.location || '';
+    document.getElementById('mcmTypeFullName').value = marker.typeFullName || '';
     document.getElementById('mcmPid').value = marker.pid || '';
     document.getElementById('mcmNote').value = marker.note || '';
 
@@ -172,6 +174,7 @@ function _fillMarkerContextMenuFields(marker) {
 
     // ===== IO 专属字段 =====
     document.getElementById('mcmDcsTag').value = marker.dcsTag || '';
+    document.getElementById('mcmRevision').value = marker.revision || '';
     document.getElementById('mcmPidRev').value = marker.pidRev || '';
     document.getElementById('mcmZeroStatus').value = marker.zeroStatus || '';
     document.getElementById('mcmOneStatus').value = marker.oneStatus || '';
@@ -724,6 +727,7 @@ function saveMarkerContextMenu() {
     const tag = document.getElementById('mcmTagNumber').value;
     apply('tagNumber', tag);
     apply('location', document.getElementById('mcmLocation').value);
+    apply('typeFullName', document.getElementById('mcmTypeFullName').value);
 
     // 口径：下拉 / 主框 / 次框 → 拼接为 sizeNote
     // 存储格式：'2'（同径）或 '2x3'（异径），不带引号
@@ -750,6 +754,7 @@ function saveMarkerContextMenu() {
 
     // ===== IO List 专属字段 =====
     apply('dcsTag', document.getElementById('mcmDcsTag').value);
+    apply('revision', document.getElementById('mcmRevision').value);
     apply('pidRev', document.getElementById('mcmPidRev').value);
     apply('ioType', document.getElementById('mcmIoType').value);
     apply('signalType', document.getElementById('mcmSignalType').value);
@@ -1880,7 +1885,8 @@ function addCustomAttrFromDialog() {
 }
 
 // 属性管理对话框事件
-document.getElementById('previewManageAttrsBtn').addEventListener('click', openCustomAttrManage);
+const attrsBtn = document.getElementById('previewManageAttrsBtn');
+if (attrsBtn) attrsBtn.addEventListener('click', openCustomAttrManage);
 document.getElementById('cfAttrClose').addEventListener('click', closeCustomAttrManage);
 document.getElementById('cfAttrCancel').addEventListener('click', closeCustomAttrManage);
 document.getElementById('cfAttrAdd').addEventListener('click', addCustomAttrFromDialog);

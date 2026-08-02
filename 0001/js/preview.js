@@ -4,7 +4,7 @@
  * 功能概述：
  * 直接读取主页内存中的 markers/documents/markerTypes 数据，渲染为多工作表预览表格。
  * 不依赖 localStorage 中转，数据永远是当前最新状态。
- * 支持按文件汇总、按类型汇总、详细列表、IO List、INS List、MTO口径汇总等视图，
+ * 支持汇总视图（Summary）、详细列表、IO List、INS List等视图，
  * 以及自定义表格、数据流图、单元格编辑、批量编辑等功能。
  *
  * @module preview
@@ -76,140 +76,7 @@ function pvRow(cells, cls) {
 // Process Connection 拼接：复用 utils.js 的 buildProcessConnection，保证与 Excel 导出一致
 const pvBuildConnection = buildProcessConnection;
 
-/**
- * 渲染 Sheet 1: By File — 按文件分组汇总（多页单文档时按页分组）
- * 输出到 pvTable-byFile 表格元素
- */
-function pvRenderByFile() {
-    const table = document.getElementById('pvTable-byFile');
-    const isSingleMultiPageDoc =
-        documents.length === 1 && documents[0] && documents[0].pageCount > 1;
 
-    let html = '';
-    if (isSingleMultiPageDoc) {
-        html = `<thead><tr><th>Page</th><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>`;
-        const doc = documents[0];
-        html += pvRow(
-            `<td class="row-title">📄 ${pvEscape(doc.fileName)}</td><td></td><td></td><td class="cell-number">${markers.length} markers</td>`,
-            'row-title'
-        );
-        html += pvRow('<td colspan="4"></td>');
-
-        const byPage = new Map();
-        for (const m of markers) {
-            if (!byPage.has(m.pageIndex)) byPage.set(m.pageIndex, []);
-            byPage.get(m.pageIndex).push(m);
-        }
-        for (const pageIndex of [...byPage.keys()].sort((a, b) => a - b)) {
-            const pageMarkers = byPage.get(pageIndex);
-            html += pvRow(
-                `<td class="row-title">Page ${pageIndex}</td><td></td><td></td><td class="cell-number">${pageMarkers.length}</td>`,
-                'row-title'
-            );
-            const typeCounts = new Map();
-            for (const m of pageMarkers) {
-                if (!typeCounts.has(m.typeId)) {
-                    typeCounts.set(m.typeId, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
-                }
-                typeCounts.get(m.typeId).count++;
-                if (m.typeFullName) typeCounts.get(m.typeId).fullName = m.typeFullName;
-            }
-            for (const [, tc] of typeCounts) {
-                html += pvRow(`<td></td>${pvCell(tc.name)}${pvCell(tc.fullName)}<td class="cell-number">${tc.count}</td>`);
-            }
-            html += pvRow('<td colspan="4"></td>');
-        }
-    } else {
-        html = `<thead><tr><th>File</th><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>`;
-        const byDoc = new Map();
-        for (const m of markers) {
-            if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
-            byDoc.get(m.docId).push(m);
-        }
-        const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
-        for (const id of byDoc.keys()) {
-            if (!docOrder.includes(id)) docOrder.push(id);
-        }
-        for (const docId of docOrder) {
-            const list = byDoc.get(docId);
-            const fileName = getDocFileName(docId);
-            const counts = new Map();
-            for (const m of list) {
-                const key = m.typeId || 'other';
-                if (!counts.has(key)) {
-                    counts.set(key, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
-                }
-                const entry = counts.get(key);
-                entry.count++;
-                if (m.typeFullName) entry.fullName = m.typeFullName;
-            }
-            const typeRows = [];
-            for (const t of markerTypes) {
-                const c = counts.get(t.id);
-                if (c) typeRows.push({ name: t.name, fullName: c.fullName || t.fullName || '', count: c.count });
-            }
-            for (const [id, c] of counts) {
-                if (!markerTypes.some(t => t.id === id)) {
-                    typeRows.push({ name: c.name || id, fullName: c.fullName || '', count: c.count });
-                }
-            }
-            typeRows.forEach((r, idx) => {
-                html += pvRow(
-                    (idx === 0 ? `<td class="row-title">${pvEscape(fileName)}</td>` : '<td></td>') +
-                    pvCell(r.name) + pvCell(r.fullName) + `<td class="cell-number">${r.count}</td>`
-                );
-            });
-            html += pvRow(
-                `<td></td><td class="row-subtotal">Subtotal</td><td></td><td class="cell-number row-subtotal">${list.length}</td>`,
-                'row-subtotal'
-            );
-            html += pvRow('<td colspan="4"></td>');
-        }
-    }
-    html += pvRow(
-        `<td class="row-grand">Grand Total</td><td></td><td></td><td class="cell-number row-grand">${markers.length}</td>`,
-        'row-grand'
-    );
-    html += '</tbody>';
-    table.innerHTML = html;
-}
-
-/**
- * 渲染 Sheet 2: Type Summary — 按标记类型统计数量
- * 输出到 pvTable-typeSummary 表格元素
- */
-function pvRenderTypeSummary() {
-    const table = document.getElementById('pvTable-typeSummary');
-    const typeCounts = new Map();
-    for (const m of markers) {
-        const key = m.typeId || 'other';
-        if (!typeCounts.has(key)) {
-            typeCounts.set(key, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
-        }
-        const entry = typeCounts.get(key);
-        entry.count++;
-        if (m.typeFullName) entry.fullName = m.typeFullName;
-    }
-
-    let html = `<thead><tr><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>`;
-    for (const t of markerTypes) {
-        const c = typeCounts.get(t.id);
-        if (!c) continue;
-        html += pvRow(
-            pvCell(c.name || t.name) + pvCell(c.fullName || t.fullName || '') + `<td class="cell-number">${c.count}</td>`
-        );
-    }
-    for (const [id, c] of typeCounts) {
-        if (markerTypes.some(t => t.id === id)) continue;
-        html += pvRow(pvCell(c.name || id) + pvCell(c.fullName || '') + `<td class="cell-number">${c.count}</td>`);
-    }
-    html += pvRow(
-        `<td class="row-grand">Total</td><td></td><td class="cell-number row-grand">${markers.length}</td>`,
-        'row-grand'
-    );
-    html += '</tbody>';
-    table.innerHTML = html;
-}
 
 /**
  * 对 markers 进行排序：按创建顺序（_globalOrder）
@@ -249,12 +116,13 @@ function pvRenderIOList() {
     const cols = getSheetColumnsWithCustom('ioList');
 
     let html = pvBuildIOListHeader(cols) + '<tbody>';
-    sorted.forEach((m, i) => {
-        const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
-        html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>', _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
-    });
     if (sorted.length === 0) {
-        html = `<thead><tr><th colspan="${cols.length + 2}">IO List</th></tr></thead><tbody><tr><td colspan="${cols.length + 2}" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr></tbody>`;
+        html += `<tr><td colspan="${cols.length + 2}" class="cell-empty" style="padding:24px;">无 IO List 标记（请在左侧勾选需要导出的类型）</td></tr>`;
+    } else {
+        sorted.forEach((m, i) => {
+            const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
+            html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>', _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
+        });
     }
     html += '</tbody>';
     table.innerHTML = html;
@@ -283,97 +151,7 @@ function pvRenderInsList() {
     table.innerHTML = html;
 }
 
-/**
- * 渲染 Sheet 6: Material Take-off（口径汇总）— 按 sizeNote 分组统计 IO/INS 数量
- * 输出到 pvTable-mto 表格元素
- */
-function pvRenderMTO() {
-    addLog('生成MTO口径汇总');
-    const table = document.getElementById('pvTable-mto');
-    if (!table) return;
 
-    // 按 sizeNote 分组统计
-    const sizeMap = new Map();
-    for (const m of markers) {
-        const size = (m.sizeNote || m.size || '').trim();
-        const key = size || '(未指定)';
-        if (!sizeMap.has(key)) {
-            sizeMap.set(key, { ioCount: 0, insCount: 0, types: new Map() });
-        }
-        const entry = sizeMap.get(key);
-        if (isTypeInIOList(m.typeId)) {
-            entry.ioCount++;
-        } else {
-            entry.insCount++;
-        }
-        const typeName = m.typeName || '?';
-        entry.types.set(typeName, (entry.types.get(typeName) || 0) + 1);
-    }
-
-    // 按口径排序（智能排序：先数字后字母，未指定放最后）
-    const sorted = [...sizeMap.entries()].sort((a, b) => {
-        if (a[0] === '(未指定)') return 1;
-        if (b[0] === '(未指定)') return -1;
-        // 提取数字部分比较
-        const na = parseFloat(a[0]);
-        const nb = parseFloat(b[0]);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return a[0].localeCompare(b[0]);
-    });
-
-    // 收集所有类型名
-    const allTypes = new Set();
-    for (const [, entry] of sizeMap) {
-        for (const t of entry.types.keys()) allTypes.add(t);
-    }
-    const typeOrder = [...allTypes].sort();
-
-    let html = '<thead><tr>';
-    html += '<th>口径</th>';
-    html += '<th>IO 数量</th>';
-    html += '<th>INS 数量</th>';
-    html += '<th>合计</th>';
-    for (const t of typeOrder) {
-        html += `<th>${pvEscape(t)}</th>`;
-    }
-    html += '</tr></thead><tbody>';
-
-    let totalIO = 0, totalINS = 0;
-    for (const [size, entry] of sorted) {
-        const total = entry.ioCount + entry.insCount;
-        totalIO += entry.ioCount;
-        totalINS += entry.insCount;
-        html += '<tr>';
-        html += `<td class="row-title">${pvEscape(size)}</td>`;
-        html += `<td class="cell-number">${entry.ioCount || ''}</td>`;
-        html += `<td class="cell-number">${entry.insCount || ''}</td>`;
-        html += `<td class="cell-number" style="font-weight:700;">${total}</td>`;
-        for (const t of typeOrder) {
-            const cnt = entry.types.get(t) || 0;
-            html += `<td class="cell-number">${cnt || ''}</td>`;
-        }
-        html += '</tr>';
-    }
-
-    // 合计行
-    const grandTotal = totalIO + totalINS;
-    html += '<tr class="row-grand">';
-    html += '<td>合计</td>';
-    html += `<td class="cell-number">${totalIO}</td>`;
-    html += `<td class="cell-number">${totalINS}</td>`;
-    html += `<td class="cell-number">${grandTotal}</td>`;
-    for (const t of typeOrder) {
-        let typeTotal = 0;
-        for (const [, entry] of sizeMap) {
-            typeTotal += entry.types.get(t) || 0;
-        }
-        html += `<td class="cell-number">${typeTotal || ''}</td>`;
-    }
-    html += '</tr>';
-
-    html += '</tbody>';
-    table.innerHTML = html;
-}
 
 /**
  * 根据 ID 查找 marker 对象
@@ -502,10 +280,28 @@ function pvPopulateBatchFields(sheetName) {
     const applyBtn = document.getElementById('pvBatchApply');
     if (!fieldSelect) return;
 
-    // 映射 UI sheet 名称到列定义 key
-    const sheetKey = sheetName === 'detail' ? 'detailList' : sheetName;
-    const cols = getSheetColumnsWithCustom(sheetKey);
-    const editableCols = cols.filter(c => c.editable && c.field);
+    let editableCols;
+    if (sheetName && sheetName.startsWith('ct_')) {
+        // 自定义表格
+        const tableId = sheetName.slice(3);
+        const ct = getCustomTables().find(t => t.id === tableId);
+        if (ct) {
+            editableCols = ct.columns
+                .filter(c => c.bindField)
+                .map(c => ({
+                    field: c.bindField,
+                    header: c.label,
+                    isCustomAttr: c.bindField.startsWith('ca_'),
+                }));
+        } else {
+            editableCols = [];
+        }
+    } else {
+        // 内置表格
+        const sheetKey = sheetName === 'detail' ? 'detailList' : sheetName;
+        const cols = getSheetColumnsWithCustom(sheetKey);
+        editableCols = cols.filter(c => c.editable && c.field);
+    }
 
     let html = '<option value="">选择字段…</option>';
     for (const c of editableCols) {
@@ -600,7 +396,13 @@ function pvCancelBatch() {
  */
 function pvRerenderCurrentSheet() {
     const renderer = pvSheetRenderers[_pvBatchCurrentSheet];
-    if (renderer) renderer();
+    if (renderer) {
+        renderer();
+    } else if (_pvBatchCurrentSheet && _pvBatchCurrentSheet.startsWith('ct_')) {
+        // 自定义表格
+        const tableId = _pvBatchCurrentSheet.slice(3);
+        renderCustomTable(tableId);
+    }
 }
 
 /**
@@ -621,6 +423,9 @@ function pvSetupBatchCheckboxes() {
                 markersInSheet = markers.filter(m => isTypeInIOList(m.typeId));
             } else if (sheetName === 'insList') {
                 markersInSheet = markers.filter(m => !isTypeInIOList(m.typeId));
+            } else if (sheetName && sheetName.startsWith('ct_')) {
+                // 自定义表格：所有 markers
+                markersInSheet = markers;
             } else {
                 markersInSheet = markers;
             }
@@ -723,10 +528,13 @@ function pvLocateMarker(m) {
 }
 
 /**
- * 在 Detail 表格上设置定位按钮的点击事件委托
+ * 在 preview-body 上设置定位按钮的点击事件委托（覆盖所有表格）
  */
 function pvSetupLocateButtons() {
-    document.getElementById('pvTable-detail').addEventListener('click', (e) => {
+    const body = document.querySelector('.preview-body');
+    if (!body || body._locateDelegated) return;
+    body._locateDelegated = true;
+    body.addEventListener('click', (e) => {
         const btn = e.target.closest('.pv-locate-btn');
         if (!btn) return;
         const marker = pvFindMarkerById(btn.dataset.mid);
@@ -752,15 +560,146 @@ function pvSetupAddColButtons() {
 }
 
 /**
+ * 渲染 Summary：合并 By File 和 Type Summary，上下分区显示
+ * - 上半部分：按文件/页分组汇总
+ * - 下半部分：按仪表类型统计
+ */
+function pvRenderSummary() {
+    // 上半部分：按文件汇总
+    const fileEl = document.getElementById('pvSummaryFile');
+    if (fileEl) {
+        let html = '<h3 class="preview-summary__title">By File</h3>';
+        const isSingleMultiPageDoc = documents.length === 1 && documents[0] && documents[0].pageCount > 1;
+
+        if (isSingleMultiPageDoc) {
+            html += '<table class="preview-table"><thead><tr><th>Page</th><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>';
+            const doc = documents[0];
+            html += pvRow(
+                `<td class="row-title">${pvEscape(doc.fileName)}</td><td></td><td></td><td class="cell-number">${markers.length} markers</td>`,
+                'row-title'
+            );
+
+            const byPage = new Map();
+            for (const m of markers) {
+                if (!byPage.has(m.pageIndex)) byPage.set(m.pageIndex, []);
+                byPage.get(m.pageIndex).push(m);
+            }
+            for (const pageIndex of [...byPage.keys()].sort((a, b) => a - b)) {
+                const pageMarkers = byPage.get(pageIndex);
+                html += pvRow(
+                    `<td class="row-title">Page ${pageIndex}</td><td></td><td></td><td class="cell-number">${pageMarkers.length}</td>`,
+                    'row-title'
+                );
+                const typeCounts = new Map();
+                for (const m of pageMarkers) {
+                    if (!typeCounts.has(m.typeId)) {
+                        typeCounts.set(m.typeId, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
+                    }
+                    typeCounts.get(m.typeId).count++;
+                    if (m.typeFullName) typeCounts.get(m.typeId).fullName = m.typeFullName;
+                }
+                for (const [, tc] of typeCounts) {
+                    html += pvRow(`<td></td>${pvCell(tc.name)}${pvCell(tc.fullName)}<td class="cell-number">${tc.count}</td>`);
+                }
+            }
+        } else {
+            html += '<table class="preview-table"><thead><tr><th>File</th><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>';
+            const byDoc = new Map();
+            for (const m of markers) {
+                if (!byDoc.has(m.docId)) byDoc.set(m.docId, []);
+                byDoc.get(m.docId).push(m);
+            }
+            const docOrder = documents.map(d => d.id).filter(id => byDoc.has(id));
+            for (const id of byDoc.keys()) {
+                if (!docOrder.includes(id)) docOrder.push(id);
+            }
+            for (const docId of docOrder) {
+                const list = byDoc.get(docId);
+                const fileName = getDocFileName(docId);
+                const counts = new Map();
+                for (const m of list) {
+                    const key = m.typeId || 'other';
+                    if (!counts.has(key)) {
+                        counts.set(key, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
+                    }
+                    const entry = counts.get(key);
+                    entry.count++;
+                    if (m.typeFullName) entry.fullName = m.typeFullName;
+                }
+                const typeRows = [];
+                for (const t of markerTypes) {
+                    const c = counts.get(t.id);
+                    if (c) typeRows.push({ name: t.name, fullName: c.fullName || t.fullName || '', count: c.count });
+                }
+                for (const [id, c] of counts) {
+                    if (!markerTypes.some(t => t.id === id)) {
+                        typeRows.push({ name: c.name || id, fullName: c.fullName || '', count: c.count });
+                    }
+                }
+                typeRows.forEach((r, idx) => {
+                    html += pvRow(
+                        (idx === 0 ? `<td class="row-title">${pvEscape(fileName)}</td>` : '<td></td>') +
+                        pvCell(r.name) + pvCell(r.fullName) + `<td class="cell-number">${r.count}</td>`
+                    );
+                });
+                html += pvRow(
+                    `<td></td><td class="row-subtotal">Subtotal</td><td></td><td class="cell-number row-subtotal">${list.length}</td>`,
+                    'row-subtotal'
+                );
+            }
+        }
+        html += pvRow(
+            `<td class="row-grand">Grand Total</td><td></td><td></td><td class="cell-number row-grand">${markers.length}</td>`,
+            'row-grand'
+        );
+        html += '</tbody></table>';
+        fileEl.innerHTML = html;
+    }
+
+    // 下半部分：按类型统计
+    const typeEl = document.getElementById('pvSummaryType');
+    if (typeEl) {
+        let html = '<h3 class="preview-summary__title">By Type</h3>';
+        const typeCounts = new Map();
+        for (const m of markers) {
+            const key = m.typeId || 'other';
+            if (!typeCounts.has(key)) {
+                typeCounts.set(key, { count: 0, name: m.typeName, fullName: m.typeFullName || '' });
+            }
+            const entry = typeCounts.get(key);
+            entry.count++;
+            if (m.typeFullName) entry.fullName = m.typeFullName;
+        }
+
+        html += '<table class="preview-table"><thead><tr><th>Type</th><th>Description</th><th>Count</th></tr></thead><tbody>';
+        for (const t of markerTypes) {
+            const c = typeCounts.get(t.id);
+            if (!c) continue;
+            html += pvRow(
+                pvCell(c.name || t.name) + pvCell(c.fullName || t.fullName || '') + `<td class="cell-number">${c.count}</td>`
+            );
+        }
+        for (const [id, c] of typeCounts) {
+            if (markerTypes.some(t => t.id === id)) continue;
+            html += pvRow(pvCell(c.name || id) + pvCell(c.fullName || '') + `<td class="cell-number">${c.count}</td>`);
+        }
+        html += pvRow(
+            `<td class="row-grand">Total</td><td></td><td class="cell-number row-grand">${markers.length}</td>`,
+            'row-grand'
+        );
+        html += '</tbody></table>';
+        typeEl.innerHTML = html;
+    }
+}
+
+/**
  * 工作表渲染器映射表：sheet 名称 → 渲染函数
  */
 const pvSheetRenderers = {
-    byFile: pvRenderByFile,
-    typeSummary: pvRenderTypeSummary,
+    summary: pvRenderSummary,
     detail: pvRenderDetail,
     ioList: pvRenderIOList,
     insList: pvRenderInsList,
-    mto: pvRenderMTO,
 };
 
 /**
@@ -816,7 +755,7 @@ function pvSetupTabs() {
 
 /**
  * 切换到指定工作表标签
- * @param {string} sheetName - 工作表名称（如 'detail', 'ioList', 'mto' 等）
+ * @param {string} sheetName - 工作表名称（如 'detail', 'summary', 'ioList' 等）
  */
 function pvSwitchToTab(sheetName) {
     addLog('切换预览标签: ' + sheetName);
@@ -826,7 +765,7 @@ function pvSwitchToTab(sheetName) {
     }
     _pvBatchCurrentSheet = sheetName;
 
-    document.querySelectorAll('.preview-tab, [data-sheet].active').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.preview-tab.active, [data-sheet].active').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
 
     const tab = document.querySelector(`[data-sheet="${sheetName}"]`);
@@ -842,9 +781,10 @@ function pvSwitchToTab(sheetName) {
 function pvSwitchToCustomTable(tableId) {
     addLog('切换预览标签: ' + tableId);
     _pvBatchSelected.clear();
+    _pvBatchCurrentSheet = 'ct_' + tableId;
     pvUpdateBatchBar();
 
-    document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.preview-tab.active, [data-sheet].active').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
 
     const tab = document.querySelector(`.preview-tab[data-table="${tableId}"]`);
@@ -878,12 +818,10 @@ function renderPreview() {
 
     renderCustomTabs();
     renderCustomSheets();
-    pvRenderByFile();
-    pvRenderTypeSummary();
+    pvRenderSummary();
     pvRenderDetail();
     pvRenderIOList();
     pvRenderInsList();
-    pvRenderMTO();
     renderAllCustomTables();
     pvSetupAddColButtons();
 
@@ -1089,16 +1027,19 @@ function renderCustomTable(tableId) {
     });
 
     let html = `<thead><tr>
+        <th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="ct_${tableId}" title="全选/取消" /></th>
         <th>S/N</th>
         <th>Tag No.</th>
         ${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}
     </tr></thead><tbody>`;
 
     if (sorted.length === 0) {
-        html += `<tr><td colspan="${cols.length + 2}" class="cell-empty" style="padding:24px;">暂无标记数据</td></tr>`;
+        html += `<tr><td colspan="${cols.length + 3}" class="cell-empty" style="padding:24px;">暂无标记数据</td></tr>`;
     } else {
         sorted.forEach((m, i) => {
-            html += '<tr>';
+            const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
+            html += `<tr class="${_pvBatchSelected.has(m.id) ? 'pv-row-selected' : ''}">`;
+            html += `<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>`;
             html += `<td class="cell-number">${i + 1}</td>`;
             html += pvCell(formatMarkerLabel(m), 'cell-number');
             for (const col of cols) {
@@ -2131,6 +2072,10 @@ function pvSetupNewTableDropdown() {
     const addFieldBtn = document.getElementById('newTableAddFieldBtn');
     const cancelBtn = document.getElementById('newTableCancelBtn');
     const createBtn = document.getElementById('newTableCreateBtn');
+    const batchToggle = document.getElementById('newTableBatchToggle');
+    const batchParse = document.getElementById('newTableBatchParse');
+    const batchArea = document.getElementById('newTableBatchArea');
+    const batchInput = document.getElementById('newTableBatchInput');
 
     if (!addBtn || !dropdown) return;
 
@@ -2152,6 +2097,22 @@ function pvSetupNewTableDropdown() {
 
     createBtn.addEventListener('click', () => {
         createOrSaveTable();
+    });
+
+    // 批量导入切换
+    batchToggle.addEventListener('click', () => {
+        const hidden = batchArea.hidden;
+        batchArea.hidden = !hidden;
+        if (!hidden) {
+            batchInput.value = '';
+        } else {
+            setTimeout(() => batchInput.focus(), 50);
+        }
+    });
+
+    // 批量解析
+    batchParse.addEventListener('click', () => {
+        parseBatchFields();
     });
 
     document.addEventListener('click', (e) => {
@@ -2187,6 +2148,64 @@ function pvSetupNewTableDropdown() {
 }
 
 /**
+ * 解析批量粘贴的字段文本，格式：字段名|绑定属性key（每行一个）
+ * 解析成功后自动填充到字段列表，并隐藏批量区域
+ */
+function parseBatchFields() {
+    const input = document.getElementById('newTableBatchInput');
+    const area = document.getElementById('newTableBatchArea');
+    if (!input) return;
+
+    const text = input.value.trim();
+    if (!text) {
+        showToast('请先粘贴字段列表');
+        return;
+    }
+
+    const lines = text.split(/[\n\r]+/).filter(line => line.trim());
+    const bindOptions = getAllBindableFields();
+    const bindKeys = new Set(bindOptions.map(o => o.key));
+
+    const newFields = [];
+    for (const line of lines) {
+        const parts = line.split('|');
+        const label = (parts[0] || '').trim();
+        let bindField = (parts[1] || '').trim();
+
+        if (!label) continue;
+
+        // 验证绑定属性是否存在
+        if (bindField && !bindKeys.has(bindField)) {
+            // 尝试模糊匹配（不区分大小写）
+            const match = bindOptions.find(o => o.key.toLowerCase() === bindField.toLowerCase());
+            if (match) {
+                bindField = match.key;
+            } else {
+                // 不存在的绑定属性，保留为空
+                bindField = '';
+            }
+        }
+
+        newFields.push({ label, bindField });
+    }
+
+    if (newFields.length === 0) {
+        showToast('未识别到有效字段，请检查格式');
+        return;
+    }
+
+    // 替换现有字段列表
+    _newTableFields = newFields;
+    renderNewTableFieldList();
+
+    // 隐藏批量区域，清空输入
+    area.hidden = true;
+    input.value = '';
+
+    showToast(`已导入 ${newFields.length} 个字段`);
+}
+
+/**
  * 打开新建自定义表格下拉面板（重置表单为新建模式）
  */
 function openNewTableDropdown() {
@@ -2198,6 +2217,11 @@ function openNewTableDropdown() {
     document.getElementById('newTableName').value = '表' + (getCustomTables().length + 1);
     document.querySelector('#newTableDropdown .ins-field-dropdown__header span').textContent = '新建自定义表格';
     document.getElementById('newTableCreateBtn').textContent = '创建表格';
+    // 重置批量导入区域
+    const batchArea = document.getElementById('newTableBatchArea');
+    const batchInput = document.getElementById('newTableBatchInput');
+    if (batchArea) batchArea.hidden = true;
+    if (batchInput) batchInput.value = '';
     renderNewTableFieldList();
     dropdown.hidden = false;
 }
@@ -2229,6 +2253,11 @@ function closeNewTableDropdown() {
     const dropdown = document.getElementById('newTableDropdown');
     if (!dropdown) return;
     dropdown.hidden = true;
+    // 重置批量导入区域
+    const batchArea = document.getElementById('newTableBatchArea');
+    const batchInput = document.getElementById('newTableBatchInput');
+    if (batchArea) batchArea.hidden = true;
+    if (batchInput) batchInput.value = '';
     _newTableFields = [];
     _editingTableId = null;
 }
@@ -2241,23 +2270,24 @@ function createOrSaveTable() {
     const tableName = nameInput ? nameInput.value.trim() : '';
     if (!tableName) return;
 
-    // 过滤空字段名
-    const columns = _newTableFields
-        .filter(f => f.label.trim())
-        .map(f => ({
-            key: 'col_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-            label: f.label.trim(),
-            bindField: f.bindField || '',
-        }));
-
-    if (columns.length === 0) return;
-
     if (_editingTableId) {
         addLog('编辑自定义表: ' + tableName);
-        // 编辑模式：更新已有表格
+        // 编辑模式：保留已有列的 key，新列才生成新 key
         const tables = getCustomTables();
         const ct = tables.find(t => t.id === _editingTableId);
         if (ct) {
+            const columns = _newTableFields
+                .filter(f => f.label.trim())
+                .map((f, idx) => {
+                    // 尝试匹配旧列：按索引匹配，保留原有 key
+                    const oldCol = idx < ct.columns.length ? ct.columns[idx] : null;
+                    return {
+                        key: oldCol ? oldCol.key : ('col_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+                        label: f.label.trim(),
+                        bindField: f.bindField || '',
+                    };
+                });
+            if (columns.length === 0) return;
             ct.name = tableName;
             ct.columns = columns;
             saveCustomTables(tables);
@@ -2269,6 +2299,14 @@ function createOrSaveTable() {
     } else {
         addLog('添加自定义表: ' + tableName);
         // 新建模式
+        const columns = _newTableFields
+            .filter(f => f.label.trim())
+            .map(f => ({
+                key: 'col_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                label: f.label.trim(),
+                bindField: f.bindField || '',
+            }));
+        if (columns.length === 0) return;
         const tableId = addCustomTable(tableName, columns);
         closeNewTableDropdown();
         renderCustomTabs();

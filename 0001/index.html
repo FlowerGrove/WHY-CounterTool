@@ -274,9 +274,6 @@
                     <span class="preview-meta" id="pvMeta"></span>
                 </div>
                 <div class="preview-header__right">
-                    <button type="button" class="preview-manage-cols" id="previewManageAttrsBtn" title="管理仪表属性">
-                        <i class="fa-solid fa-tags"></i>
-                    </button>
                     <button type="button" class="preview-manage-cols" id="previewManageColsBtn" title="管理自定义列">
                         <i class="fa-solid fa-columns"></i>
                     </button>
@@ -288,12 +285,10 @@
 
             <div class="preview-tabs-wrap">
                 <nav class="preview-tabs">
-                    <button class="preview-tab active" data-sheet="byFile">By File</button>
-                    <button class="preview-tab" data-sheet="typeSummary">Type Summary</button>
-                    <button class="preview-tab" data-sheet="detail">Detail List</button>
+                    <button class="preview-tab active" data-sheet="detail">Detail List</button>
+                    <button class="preview-tab" data-sheet="summary">Summary</button>
                     <button class="preview-tab" data-sheet="ioList">IO List</button>
                     <button class="preview-tab" data-sheet="insList">INS List</button>
-                    <button class="preview-tab" data-sheet="mto">MTO</button>
                     <span id="customTabsContainer"></span>
                     <button class="preview-tab-add" id="newTableBtn" title="新建自定义表格">+</button>
                 </nav>
@@ -308,6 +303,16 @@
                         <div class="ins-field-dropdown__table-name">
                             <label>表格名称</label>
                             <input type="text" id="newTableName" placeholder="输入表格名称" maxlength="20" value="表1" />
+                        </div>
+                        <button class="ins-field-batch-toggle" id="newTableBatchToggle" type="button">
+                            <i class="fa-solid fa-paste"></i> 批量导入字段
+                        </button>
+                        <div class="ins-field-batch" id="newTableBatchArea" hidden>
+                            <textarea id="newTableBatchInput" placeholder="粘贴字段，每行一个&#10;格式：字段名|绑定属性&#10;&#10;示例：&#10;Location|location&#10;Manufacturer|&#10;Material|&#10;Remarks|note" rows="7" spellcheck="false"></textarea>
+                            <div class="ins-field-batch__actions">
+                                <span class="ins-field-batch__hint">字段名|属性key（|后面为空则不绑定）</span>
+                                <button class="ins-field-batch-btn" id="newTableBatchParse" type="button">解析</button>
+                            </div>
                         </div>
                         <div class="ins-field-dropdown__list-label">字段列表</div>
                         <div class="ins-field-dropdown__list" id="newTableFieldList"></div>
@@ -326,21 +331,18 @@
                     <p>还没有标记，请先在图纸上点击标注</p>
                 </div>
 
-                <section class="preview-sheet" id="pvSheet-byFile">
-                    <div class="preview-scroll">
-                        <table class="preview-table" id="pvTable-byFile"></table>
-                    </div>
-                </section>
-
-                <section class="preview-sheet" id="pvSheet-typeSummary" hidden>
-                    <div class="preview-scroll">
-                        <table class="preview-table" id="pvTable-typeSummary"></table>
-                    </div>
-                </section>
-
-                <section class="preview-sheet" id="pvSheet-detail" hidden>
+                <section class="preview-sheet" id="pvSheet-detail">
                     <div class="preview-scroll">
                         <table class="preview-table" id="pvTable-detail"></table>
+                    </div>
+                </section>
+
+                <section class="preview-sheet" id="pvSheet-summary" hidden>
+                    <div class="preview-scroll">
+                        <div class="preview-summary">
+                            <div class="preview-summary__section" id="pvSummaryFile"></div>
+                            <div class="preview-summary__section" id="pvSummaryType"></div>
+                        </div>
                     </div>
                 </section>
 
@@ -353,12 +355,6 @@
                 <section class="preview-sheet" id="pvSheet-insList" hidden>
                     <div class="preview-scroll">
                         <table class="preview-table" id="pvTable-insList"></table>
-                    </div>
-                </section>
-
-                <section class="preview-sheet" id="pvSheet-mto" hidden>
-                    <div class="preview-scroll">
-                        <table class="preview-table" id="pvTable-mto"></table>
                     </div>
                 </section>
 
@@ -499,6 +495,14 @@
                     <div class="mcm-field" data-menu="both">
                         <label class="mcm-label">Location</label>
                         <input type="text" class="mcm-input" id="mcmLocation" />
+                    </div>
+                    <div class="mcm-field" data-menu="both">
+                        <label class="mcm-label">Instrument Type</label>
+                        <input type="text" class="mcm-input" id="mcmTypeFullName" />
+                    </div>
+                    <div class="mcm-field" data-menu="io">
+                        <label class="mcm-label">Revision No.</label>
+                        <input type="text" class="mcm-input" id="mcmRevision" />
                     </div>
                 </div>
             </div>

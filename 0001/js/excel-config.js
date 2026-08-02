@@ -25,12 +25,12 @@ const EXCEL_COLUMNS_KEY = 'elecPdfMarkerExcelColumns_v1';
 const COLUMN_DEFS = {
   // ===== Detail List =====
   detailList: [
-    { key: 'locate',    header: '',                       width: 5,  type: 'locate',    getter: () => '' },
     { key: 'sn',        header: 'S/N',                    width: 6,  type: 'sn',         getter: (m, i) => i + 1 },
+    { key: 'locate',    header: '',                       width: 5,  type: 'locate',    getter: () => '' },
     { key: 'tagNo',     header: 'Tag No.',                width: 18, type: 'tagNo',      getter: (m) => formatMarkerLabel(m) },
     { key: 'location',  header: 'Location',               width: 20, editable: true,    field: 'location',  getter: (m) => m.location || '' },
-    { key: 'type',      header: 'Instrument Type',        width: 24, getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
-    { key: 'connection',header: 'Process Connection',     width: 20, type: 'connection', getter: (m) => buildProcessConnection(m) },
+    { key: 'type',      header: 'Instrument Type',        width: 24, editable: true, field: 'typeFullName', getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
+    { key: 'connection',header: 'Process Connection',     width: 20, editable: true, field: 'sizeNote', type: 'connection', getter: (m) => buildProcessConnection(m) },
     { key: 'size',      header: 'Size / Calibration Range',width: 24, editable: true,   field: 'range',     getter: (m) => m.range || '' },
     { key: 'service',   header: 'Service',                width: 16, editable: true,    field: 'service',   getter: (m) => m.service || '' },
     { key: 'product',   header: 'Product',                width: 16, editable: true,    field: 'product',   getter: (m) => m.product || '' },
@@ -43,10 +43,11 @@ const COLUMN_DEFS = {
   // ===== INS List =====
   insList: [
     { key: 'sn',        header: 'S/N',                    width: 6,  type: 'sn',         getter: (m, i) => i + 1 },
+    { key: 'locate',    header: '',                       width: 5,  type: 'locate',    getter: () => '' },
     { key: 'tagNo',     header: 'Tag No.',                width: 18, type: 'tagNo',      getter: (m) => formatMarkerLabel(m) },
     { key: 'location',  header: 'Location',               width: 20, editable: true,    field: 'location',  getter: (m) => m.location || '' },
-    { key: 'type',      header: 'Instrument Type',        width: 24, getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
-    { key: 'connection',header: 'Process Connection',     width: 20, type: 'connection', getter: (m) => buildProcessConnection(m) },
+    { key: 'type',      header: 'Instrument Type',        width: 24, editable: true, field: 'typeFullName', getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
+    { key: 'connection',header: 'Process Connection',     width: 20, editable: true, field: 'sizeNote', type: 'connection', getter: (m) => buildProcessConnection(m) },
     { key: 'size',      header: 'Size / Calibration Range',width: 24, editable: true,   field: 'range',     getter: (m) => m.range || '' },
     { key: 'service',   header: 'Service',                width: 16, editable: true,    field: 'service',   getter: (m) => m.service || '' },
     { key: 'product',   header: 'Product',                width: 16, editable: true,    field: 'product',   getter: (m) => m.product || '' },
@@ -58,10 +59,11 @@ const COLUMN_DEFS = {
   // ===== IO List =====
   ioList: [
     { key: 'sn',           header: 'S/N',             header2: 'S/N',             width: 6,  type: 'sn',      getter: (m, i) => i + 1 },
-    { key: 'revision',     header: 'Revision No.',    header2: 'Revision No.',    width: 10, getter: () => '' },
+    { key: 'revision',     header: 'Revision No.',    header2: 'Revision No.',    width: 10, editable: true, field: 'revision',  getter: (m) => m.revision || '' },
     { key: 'dcsTag',       header: 'DCS Tag Number',  header2: 'DCS Tag Number',  width: 16, editable: true, field: 'dcsTag',       getter: (m) => m.dcsTag || '' },
+    { key: 'locate',       header: '',             header2: '',             width: 5,  type: 'locate',   getter: () => '' },
     { key: 'tagNo',        header: 'Instrument Tag No.', header2: 'Instrument Tag No.', width: 18, type: 'tagNo', getter: (m) => formatMarkerLabel(m) },
-    { key: 'desc',         header: 'Signal Description', header2: 'Signal Description', width: 24, getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
+    { key: 'desc',         header: 'Signal Description', header2: 'Signal Description', width: 24, editable: true, field: 'typeFullName', getter: (m) => { const t = getTypeById(m.typeId); return m.typeFullName || (t && t.fullName) || m.typeName || ''; } },
     { key: 'location',     header: 'Equipment',       header2: 'Equipment',       width: 20, editable: true, field: 'location',  getter: (m) => m.location || '' },
     { key: 'pid',          header: 'P & ID Dwg No.',  header2: 'P & ID Dwg No.',  width: 20, editable: true, field: 'pid',       getter: (m) => m.pid || '' },
     { key: 'pidRev',       header: 'P&ID Revision No.', header2: 'P&ID Revision No.', width: 12, editable: true, field: 'pidRev',   getter: (m) => m.pidRev || '' },
@@ -108,9 +110,11 @@ const CUSTOM_FIELDS_KEY = 'elecPdfMarkerCustomFields_v1';
 const ALL_MARKER_ATTRIBUTES = [
   { key: 'tagNumber', label: 'Tag No.',              desc: '仪表位号，由类型缩写 + 编号组成，如 PI0101', group: '标识' },
   { key: 'typeName',  label: 'Instrument Type',       desc: '仪表类型全称，如 Pressure Indicator', group: '标识' },
+  { key: 'typeFullName', label: 'Instrument Type (Full Name)', desc: '仪表类型全称（可自定义）', group: '标识' },
   { key: 'location',  label: 'Location',              desc: '安装位置 / 设备位号', group: '标识' },
   { key: 'pid',       label: 'P & ID Dwg No.',        desc: 'P&ID 图纸编号', group: '标识' },
   { key: 'pidRev',    label: 'P&ID Revision No.',     desc: 'P&ID 图纸版本号', group: '标识' },
+  { key: 'revision',  label: 'Revision No.',          desc: '修订版本号', group: '标识' },
   { key: 'note',      label: 'Remarks',               desc: '备注信息', group: '标识' },
   { key: 'sizeNote',  label: 'Process Connection',    desc: '过程连接口径，如 2" 或 2"x3"', group: '规格' },
   { key: 'range',     label: 'Range / Set Point',     desc: '量程或设定点，如 0~10 Barg', group: '规格' },
@@ -148,6 +152,8 @@ const MARKER_FIELD_OPTIONS = [
   { key: 'dataSheet', label: 'Data Sheet No.' },
   { key: 'pid', label: 'P & ID Dwg No.' },
   { key: 'note', label: 'Remarks' },
+  { key: 'typeFullName', label: 'Instrument Type (Full Name)' },
+  { key: 'revision', label: 'Revision No.' },
   { key: 'dcsTag', label: 'DCS Tag Number' },
   { key: 'ioType', label: 'IO Type' },
   { key: 'signalType', label: 'Signal Type' },
