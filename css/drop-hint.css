@@ -1,0 +1,33 @@
+.drop-hint {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 10;
+    text-align: center;
+    opacity: 0.40;
+    transition: opacity 0.5s ease;
+}
+.drop-hint.hidden {
+    opacity: 0;
+}
+.drop-hint__icon {
+    display: block;
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 12px;
+    color: #888;
+}
+.drop-hint__text {
+    font-size: 15px;
+    color: #555;
+    letter-spacing: 0.04em;
+    font-weight: 450;
+}
+.drop-hint__sub {
+    font-size: 12px;
+    color: #999;
+    margin-top: 6px;
+    letter-spacing: 0.03em;
+}

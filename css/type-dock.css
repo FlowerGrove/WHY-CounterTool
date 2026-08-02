@@ -1,0 +1,374 @@
+.type-dock {
+    position: fixed;
+    top: 50%;
+    left: 14px;
+    transform: translateY(-50%);
+    z-index: 22;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    width: 80px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+    /* dock 自身高度由内容决定，最多不超过视口；主列表+自定义列表分别独立滚动 */
+    max-height: calc(100vh - 100px);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.type-dock.visible {
+    display: flex;
+}
+
+/* --- Header: add button --- */
+.type-dock__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+}
+
+.btn-add-type {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(0, 0, 0, 0.18);
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.btn-add-type:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.06);
+    transform: scale(1.08);
+}
+
+/* --- IO List 类型选择弹窗 --- */
+.io-select-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.io-select-modal[hidden] { display: none; }
+
+.io-select-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+}
+
+.io-select-modal__panel {
+    position: relative;
+    width: 420px;
+    max-width: 90vw;
+    max-height: 70vh;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.io-select-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.io-select-modal__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+.io-select-modal__close {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.15s;
+}
+.io-select-modal__close:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #333;
+}
+
+.io-select-modal__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.io-select-modal__btn {
+    padding: 4px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    background: #fff;
+    color: #555;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.io-select-modal__btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+}
+.io-select-modal__hint {
+    font-size: 11px;
+    color: #aaa;
+    margin-left: auto;
+}
+
+.io-select-modal__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.io-select-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    user-select: none;
+}
+.io-select-item:hover {
+    background: rgba(26, 115, 232, 0.05);
+}
+.io-select-item__checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #ccc;
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.io-select-item--checked .io-select-item__checkbox {
+    background: #1a73e8;
+    border-color: #1a73e8;
+}
+.io-select-item--checked .io-select-item__checkbox::after {
+    content: '';
+    width: 5px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+}
+.io-select-item__code {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    min-width: 50px;
+}
+.io-select-item__name {
+    font-size: 12px;
+    color: #888;
+}
+
+/* 未勾选项折叠切换按钮 */
+.io-select-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    color: #999;
+    font-size: 12px;
+    user-select: none;
+    transition: color 0.15s;
+}
+.io-select-toggle:hover {
+    color: #1a73e8;
+}
+.io-select-toggle i {
+    font-size: 10px;
+}
+
+.io-select-modal__footer {
+    padding: 12px 20px 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    display: flex;
+    justify-content: flex-end;
+}
+.io-select-modal__confirm {
+    padding: 8px 28px;
+    border: none;
+    border-radius: 8px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.io-select-modal__confirm:hover {
+    background: #1557b0;
+}
+
+/* --- Title --- */
+.type-dock__title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #bbb;
+    text-align: center;
+    padding: 6px 0 2px;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+/* --- Chip list (固定高度容器，超过 15 项时内部滚动) --- */
+.type-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px 10px;
+    /* 单个 chip 高度约 30px + gap 3px，15 项约 15*33+16 ≈ 511px */
+    max-height: 511px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 1;
+    /* 隐藏滚动条但保留滚动能力 */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.type-chips::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* --- Individual chip (固定尺寸，禁止压缩) --- */
+.type-chip {
+    border: none;
+    border-radius: 12px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.03);
+    white-space: nowrap;
+    transition: all 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-align: center;
+    line-height: 1.2;
+    display: block;
+    position: relative;
+    overflow: hidden;
+    color: #333;
+    /* 关键：固定高度不压缩，超出由容器滚动处理 */
+    flex-shrink: 0;
+    min-height: 30px;
+}
+
+.type-chip__label {
+    display: inline;
+}
+
+.type-chip__code {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+}
+
+/* --- 自定义类型删除按钮 --- */
+.type-chip__delete {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    width: 14px;
+    height: 14px;
+    line-height: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+.type-chip--custom:hover .type-chip__delete,
+.type-chip:hover .type-chip__delete {
+    opacity: 1;
+}
+.type-chip__delete:hover {
+    background: rgba(220, 20, 20, 0.15);
+    color: #c62828;
+}
+/* 选中态时删除按钮颜色反转 */
+.type-chip.active .type-chip__delete {
+    color: rgba(255, 255, 255, 0.7);
+}
+.type-chip.active .type-chip__delete:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+/* --- Hover state --- */
+.type-chip:hover:not(.active) {
+    background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
+}
+
+/* --- Active state --- */
+.type-chip.active {
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+    transform: scale(1.02);
+}
+
+/* --- Click feedback --- */
+.type-chip:active {
+    transform: scale(0.97);
+}
+
+/* --- Hidden footer (unused) --- */
+.type-dock__footer {
+    display: none;
+}
