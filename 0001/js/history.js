@@ -136,7 +136,15 @@ function redo() {
     } else if (entry.type === 'update') {
         applyHistoryUpdate(entry.marker, entry, false);
     } else if (entry.type === 'bulkUpdate') {
-        applyHistoryBulkUpdate(entry.marker, entry, false);
+        if (entry.markers) {
+            entry.markers.forEach((m, i) => {
+                const changes = entry.perMarkerChanges ? entry.perMarkerChanges[i] : entry.changes;
+                const after = entry.perMarkerAfter ? entry.perMarkerAfter[i] : entry.after;
+                applyHistoryBulkUpdate(m, { changes, after }, false);
+            });
+        } else {
+            applyHistoryBulkUpdate(entry.marker, entry, false);
+        }
     }
     history.push(entry);
     addLog('重做');

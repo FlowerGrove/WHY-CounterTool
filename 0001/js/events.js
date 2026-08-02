@@ -722,7 +722,7 @@ function saveMarkerContextMenu() {
     apply('product', document.getElementById('mcmProduct').value);
     apply('dataSheet', document.getElementById('mcmDataSheet').value);
     apply('pid', document.getElementById('mcmPid').value);
-    apply('note', document.getElementById('mcmNote').value);
+    apply('note', document.getElementById('mcmNote').value, false);
 
     // ===== IO List 专属字段 =====
     apply('dcsTag', document.getElementById('mcmDcsTag').value);
@@ -789,14 +789,11 @@ function saveMarkerContextMenu() {
     document.getElementById('mcmSaveBtn').addEventListener('click', () => {
         saveMarkerContextMenu();
     });
-    // 面板内输入框回车 = 保存，Escape = 关闭
+    // 面板内输入框回车 = 保存
     markerContextMenu.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             saveMarkerContextMenu();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            hideMarkerContextMenu();
         }
     });
     // 口径下拉切换：自定义时显示两个输入框，否则隐藏

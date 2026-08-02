@@ -641,13 +641,7 @@ async function exportExcelCore() {
     });
     styleHeaderRow(detailHdrRow);
 
-    const sorted = [...markers].sort((a, b) => {
-        const fa = getDocFileName(a.docId);
-        const fb = getDocFileName(b.docId);
-        if (fa !== fb) return fa.localeCompare(fb, 'zh');
-        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-        return a.number - b.number;
-    });
+    const sorted = [...markers].sort((a, b) => (a._globalOrder || 0) - (b._globalOrder || 0));
 
     sorted.forEach((m, i) => {
         const row = wsDetail.addRow();

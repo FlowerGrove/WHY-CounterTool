@@ -153,7 +153,7 @@ function restoreMarkers(data) {
                 typeName: md.typeName || typeMatch.name,
                 typeFullName: md.typeFullName || typeMatch.fullName,
                 typeAbbr: md.typeAbbr || typeMatch.abbr,
-                _globalOrder: md._globalOrder || ++_globalOrderCounter,
+                _globalOrder: md._globalOrder ?? ++_globalOrderCounter,
             };
             for (const f of MARKER_OPTIONAL_FIELDS) {
                 const v = md[f];

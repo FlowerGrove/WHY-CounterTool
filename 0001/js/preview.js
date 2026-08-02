@@ -245,13 +245,7 @@ function pvRenderDetail() {
 function pvRenderIOList() {
     const table = document.getElementById('pvTable-ioList');
     const filtered = markers.filter(m => isTypeInIOList(m.typeId));
-    const sorted = [...filtered].sort((a, b) => {
-        const fa = getDocFileName(a.docId);
-        const fb = getDocFileName(b.docId);
-        if (fa !== fb) return fa.localeCompare(fb, 'zh');
-        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-        return (a.number || 0) - (b.number || 0);
-    });
+    const sorted = [...filtered].sort((a, b) => (a._globalOrder || 0) - (b._globalOrder || 0));
     const cols = getSheetColumnsWithCustom('ioList');
 
     let html = pvBuildIOListHeader(cols) + '<tbody>';
@@ -273,13 +267,7 @@ function pvRenderIOList() {
 function pvRenderInsList() {
     const table = document.getElementById('pvTable-insList');
     const insMarkers = markers.filter(m => !isTypeInIOList(m.typeId));
-    const sorted = [...insMarkers].sort((a, b) => {
-        const fa = getDocFileName(a.docId);
-        const fb = getDocFileName(b.docId);
-        if (fa !== fb) return fa.localeCompare(fb, 'zh');
-        if (a.typeName !== b.typeName) return (a.typeName || '').localeCompare(b.typeName || '', 'zh');
-        return (a.number || 0) - (b.number || 0);
-    });
+    const sorted = [...insMarkers].sort((a, b) => (a._globalOrder || 0) - (b._globalOrder || 0));
     const cols = getSheetColumnsWithCustom('insList');
 
     let html = `<thead><tr><th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="insList" title="全选/取消" /></th>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button class="pv-add-col-btn" data-sheet="insList" title="添加自定义列">+</button></th></tr></thead><tbody>`;
@@ -581,8 +569,8 @@ function pvApplyBatch() {
         pushHistory({
             type: 'bulkUpdate',
             markers: changes.map(c => c.marker),
-            changes: Object.fromEntries(changes.map(c => [c.field, c.old])),
-            after: Object.fromEntries(changes.map(c => [c.field, c.after])),
+            perMarkerChanges: changes.map(c => ({ [c.field]: c.old })),
+            perMarkerAfter: changes.map(c => ({ [c.field]: c.after })),
         });
         requestRender();
         scheduleAutosave();
