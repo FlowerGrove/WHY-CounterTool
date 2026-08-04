@@ -321,6 +321,8 @@ function deleteInspectorCustomAttr(key) {
     showToast('已删除属性「' + d.label + '」');
     renderInspector();
     scheduleAutosave();
+    // 若预览已打开，刷新预览表（可能清理了绑定列）
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }
 
 /**

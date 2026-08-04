@@ -127,4 +127,6 @@ function clearAll() {
     clearAutosave();
     pendingRestore = null;
     document.getElementById('sessionBanner').classList.remove('visible');
+    // 若预览已打开，刷新预览表
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }

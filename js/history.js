@@ -120,6 +120,8 @@ function undo() {
     updateUI();
     updateUndoButtonState();
     scheduleAutosave();
+    // 若预览已打开，刷新预览表
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }
 
 /**
@@ -154,6 +156,8 @@ function redo() {
     updateUI();
     updateUndoButtonState();
     scheduleAutosave();
+    // 若预览已打开，刷新预览表
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }
 
 /**
@@ -181,6 +185,8 @@ function deleteMarker(marker) {
     requestRender();
     updateUI();
     scheduleAutosave();
+    // 若预览已打开，刷新预览表
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }
 
 /**

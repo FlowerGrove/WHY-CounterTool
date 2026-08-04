@@ -223,6 +223,13 @@ function updateCustomAttrDef(key, updates) {
 function removeCustomAttrDef(key) {
   const defs = getCustomAttrDefs().filter(d => d.key !== key);
   saveCustomAttrDefs(defs);
+  // 清理引用该属性的列绑定
+  const bindings = getColumnBindings().filter(b => b.bindField !== key);
+  if (bindings.length !== getColumnBindings().length) {
+    saveColumnBindings(bindings);
+    _columnBindings = bindings;
+    addLog('清理绑定列: ' + key);
+  }
   addLog('删除自定义属性: ' + key);
 }
 

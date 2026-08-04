@@ -243,6 +243,8 @@ function saveMarkerContextMenu() {
         pushHistory({ type: 'bulkUpdate', marker, changes, after });
         requestRender();
         scheduleAutosave();
+        // 若预览已打开，刷新预览表
+        if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
     }
 }
 
@@ -625,11 +627,21 @@ function openCustomAttrManage() {
 }
 
 /**
- * 关闭仪表属性管理对话框，刷新预览
+ * 关闭仪表属性管理对话框，刷新预览和 Inspector
  */
 function closeCustomAttrManage() {
     document.getElementById('cfAttrBackdrop').hidden = true;
     renderPreview();
+    refreshInspectorIfOpen();
+}
+
+/**
+ * 刷新 Inspector（如果已打开），供对话框操作后同步
+ */
+function refreshInspectorIfOpen() {
+    if (typeof inspectorPanel !== 'undefined' && inspectorPanel.classList.contains('visible') && typeof inspectorTarget !== 'undefined' && inspectorTarget) {
+        if (typeof renderInspector === 'function') renderInspector();
+    }
 }
 
 /**
@@ -738,6 +750,7 @@ function renderCfAttrList() {
             updateCustomAttrDef(key, { enabled: newEnabled });
             renderCfAttrList();
             renderPreview();
+            refreshInspectorIfOpen();
             showToast(newEnabled ? '已启用「' + d.label + '」' : '已禁用「' + d.label + '」');
         });
     });
@@ -764,6 +777,7 @@ function renderCfAttrList() {
             removeCustomAttrDef(btn.dataset.key);
             renderCfAttrList();
             renderPreview();
+            refreshInspectorIfOpen();
             showToast('已删除自定义属性');
         });
     });
@@ -794,6 +808,7 @@ function addCustomAttrFromDialog() {
     document.getElementById('cfAttrDesc').value = '';
     renderCfAttrList();
     renderPreview();
+    refreshInspectorIfOpen();
     showToast('已添加自定义属性「' + label + '」');
 }
 
