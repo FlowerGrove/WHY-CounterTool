@@ -227,16 +227,9 @@
     flex-shrink: 0;
     gap: 6px;
 }
-.inspector-nav {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
 .inspector-nav-info {
     font-size: 10px;
     color: #999;
-    min-width: 48px;
-    text-align: center;
 }
 .inspector-btn {
     height: 26px;

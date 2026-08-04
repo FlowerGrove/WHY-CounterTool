@@ -612,6 +612,8 @@ function renderPreview() {
  */
 function openPreview() {
     addLog('打开预览窗口');
+    // 关闭 Inspector 避免遮挡预览窗口
+    if (typeof closeInspector === 'function') closeInspector();
     renderPreview();
     document.getElementById('previewOverlay').hidden = false;
 }
@@ -625,6 +627,10 @@ function closePreview() {
     _pvBatchSelected.clear();
     const bar = document.getElementById('pvBatchBar');
     if (bar) bar.hidden = true;
+    // 清除选中状态
+    if (typeof selectedMarker !== 'undefined') selectedMarker = null;
+    if (typeof inspectorTarget !== 'undefined') inspectorTarget = null;
+    requestRender();
 }
 
 /**

@@ -301,14 +301,6 @@ function inspectorDeleteCurrent() {
     // 关闭按钮
     document.getElementById('inspectorCloseBtn').addEventListener('click', closeInspector);
 
-    // 上一个/下一个（header 按钮）
-    document.getElementById('inspectorPrevBtn').addEventListener('click', () => inspectorNavigateTo(-1));
-    document.getElementById('inspectorNextBtn').addEventListener('click', () => inspectorNavigateTo(1));
-
-    // 上一个/下一个（footer 按钮）
-    document.getElementById('inspectorFooterPrev').addEventListener('click', () => inspectorNavigateTo(-1));
-    document.getElementById('inspectorFooterNext').addEventListener('click', () => inspectorNavigateTo(1));
-
     // 删除按钮
     document.getElementById('inspectorDeleteBtn').addEventListener('click', inspectorDeleteCurrent);
 
