@@ -89,17 +89,19 @@ function pvSortedMarkers() {
 }
 
 /**
- * 渲染 Sheet 3: Detail List — 配置驱动的详细列表（含自定义列）
+ * 渲染 Sheet 3: Detail List — 配置驱动的详细列表（含自定义列和绑定列）
  * 输出到 pvTable-detail 表格元素
  */
 function pvRenderDetail() {
     const table = document.getElementById('pvTable-detail');
     const sorted = pvSortedMarkers();
     const cols = getSheetColumnsWithCustom('detailList');
-    let html = `<thead><tr><th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="detail" title="全选/取消" /></th>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}</tr></thead><tbody>`;
+    const boundCols = getBoundColumnDefs();
+    let html = `<thead><tr><th class="pv-check-col"><input type="checkbox" class="pv-check-all" data-sheet="detail" title="全选/取消" /></th>${cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('')}<th class="th-add-col"><button type="button" class="pv-add-col-btn" id="pvAddColBtn" title="添加绑定列">+</button></th></tr></thead><tbody>`;
     sorted.forEach((m, i) => {
         const checked = _pvBatchSelected.has(m.id) ? ' checked' : '';
-        html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cols.map(c => pvRenderCellByCol(c, m, i)).join(''), _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
+        const cells = cols.map(c => pvRenderCellByCol(c, m, i)).join('') + '<td class="td-add-col"></td>';
+        html += pvRow(`<td class="pv-check-col"><input type="checkbox" class="pv-check-row" data-mid="${m.id}"${checked} /></td>` + cells, _pvBatchSelected.has(m.id) ? 'pv-row-selected' : '');
     });
     html += '</tbody>';
     table.innerHTML = html;
@@ -627,10 +629,227 @@ function closePreview() {
     _pvBatchSelected.clear();
     const bar = document.getElementById('pvBatchBar');
     if (bar) bar.hidden = true;
+    // 关闭可能打开的绑定对话框
+    const bindBackdrop = document.getElementById('cfBindBackdrop');
+    const manageBackdrop = document.getElementById('cfBindManageBackdrop');
+    if (bindBackdrop) bindBackdrop.hidden = true;
+    if (manageBackdrop) manageBackdrop.hidden = true;
     // 清除选中状态
     if (typeof selectedMarker !== 'undefined') selectedMarker = null;
     if (typeof inspectorTarget !== 'undefined') inspectorTarget = null;
     requestRender();
+}
+
+/**
+ * 设置列绑定功能：+ 按钮 → 绑定对话框 → 管理对话框
+ * 使用事件委托在 preview-body 上监听 + 按钮点击
+ */
+function pvSetupColumnBinding() {
+    const body = document.querySelector('.preview-body');
+    if (!body || body._colBindingDelegated) return;
+    body._colBindingDelegated = true;
+
+    // + 按钮点击 → 打开绑定对话框
+    body.addEventListener('click', (e) => {
+        const btn = e.target.closest('#pvAddColBtn');
+        if (!btn) return;
+        pvOpenBindDialog();
+    });
+
+    // ===== 绑定对话框事件 =====
+    const bindBackdrop = document.getElementById('cfBindBackdrop');
+    const bindName = document.getElementById('cfBindName');
+    const bindField = document.getElementById('cfBindField');
+    const bindConfirm = document.getElementById('cfBindConfirm');
+    const bindCancel = document.getElementById('cfBindCancel');
+    const bindClose = document.getElementById('cfBindClose');
+
+    if (bindClose) bindClose.addEventListener('click', pvCloseBindDialog);
+    if (bindCancel) bindCancel.addEventListener('click', pvCloseBindDialog);
+    if (bindBackdrop) bindBackdrop.addEventListener('click', (e) => {
+        if (e.target === bindBackdrop) pvCloseBindDialog();
+    });
+
+    // 绑定对话框内 Enter 键提交
+    if (bindName) bindName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (bindConfirm) bindConfirm.click();
+        }
+    });
+    if (bindField) bindField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (bindConfirm) bindConfirm.click();
+        }
+    });
+
+    if (bindConfirm) bindConfirm.addEventListener('click', () => {
+        const name = bindName ? bindName.value.trim() : '';
+        const field = bindField ? bindField.value : '';
+        if (!name) { showToast('请输入列名'); return; }
+        if (!field) { showToast('请选择绑定属性'); return; }
+        // 重名校验
+        const existing = getColumnBindings();
+        if (existing.some(b => b.name === name)) {
+            showToast('列名已存在');
+            return;
+        }
+        addColumnBinding(name, field);
+        pvCloseBindDialog();
+        pvRerenderCurrentSheet();
+        showToast('已添加列「' + name + '」');
+    });
+
+    // ===== 管理对话框事件 =====
+    const manageBtn = document.getElementById('pvManageColsBtn');
+    const manageBackdrop = document.getElementById('cfBindManageBackdrop');
+    const manageClose = document.getElementById('cfBindManageClose');
+
+    if (manageBtn) manageBtn.addEventListener('click', pvOpenManageDialog);
+    if (manageClose) manageClose.addEventListener('click', pvCloseManageDialog);
+    if (manageBackdrop) manageBackdrop.addEventListener('click', (e) => {
+        if (e.target === manageBackdrop) pvCloseManageDialog();
+    });
+
+    // 管理列表内的事件委托
+    const manageList = document.getElementById('cfBindManageList');
+    if (manageList) {
+        manageList.addEventListener('click', (e) => {
+            const delBtn = e.target.closest('.cf-manage-item-del');
+            if (delBtn) {
+                const id = delBtn.dataset.bindingId;
+                if (id) {
+                    removeColumnBinding(id);
+                    pvRerenderCurrentSheet();
+                    pvRenderManageList();
+                    showToast('已删除绑定列');
+                }
+                return;
+            }
+            const renameBtn = e.target.closest('.cf-manage-item-desc--editable');
+            if (renameBtn) {
+                const id = renameBtn.dataset.bindingId;
+                const bindings = getColumnBindings();
+                const b = bindings.find(x => x.id === id);
+                if (!b) return;
+                pvRenameBinding(id, b.name);
+            }
+        });
+    }
+}
+
+/**
+ * 填充绑定对话框的字段下拉选项
+ */
+function pvPopulateBindFields() {
+    const select = document.getElementById('cfBindField');
+    if (!select) return;
+    const fields = getAllBindableFields();
+    let html = '<option value="">选择属性…</option>';
+    for (const f of fields) {
+        html += `<option value="${pvEscape(f.key)}">${pvEscape(f.label)}</option>`;
+    }
+    select.innerHTML = html;
+}
+
+/**
+ * 打开列绑定对话框
+ */
+function pvOpenBindDialog() {
+    pvPopulateBindFields();
+    const backdrop = document.getElementById('cfBindBackdrop');
+    const nameInput = document.getElementById('cfBindName');
+    if (backdrop) backdrop.hidden = false;
+    if (nameInput) { nameInput.value = ''; setTimeout(() => nameInput.focus(), 100); }
+    const fieldSelect = document.getElementById('cfBindField');
+    if (fieldSelect) fieldSelect.value = '';
+}
+
+/**
+ * 关闭列绑定对话框
+ */
+function pvCloseBindDialog() {
+    const backdrop = document.getElementById('cfBindBackdrop');
+    if (backdrop) backdrop.hidden = true;
+}
+
+/**
+ * 渲染管理对话框中的绑定列表
+ */
+function pvRenderManageList() {
+    const list = document.getElementById('cfBindManageList');
+    if (!list) return;
+    const bindings = getColumnBindings();
+    if (bindings.length === 0) {
+        list.innerHTML = '<div class="cf-manage-empty">暂无绑定列，点击表格头部的 + 按钮添加</div>';
+        return;
+    }
+    let html = '';
+    for (const b of bindings) {
+        let fieldLabel = b.bindField || '未绑定';
+        const builtin = ALL_MARKER_ATTRIBUTES.find(a => a.key === b.bindField);
+        if (builtin) {
+            fieldLabel = builtin.label + ' (内置)';
+        } else {
+            const defs = getCustomAttrDefs();
+            const ca = defs.find(d => d.key === b.bindField);
+            if (ca) fieldLabel = ca.label + ' (自定义)';
+        }
+        html += '<div class="cf-manage-item">';
+        html += '<span class="cf-manage-item-label">' + pvEscape(b.name) + '</span>';
+        html += '<span class="cf-manage-item-desc cf-manage-item-desc--editable" data-binding-id="' + b.id + '" title="点击重命名">' + pvEscape(fieldLabel) + '</span>';
+        html += '<button class="cf-manage-item-del" data-binding-id="' + b.id + '" title="删除绑定"><i class="fa-solid fa-trash"></i></button>';
+        html += '</div>';
+    }
+    list.innerHTML = html;
+}
+
+/**
+ * 打开管理对话框
+ */
+function pvOpenManageDialog() {
+    pvRenderManageList();
+    const backdrop = document.getElementById('cfBindManageBackdrop');
+    if (backdrop) backdrop.hidden = false;
+}
+
+/**
+ * 关闭管理对话框
+ */
+function pvCloseManageDialog() {
+    const backdrop = document.getElementById('cfBindManageBackdrop');
+    if (backdrop) backdrop.hidden = true;
+}
+
+/**
+ * 重命名绑定列
+ * @param {string} id - 绑定 id
+ * @param {string} currentName - 当前列名
+ */
+async function pvRenameBinding(id, currentName) {
+    const newName = await showPromptDialog('重命名列', currentName, '新列名');
+    if (newName === null || newName.trim() === '') return;
+    const trimmed = newName.trim();
+    if (trimmed === currentName) return;
+    const bindings = getColumnBindings();
+    if (bindings.some(b => b.id !== id && b.name === trimmed)) {
+        showToast('列名已存在');
+        return;
+    }
+    updateColumnBinding(id, { name: trimmed });
+    pvRerenderCurrentSheet();
+    pvRenderManageList();
+    showToast('已重命名为「' + trimmed + '」');
+}
+
+/**
+ * 刷新预览（供 Inspector 保存后调用）
+ */
+function pvRefreshPreview() {
+    const overlay = document.getElementById('previewOverlay');
+    if (!overlay || overlay.hidden) return;
+    pvRerenderCurrentSheet();
 }
 
 /**
@@ -641,6 +860,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pvSetupEditableTables();
     pvSetupLocateButtons();
     pvSetupBatchCheckboxes();
+    pvSetupColumnBinding();
 
     document.getElementById('previewBtn').addEventListener('click', openPreview);
     document.getElementById('previewCloseBtn').addEventListener('click', closePreview);
@@ -658,6 +878,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            // 优先关闭绑定/管理对话框
+            const bindBackdrop = document.getElementById('cfBindBackdrop');
+            const manageBackdrop = document.getElementById('cfBindManageBackdrop');
+            if (manageBackdrop && !manageBackdrop.hidden) {
+                pvCloseManageDialog();
+                return;
+            }
+            if (bindBackdrop && !bindBackdrop.hidden) {
+                pvCloseBindDialog();
+                return;
+            }
             if (previewOverlay && !previewOverlay.hidden) {
                 closePreview();
             }

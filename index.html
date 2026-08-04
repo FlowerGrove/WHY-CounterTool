@@ -127,6 +127,9 @@
                     <span class="preview-meta" id="pvMeta"></span>
                 </div>
                 <div class="preview-header__right">
+                    <button type="button" class="preview-manage-cols" id="pvManageColsBtn" title="管理绑定列">
+                        <i class="fa-solid fa-columns"></i>
+                    </button>
                     <button type="button" class="preview-close" id="previewCloseBtn" title="关闭预览（Esc）">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
@@ -199,6 +202,35 @@
         </div>
     </div>
 
+    <!-- 列绑定对话框（+ 号添加列） -->
+    <div class="cf-dialog-backdrop" id="cfBindBackdrop" hidden>
+        <div class="cf-dialog" role="dialog" aria-label="添加绑定列">
+            <h3>添加绑定列 <button type="button" id="cfBindClose" title="关闭">&times;</button></h3>
+            <div class="cf-dialog-row">
+                <label>列名</label>
+                <input type="text" id="cfBindName" placeholder="如：制造商、供电方式" maxlength="20" />
+            </div>
+            <div class="cf-dialog-row">
+                <label>绑定属性</label>
+                <select id="cfBindField">
+                    <option value="">选择属性…</option>
+                </select>
+            </div>
+            <div class="cf-dialog-actions">
+                <button type="button" class="btn-secondary" id="cfBindCancel">取消</button>
+                <button type="button" class="btn-primary" id="cfBindConfirm">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 列绑定管理对话框 -->
+    <div class="cf-dialog-backdrop" id="cfBindManageBackdrop" hidden>
+        <div class="cf-dialog cf-dialog--wide" role="dialog" aria-label="管理绑定列">
+            <h3>管理绑定列 <button type="button" id="cfBindManageClose" title="关闭">&times;</button></h3>
+            <div class="cf-manage-list" id="cfBindManageList"></div>
+        </div>
+    </div>
+
     <div class="marker-context-menu" id="markerContextMenu">
         <div class="mcm-header">
             <div class="mcm-header-left">
@@ -242,6 +274,10 @@
                 <button class="inspector-btn-icon" id="inspectorCloseBtn" title="关闭 (Esc)"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
+        <nav class="inspector-tabs" id="inspectorTabs">
+            <button class="inspector-tab active" data-tab="builtin">仪表属性</button>
+            <button class="inspector-tab" data-tab="custom">自定义属性</button>
+        </nav>
         <div class="inspector-body" id="inspectorBody">
             <div class="inspector-empty" id="inspectorEmpty">
                 <i class="fa-solid fa-cube"></i>

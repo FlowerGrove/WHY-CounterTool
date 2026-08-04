@@ -136,8 +136,8 @@ function getExcelColumnDefs(sheetName) {
  */
 function getSheetColumnsWithCustom(sheetName) {
   const base = getEnabledColumns(sheetName);
-  const attrs = getCustomAttrColumns();
-  return [...base, ...attrs];
+  const bound = getBoundColumnDefs();
+  return [...base, ...bound];
 }
 
 // ===== 工具函数：获取列的实际索引（Excel 列号） =====
@@ -430,4 +430,112 @@ function removeCustomTable(id) {
   const tables = getCustomTables().filter(t => t.id !== id);
   saveCustomTables(tables);
   addLog('删除自定义表格: ' + id);
+}
+
+// ===== 内置属性定义（供 Inspector 和属性管理使用） =====
+const ALL_MARKER_ATTRIBUTES = [
+    { key: 'tagNumber',  label: 'Tag No.',                group: '标识', desc: '仪表编号' },
+    { key: 'location',   label: 'Location',               group: '标识', desc: '位置' },
+    { key: 'typeFullName', label: 'Instrument Type',      group: '标识', desc: '仪表类型' },
+    { key: 'sizeNote',   label: 'Process Connection',     group: '规格', desc: '过程连接' },
+    { key: 'range',      label: 'Size / Cal. Range',      group: '规格', desc: '尺寸/量程' },
+    { key: 'service',    label: 'Service',                group: '规格', desc: '服务' },
+    { key: 'product',    label: 'Product',                group: '规格', desc: '产品' },
+    { key: 'dataSheet',  label: 'Data Sheet No.',         group: '文档', desc: '数据表编号' },
+    { key: 'pid',        label: 'P & ID Dwg No.',         group: '文档', desc: 'P&ID 图纸号' },
+    { key: 'note',       label: 'Remarks',                group: '文档', desc: '备注' },
+];
+
+const MARKER_FIELD_OPTIONS = ALL_MARKER_ATTRIBUTES.map(a => ({ key: a.key, label: a.label }));
+
+// ===== 列绑定配置 =====
+// 用户在预览表中手动绑定的列，将仪表属性值映射到自定义列
+// 存储结构: [{ id, name, bindField }]
+const COLUMN_BINDINGS_KEY = 'elecPdfMarkerColumnBindings_v1';
+
+let _columnBindings = null;
+
+/**
+ * 获取列绑定列表（从 localStorage 读取，带缓存）
+ * @returns {Array<{id: string, name: string, bindField: string}>}
+ */
+function getColumnBindings() {
+    if (_columnBindings) return _columnBindings;
+    try {
+        _columnBindings = JSON.parse(localStorage.getItem(COLUMN_BINDINGS_KEY)) || [];
+    } catch { _columnBindings = []; }
+    return _columnBindings;
+}
+
+/**
+ * 保存列绑定列表到 localStorage
+ * @param {Array} bindings - 绑定数组
+ */
+function saveColumnBindings(bindings) {
+    _columnBindings = bindings;
+    try { localStorage.setItem(COLUMN_BINDINGS_KEY, JSON.stringify(bindings)); } catch {}
+}
+
+/**
+ * 添加列绑定
+ * @param {string} name - 列名
+ * @param {string} bindField - 绑定的属性字段 key
+ * @returns {string} 新绑定的唯一 id
+ */
+function addColumnBinding(name, bindField) {
+    const bindings = getColumnBindings();
+    const id = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    bindings.push({ id, name, bindField });
+    saveColumnBindings(bindings);
+    addLog('添加列绑定: ' + name + ' → ' + bindField);
+    return id;
+}
+
+/**
+ * 删除列绑定
+ * @param {string} id - 绑定唯一 id
+ */
+function removeColumnBinding(id) {
+    const bindings = getColumnBindings().filter(b => b.id !== id);
+    saveColumnBindings(bindings);
+    addLog('删除列绑定: ' + id);
+}
+
+/**
+ * 更新列绑定
+ * @param {string} id - 绑定唯一 id
+ * @param {Object} updates - 要更新的字段 { name, bindField }
+ */
+function updateColumnBinding(id, updates) {
+    const bindings = getColumnBindings();
+    const idx = bindings.findIndex(b => b.id === id);
+    if (idx === -1) return;
+    Object.assign(bindings[idx], updates);
+    saveColumnBindings(bindings);
+}
+
+/**
+ * 获取绑定的列定义（用于预览表渲染）
+ * @returns {Array} 绑定列定义数组
+ */
+function getBoundColumnDefs() {
+    return getColumnBindings().map(b => {
+        const isCustomAttr = b.bindField && b.bindField.startsWith('ca_');
+        return {
+            key: 'bound_' + b.id,
+            header: b.name,
+            width: 16,
+            editable: true,
+            field: b.bindField,
+            isCustomAttr: isCustomAttr,
+            isBound: true,
+            bindingId: b.id,
+            getter: (m) => {
+                if (!b.bindField) return '';
+                if (isCustomAttr) return getCustomAttrValue(m, b.bindField);
+                const v = m[b.bindField];
+                return (v !== undefined && v !== null) ? String(v) : '';
+            },
+        };
+    });
 }

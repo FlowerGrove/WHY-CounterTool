@@ -7,6 +7,7 @@
 // ===== 状态 =====
 let inspectorTarget = null;  // 当前选中的标记对象
 let inspectorDirty = false;  // 是否有未保存的修改
+let inspectorActiveTab = 'builtin';  // 当前激活的标签页: 'builtin' | 'custom'
 
 // ===== DOM 引用 =====
 const inspectorPanel = document.getElementById('inspectorPanel');
@@ -86,13 +87,14 @@ function toggleInspector() {
 
 /**
  * 渲染 Inspector 面板内容
- * 根据当前 inspectorTarget 填充所有字段
+ * 根据当前 inspectorTarget 和 activeTab 渲染对应字段
  */
 function renderInspector() {
     if (!inspectorTarget) {
         inspectorEmpty.hidden = false;
         inspectorFields.hidden = true;
         inspectorFooter.hidden = true;
+        document.getElementById('inspectorTabs').hidden = true;
         return;
     }
 
@@ -105,14 +107,28 @@ function renderInspector() {
     inspectorIcon.textContent = m.typeAbbr || t.abbr || '';
     inspectorTitle.textContent = formatMarkerLabel(m);
 
-    // Body: 按 section 分组渲染
+    // 显示标签栏
+    document.getElementById('inspectorTabs').hidden = false;
+
+    // 更新标签激活状态
+    document.querySelectorAll('.inspector-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === inspectorActiveTab);
+    });
+
+    let html = '';
+
+    // UID 计数器：内置字段从 01 开始，自定义属性接在后面
+    let uidCounter = 0;
+    function nextUid() { uidCounter++; return String(uidCounter).padStart(2, '0'); }
+
+    // ===== Tab 1: 仪表属性 =====
+    html += '<div class="inspector-tab-panel" data-panel="builtin"' + (inspectorActiveTab !== 'builtin' ? ' hidden' : '') + '>';
+
     const sections = {};
     INSPECTOR_BUILTIN_FIELDS.forEach(f => {
         if (!sections[f.section]) sections[f.section] = [];
         sections[f.section].push(f);
     });
-
-    let html = '';
 
     for (const [sectionName, fields] of Object.entries(sections)) {
         html += '<div class="inspector-section">';
@@ -124,8 +140,12 @@ function renderInspector() {
 
         fields.forEach(f => {
             const val = getInspectorFieldValue(m, f);
+            const uid = nextUid();
             html += '<div class="inspector-field">';
-            html += '<label class="inspector-label">' + pvEscape(f.label) + '</label>';
+            html += '<div class="inspector-label-row">';
+            html += '<span class="inspector-label">' + pvEscape(f.label) + '</span>';
+            html += '<span class="inspector-uid">uid=' + uid + '</span>';
+            html += '</div>';
             if (f.readonly) {
                 html += '<input type="text" class="inspector-input" value="' + pvEscape(val) + '" disabled />';
             } else {
@@ -137,26 +157,37 @@ function renderInspector() {
         html += '</div></div>';
     }
 
-    // 自定义属性 section
+    html += '</div>';
+
+    // ===== Tab 2: 自定义属性 =====
     const customDefs = getCustomAttrDefs().filter(d => d.enabled !== false);
-    if (customDefs.length > 0) {
-        html += '<div class="inspector-section">';
-        html += '<div class="inspector-section-header" data-section="custom">';
-        html += '<span class="inspector-section-arrow"><i class="fa-solid fa-chevron-down"></i></span>';
-        html += '<span>Custom Attributes</span>';
+    html += '<div class="inspector-tab-panel" data-panel="custom"' + (inspectorActiveTab !== 'custom' ? ' hidden' : '') + '>';
+    html += '<div style="padding:6px 10px 10px;">';
+
+    customDefs.forEach(d => {
+        const val = getCustomAttrValue(m, d.key);
+        const uid = nextUid();
+        html += '<div class="inspector-custom-row" data-cattr-key="' + d.key + '">';
+        html += '<div class="inspector-field">';
+        html += '<div class="inspector-label-row">';
+        html += '<span class="inspector-label">' + pvEscape(d.label) + '</span>';
+        html += '<span class="inspector-uid">uid=' + uid + '</span>';
         html += '</div>';
-        html += '<div class="inspector-section-body">';
+        html += '<input type="text" class="inspector-input" data-custom-attr="' + d.key + '" value="' + pvEscape(val) + '" placeholder="-" />';
+        html += '</div>';
+        html += '<div class="inspector-custom-actions">';
+        html += '<button class="inspector-custom-menu-btn" title="更多操作"><i class="fa-solid fa-ellipsis"></i></button>';
+        html += '<div class="inspector-custom-menu">';
+        html += '<button class="inspector-custom-menu-item" data-action="rename">重命名</button>';
+        html += '<button class="inspector-custom-menu-item danger" data-action="delete">删除</button>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+    });
 
-        customDefs.forEach(d => {
-            const val = getCustomAttrValue(m, d.key);
-            html += '<div class="inspector-field">';
-            html += '<label class="inspector-label">' + pvEscape(d.label) + '</label>';
-            html += '<input type="text" class="inspector-input" data-custom-attr="' + d.key + '" value="' + pvEscape(val) + '" placeholder="-" />';
-            html += '</div>';
-        });
+    html += '</div>';
 
-        html += '</div></div>';
-    }
+    html += '</div>';
 
     inspectorFields.innerHTML = html;
     inspectorEmpty.hidden = true;
@@ -189,7 +220,8 @@ function getInspectorFieldValue(marker, fieldDef) {
 function bindInspectorEvents() {
     // Section 折叠/展开
     inspectorFields.querySelectorAll('.inspector-section-header').forEach(hdr => {
-        hdr.onclick = function () {
+        hdr.onclick = function (e) {
+            if (e.target.closest('button')) return;
             this.parentElement.classList.toggle('collapsed');
         };
     });
@@ -205,13 +237,90 @@ function bindInspectorEvents() {
                 saveInspector();
             }
         });
-        // 失去焦点时自动保存
         input.addEventListener('blur', () => {
             if (inspectorDirty) {
                 saveInspector();
             }
         });
     });
+
+    // ---- 自定义属性管理事件 ----
+
+    // ... 菜单按钮
+    inspectorFields.querySelectorAll('.inspector-custom-menu-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = btn.nextElementSibling;
+            const isOpen = menu.classList.contains('visible');
+            // 关闭所有菜单
+            inspectorFields.querySelectorAll('.inspector-custom-menu.visible').forEach(m => m.classList.remove('visible'));
+            if (!isOpen) menu.classList.add('visible');
+        });
+    });
+
+    // 菜单项点击
+    inspectorFields.querySelectorAll('.inspector-custom-menu-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = item.closest('.inspector-custom-row');
+            const key = row ? row.dataset.cattrKey : null;
+            const action = item.dataset.action;
+            if (!key) return;
+            // 关闭所有菜单
+            inspectorFields.querySelectorAll('.inspector-custom-menu.visible').forEach(m => m.classList.remove('visible'));
+            if (action === 'rename') renameInspectorCustomAttr(key);
+            if (action === 'delete') deleteInspectorCustomAttr(key);
+        });
+    });
+}
+
+// 全局点击关闭菜单
+document.addEventListener('click', () => {
+    if (inspectorFields) {
+        inspectorFields.querySelectorAll('.inspector-custom-menu.visible').forEach(m => m.classList.remove('visible'));
+    }
+});
+
+/**
+ * 重命名自定义属性
+ * @param {string} key - 属性 key
+ */
+async function renameInspectorCustomAttr(key) {
+    const defs = getCustomAttrDefs();
+    const d = defs.find(x => x.key === key);
+    if (!d) return;
+    const newLabel = await showPromptDialog('重命名属性', d.label, '新属性名');
+    if (newLabel === null || newLabel.trim() === '') return;
+    const trimmed = newLabel.trim();
+    if (trimmed === d.label) return;
+    // 重名校验
+    if (ALL_MARKER_ATTRIBUTES && ALL_MARKER_ATTRIBUTES.some(a => a.label === trimmed)) {
+        showToast('与内置属性重名');
+        return;
+    }
+    if (defs.some(x => x.key !== key && x.label === trimmed)) {
+        showToast('属性名已存在');
+        return;
+    }
+    updateCustomAttrDef(key, { label: trimmed });
+    showToast('已重命名为「' + trimmed + '」');
+    renderInspector();
+    scheduleAutosave();
+}
+
+/**
+ * 删除自定义属性
+ * @param {string} key - 属性 key
+ */
+function deleteInspectorCustomAttr(key) {
+    const defs = getCustomAttrDefs();
+    const d = defs.find(x => x.key === key);
+    if (!d) return;
+    if (!confirm('确定删除属性「' + d.label + '」？已填入的值将保留在数据中。')) return;
+    removeCustomAttrDef(key);
+    showToast('已删除属性「' + d.label + '」');
+    renderInspector();
+    scheduleAutosave();
 }
 
 /**
@@ -266,6 +375,8 @@ function saveInspector() {
         addLog('Inspector: 修改 ' + updates.length + ' 个字段');
         requestRender();
         scheduleAutosave();
+        // 若预览已打开，刷新预览表
+        if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
         showToast('已保存属性修改');
     }
 
@@ -303,6 +414,18 @@ function inspectorDeleteCurrent() {
 
     // 删除按钮
     document.getElementById('inspectorDeleteBtn').addEventListener('click', inspectorDeleteCurrent);
+
+    // 标签切换
+    document.getElementById('inspectorTabs').addEventListener('click', (e) => {
+        const tab = e.target.closest('.inspector-tab');
+        if (!tab) return;
+        const tabName = tab.dataset.tab;
+        if (tabName === inspectorActiveTab) return;
+        // 切换前保存当前修改
+        if (inspectorDirty && inspectorTarget) saveInspector();
+        inspectorActiveTab = tabName;
+        renderInspector();
+    });
 
     // Esc 关闭
     inspectorPanel.addEventListener('keydown', (e) => {

@@ -43,32 +43,32 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: #fafafa;
     border-bottom: 1px solid #eee;
     flex-shrink: 0;
-    min-height: 36px;
+    min-height: 32px;
 }
 .inspector-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
 }
 .inspector-header-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     color: #fff;
 }
 .inspector-header-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #333;
     white-space: nowrap;
@@ -77,12 +77,12 @@
 }
 .inspector-header-actions {
     display: flex;
-    gap: 2px;
+    gap: 1px;
     flex-shrink: 0;
 }
 .inspector-btn-icon {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border: none;
     background: transparent;
     border-radius: 4px;
@@ -91,7 +91,7 @@
     align-items: center;
     justify-content: center;
     color: #999;
-    font-size: 12px;
+    font-size: 11px;
     transition: all 0.12s;
     flex-shrink: 0;
 }
@@ -103,6 +103,45 @@
     background: #fde8e8;
     color: #c62828;
 }
+
+/* ---- Tab 标签栏 ---- */
+.inspector-tabs {
+    display: flex;
+    flex-shrink: 0;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    padding: 0 8px;
+    gap: 0;
+}
+.inspector-tabs[hidden] { display: none; }
+.inspector-tab {
+    flex: 1;
+    padding: 6px 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #888;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.inspector-tab:hover {
+    color: #1a73e8;
+    background: rgba(26,115,232,0.04);
+}
+.inspector-tab.active {
+    color: #1a73e8;
+    border-bottom-color: #1a73e8;
+    font-weight: 600;
+}
+
+/* ---- Tab 面板 ---- */
+.inspector-tab-panel {
+}
+.inspector-tab-panel[hidden] { display: none; }
 
 /* ---- Body (scrollable) ---- */
 .inspector-body {
@@ -133,22 +172,22 @@
 .inspector-section-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 5px;
+    padding: 6px 10px;
     cursor: pointer;
     background: #fafafa;
     transition: background 0.1s;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    color: #666;
+    color: #777;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 .inspector-section-header:hover {
     background: #f0f0f0;
 }
 .inspector-section-arrow {
-    font-size: 8px;
+    font-size: 7px;
     color: #aaa;
     transition: transform 0.15s;
     flex-shrink: 0;
@@ -157,35 +196,236 @@
     transform: rotate(-90deg);
 }
 .inspector-section-body {
-    padding: 6px 12px 10px;
+    padding: 4px 10px 6px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
 }
 .inspector-section.collapsed .inspector-section-body {
     display: none;
+}
+.inspector-section-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+.inspector-section-add-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #999;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+}
+.inspector-section-add-btn:hover {
+    background: #e8e8e8;
+    color: #333;
+}
+
+/* ---- 自定义属性行操作 ---- */
+.inspector-custom-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding: 3px 0;
+}
+.inspector-custom-row .inspector-field {
+    flex: 1;
+    min-width: 0;
+}
+.inspector-custom-actions {
+    position: relative;
+    flex-shrink: 0;
+}
+.inspector-custom-menu-btn {
+    width: 22px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #bbb;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+}
+.inspector-custom-menu-btn:hover {
+    background: #eee;
+    color: #666;
+}
+.inspector-custom-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 10;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 100px;
+    overflow: hidden;
+}
+.inspector-custom-menu.visible {
+    display: block;
+}
+.inspector-custom-menu-item {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    border: none;
+    background: transparent;
+    font-size: 10.5px;
+    color: #555;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background 0.1s;
+}
+.inspector-custom-menu-item:hover {
+    background: #f5f5f5;
+}
+.inspector-custom-menu-item.danger {
+    color: #c62828;
+}
+.inspector-custom-menu-item.danger:hover {
+    background: #fde8e8;
+}
+
+/* ---- 自定义属性添加按钮 ---- */
+.inspector-custom-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 5px 0;
+    margin: 4px 0 8px;
+    border: 1px dashed #ccc;
+    border-radius: 5px;
+    background: transparent;
+    color: #999;
+    font-size: 10.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.12s;
+}
+.inspector-custom-add-btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: rgba(26,115,232,0.05);
+}
+
+/* ---- 内联添加属性行 ---- */
+.inspector-add-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    margin-bottom: 4px;
+}
+.inspector-add-row input {
+    flex: 1;
+    height: 26px;
+    padding: 0 7px;
+    border: 1px solid #1a73e8;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #333;
+    background: #fff;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
+}
+.inspector-add-row-btn {
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid #1a73e8;
+    border-radius: 4px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 10.5px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: all 0.12s;
+}
+.inspector-add-row-btn:hover {
+    background: #1557b0;
+}
+.inspector-add-row-cancel {
+    height: 26px;
+    width: 26px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #999;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.inspector-add-row-cancel:hover {
+    background: #eee;
+    color: #333;
 }
 
 /* ---- Field ---- */
 .inspector-field {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
+}
+.inspector-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
 }
 .inspector-label {
-    font-size: 10.5px;
-    color: #888;
+    font-size: 9.5px;
+    color: #999;
     font-weight: 500;
-    padding-left: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+/* ---- UID 编号 ---- */
+.inspector-uid {
+    flex-shrink: 0;
+    font-size: 8.5px;
+    font-weight: 500;
+    color: #c0c4cc;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    margin-left: 6px;
+    user-select: none;
+}
+.inspector-uid--left {
+    margin-left: 0;
+    margin-right: 6px;
 }
 .inspector-input,
 .inspector-select {
     width: 100%;
-    height: 28px;
-    padding: 0 8px;
+    height: 26px;
+    padding: 0 7px;
     border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    font-size: 11.5px;
+    border-radius: 4px;
+    font-size: 11px;
     color: #333;
     background: #fff;
     outline: none;
@@ -221,24 +461,24 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: #fafafa;
     border-top: 1px solid #eee;
     flex-shrink: 0;
-    gap: 6px;
+    gap: 4px;
 }
 .inspector-nav-info {
-    font-size: 10px;
-    color: #999;
+    font-size: 9.5px;
+    color: #aaa;
 }
 .inspector-btn {
-    height: 26px;
-    padding: 0 10px;
+    height: 24px;
+    padding: 0 8px;
     border: 1px solid #ddd;
-    border-radius: 5px;
+    border-radius: 4px;
     background: #fff;
     color: #555;
-    font-size: 11px;
+    font-size: 10.5px;
     cursor: pointer;
     transition: all 0.12s;
     font-family: inherit;
