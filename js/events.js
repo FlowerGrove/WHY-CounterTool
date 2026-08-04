@@ -77,6 +77,7 @@ function showMarkerContextMenu(screenX, screenY, marker) {
  * 隐藏标记右键属性面板，重置目标标记引用
  */
 function hideMarkerContextMenu() {
+    addLog('关闭右键菜单');
     markerContextMenu.classList.remove('visible');
     contextMenuTargetMarker = null;
 }
@@ -543,6 +544,7 @@ eraserBtn.addEventListener('click', () => {
 clearBtn.addEventListener('click', clearAll);
 
 settingsBtn.addEventListener('click', () => {
+    addLog('打开设置面板');
     settingPadDigits.value = String(settings.numberPadDigits);
     settingShowCaption.checked = settings.showPageCaption;
     settingCaptionName.checked = settings.captionShowName;
@@ -619,6 +621,7 @@ settingShowCaption.addEventListener('change', updateCaptionSubVisibility);
  * 打开仪表属性管理对话框
  */
 function openCustomAttrManage() {
+    addLog('打开仪表属性管理');
     renderCfAttrList();
     document.getElementById('cfAttrBackdrop').hidden = false;
     document.getElementById('cfAttrLabel').value = '';
@@ -630,6 +633,7 @@ function openCustomAttrManage() {
  * 关闭仪表属性管理对话框，刷新预览和 Inspector
  */
 function closeCustomAttrManage() {
+    addLog('关闭仪表属性管理');
     document.getElementById('cfAttrBackdrop').hidden = true;
     renderPreview();
     refreshInspectorIfOpen();
@@ -713,6 +717,7 @@ function renderCfAttrList() {
             const key = btn.dataset.bkey;
             const enabled = isBuiltinAttrEnabled(key);
             updateBuiltinAttrState(key, { enabled: !enabled });
+            addLog((enabled ? '禁用' : '启用') + '内置属性: ' + key);
             renderCfAttrList();
             showToast(enabled ? '已禁用内置属性' : '已启用内置属性');
         });
@@ -724,6 +729,7 @@ function renderCfAttrList() {
             const key = btn.dataset.bkey;
             const attr = ALL_MARKER_ATTRIBUTES.find(a => a.key === key);
             updateBuiltinAttrState(key, { hidden: true });
+            addLog('隐藏内置属性: ' + (attr ? attr.label : key));
             renderCfAttrList();
             showToast('已隐藏「' + (attr ? attr.label : key) + '」');
         });
@@ -734,6 +740,7 @@ function renderCfAttrList() {
     if (restoreBtn) {
         restoreBtn.addEventListener('click', () => {
             restoreAllBuiltinAttrs();
+            addLog('恢复所有隐藏的内置属性');
             renderCfAttrList();
             showToast('已恢复所有内置属性');
         });
@@ -748,6 +755,7 @@ function renderCfAttrList() {
             if (!d) return;
             const newEnabled = d.enabled === false;
             updateCustomAttrDef(key, { enabled: newEnabled });
+            addLog((newEnabled ? '启用' : '禁用') + '自定义属性: ' + d.label);
             renderCfAttrList();
             renderPreview();
             refreshInspectorIfOpen();
@@ -766,6 +774,7 @@ function renderCfAttrList() {
             const newDesc = await showPromptDialog('编辑属性描述', d.description || '', '属性说明');
             if (newDesc === null) return; // 取消
             updateCustomAttrDef(key, { description: newDesc.trim() });
+            addLog('编辑自定义属性描述: ' + d.label);
             renderCfAttrList();
             showToast('描述已更新');
         });
@@ -774,7 +783,11 @@ function renderCfAttrList() {
     // 删除按钮事件
     list.querySelectorAll('.cf-manage-item-del').forEach(btn => {
         btn.addEventListener('click', () => {
-            removeCustomAttrDef(btn.dataset.key);
+            const key = btn.dataset.key;
+            const defs = getCustomAttrDefs();
+            const d = defs.find(x => x.key === key);
+            removeCustomAttrDef(key);
+            addLog('删除自定义属性: ' + (d ? d.label : key));
             renderCfAttrList();
             renderPreview();
             refreshInspectorIfOpen();
@@ -804,6 +817,7 @@ function addCustomAttrFromDialog() {
         return;
     }
     addCustomAttrDef(label, desc);
+    addLog('添加自定义属性: ' + label);
     document.getElementById('cfAttrLabel').value = '';
     document.getElementById('cfAttrDesc').value = '';
     renderCfAttrList();

@@ -76,7 +76,103 @@ function pvRow(cells, cls) {
 // Process Connection 拼接：复用 utils.js 的 buildProcessConnection，保证与 Excel 导出一致
 const pvBuildConnection = buildProcessConnection;
 
+// ===== 按类型分组动态标签页 =====
+/** @type {string} 上次渲染时的类型 ID 列表（逗号分隔），用于检测类型变化 */
+let _pvLastTypeIds = '';
 
+/**
+ * 获取 markers 中出现的所有唯一仪表类型，按首次出现顺序排列
+ * @returns {Array<{typeId: string, typeName: string, typeAbbr: string}>}
+ */
+function pvGetUniqueTypes() {
+    const seen = new Set();
+    const types = [];
+    for (const m of markers) {
+        if (!seen.has(m.typeId)) {
+            seen.add(m.typeId);
+            types.push({ typeId: m.typeId, typeName: m.typeName, typeAbbr: m.typeAbbr || m.typeName });
+        }
+    }
+    return types;
+}
+
+/**
+ * 检测类型列表是否发生变化（有新类型出现或旧类型消失）
+ * @returns {boolean}
+ */
+function pvTypeIdsChanged() {
+    const current = pvGetUniqueTypes().map(t => t.typeId).sort().join(',');
+    if (current !== _pvLastTypeIds) {
+        console.log('[PREVIEW] 类型列表变化: ' + (_pvLastTypeIds || '(空)') + ' → ' + current);
+        _pvLastTypeIds = current;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 构建动态类型标签页按钮，插入到 nav 中 detail/summary 之后
+ */
+function pvRenderTypeTabs() {
+    const nav = document.querySelector('.preview-tabs');
+    if (!nav) return;
+    const types = pvGetUniqueTypes();
+    console.log('[PREVIEW] 渲染类型标签: ' + types.length + '种类型');
+
+    // 移除旧动态标签
+    nav.querySelectorAll('.preview-tab--type').forEach(t => t.remove());
+
+    for (const t of types) {
+        const btn = document.createElement('button');
+        btn.className = 'preview-tab preview-tab--type';
+        btn.dataset.sheet = 'type_' + t.typeId;
+        btn.textContent = t.typeName;
+        if (btn.dataset.sheet === _pvBatchCurrentSheet) {
+            btn.classList.add('active');
+        }
+        nav.appendChild(btn);
+    }
+}
+
+/**
+ * 构建动态类型对应的 sheet 面板，插入到 preview-body 中
+ */
+function pvRenderTypeSheets() {
+    const body = document.querySelector('.preview-body');
+    if (!body) return;
+    const types = pvGetUniqueTypes();
+
+    // 移除旧类型面板
+    body.querySelectorAll('.preview-sheet--type').forEach(s => s.remove());
+
+    for (const t of types) {
+        const section = document.createElement('section');
+        section.className = 'preview-sheet preview-sheet--type';
+        section.id = 'pvSheet-type_' + t.typeId;
+        section.hidden = ('type_' + t.typeId) !== _pvBatchCurrentSheet;
+        section.innerHTML = '<div class="preview-scroll"><table class="preview-table" id="pvTable-type_' + t.typeId + '"></table></div>';
+        body.appendChild(section);
+    }
+}
+
+/**
+ * 渲染某个类型的过滤明细表（列与 Detail List 一致，不含复选框和 + 列）
+ * @param {string} typeId - 类型 ID
+ */
+function pvRenderTypeDetail(typeId) {
+    const table = document.getElementById('pvTable-type_' + typeId);
+    if (!table) return;
+    const sorted = pvSortedMarkers().filter(m => m.typeId === typeId);
+    console.log('[PREVIEW] 渲染类型表: ' + typeId + ' (' + sorted.length + '行)');
+    const cols = getSheetColumnsWithCustom('detailList');
+    let html = '<thead><tr>' + cols.map(c => `<th>${pvEscape(c.header)}</th>`).join('') + '</tr></thead><tbody>';
+    sorted.forEach((m, i) => {
+        const cells = cols.map(c => pvRenderCellByCol(c, m, i)).join('');
+        html += pvRow(cells);
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+}
 
 /**
  * 对 markers 进行排序：按创建顺序（_globalOrder）
@@ -121,7 +217,6 @@ function pvFindMarkerById(id) {
  * @param {HTMLElement} td - 被编辑的 td 元素
  */
 function pvCommitCell(td) {
-    addLog('编辑单元格');
     const mid = td.dataset.mid;
     const field = td.dataset.field;
     const isCustomAttr = td.dataset.isCustomAttr === '1';
@@ -147,6 +242,14 @@ function pvCommitCell(td) {
         pushHistory({ type: 'bulkUpdate', marker, changes: { [field]: oldForCmp }, after: { [field]: clean } });
         requestRender();
         scheduleAutosave();
+        addLog('编辑' + (isCustomAttr ? '自定义属性' : '单元格') + ': ' + field + ' → "' + clean + '"');
+        // 同步刷新 Inspector（若当前打开的是同一标记，先保存未保存修改再刷新）
+        if (typeof inspectorTarget !== 'undefined' && inspectorTarget === marker && typeof renderInspector === 'function') {
+            if (typeof inspectorDirty !== 'undefined' && inspectorDirty && typeof saveInspector === 'function') {
+                saveInspector();
+            }
+            renderInspector();
+        }
     }
     input.value = clean;
 }
@@ -269,8 +372,6 @@ function pvApplyBatch() {
     const newValue = valueInput.value.trim();
     if (!field || _pvBatchSelected.size === 0) return;
 
-    addLog('批量修改: ' + _pvBatchSelected.size + '行');
-
     // 判断是否为自定义属性字段
     const isCustomAttr = field.startsWith('ca_');
     const changes = [];
@@ -306,8 +407,16 @@ function pvApplyBatch() {
         });
         requestRender();
         scheduleAutosave();
+        addLog('批量修改' + (isCustomAttr ? '自定义属性' : '') + ': ' + changes.length + '行 ' + field + ' → "' + newValue + '"');
         // 重新渲染当前表格
         pvRerenderCurrentSheet();
+        // 同步刷新 Inspector（若当前打开的是被批量编辑的标记，先保存未保存修改再刷新）
+        if (typeof inspectorTarget !== 'undefined' && inspectorTarget && _pvBatchSelected.has(inspectorTarget.id) && typeof renderInspector === 'function') {
+            if (typeof inspectorDirty !== 'undefined' && inspectorDirty && typeof saveInspector === 'function') {
+                saveInspector();
+            }
+            renderInspector();
+        }
     }
 
     // 清空值输入框，保留选中状态
@@ -331,6 +440,12 @@ function pvCancelBatch() {
  * 重新渲染当前激活的工作表
  */
 function pvRerenderCurrentSheet() {
+    console.log('[PREVIEW] 重新渲染工作表: ' + _pvBatchCurrentSheet);
+    if (_pvBatchCurrentSheet.startsWith('type_')) {
+        const typeId = _pvBatchCurrentSheet.slice(5);
+        pvRenderTypeDetail(typeId);
+        return;
+    }
     const renderer = pvSheetRenderers[_pvBatchCurrentSheet];
     if (renderer) renderer();
 }
@@ -548,7 +663,6 @@ function pvSetupTabs() {
         const sheetName = tab.dataset.sheet;
         if (sheetName) {
             pvSwitchToTab(sheetName);
-            renderAllTables();
         }
     });
 }
@@ -572,6 +686,8 @@ function pvSwitchToTab(sheetName) {
     if (tab) tab.classList.add('active');
     const panel = document.getElementById('pvSheet-' + sheetName);
     if (panel) panel.hidden = false;
+
+    pvRerenderCurrentSheet();
 }
 
 /**
@@ -587,17 +703,32 @@ function renderAllTables() {
  * 渲染预览窗口主内容：所有工作表、元信息、底部统计
  */
 function renderPreview() {
+    addLog('渲染预览: ' + markers.length + '个标记');
     if (markers.length === 0) {
         document.getElementById('pvEmpty').hidden = false;
         document.querySelectorAll('.preview-sheet').forEach(p => p.hidden = true);
         document.getElementById('pvMeta').textContent = '';
         document.getElementById('pvFooter').textContent = '';
+        // 清空类型标签
+        const nav = document.querySelector('.preview-tabs');
+        if (nav) nav.querySelectorAll('.preview-tab--type').forEach(t => t.remove());
+        const body = document.querySelector('.preview-body');
+        if (body) body.querySelectorAll('.preview-sheet--type').forEach(s => s.remove());
+        _pvLastTypeIds = '';
         return;
     }
     document.getElementById('pvEmpty').hidden = true;
 
     pvRenderSummary();
     pvRenderDetail();
+
+    // 渲染类型标签页和面板
+    pvRenderTypeTabs();
+    pvRenderTypeSheets();
+    pvTypeIdsChanged(); // 初始化 _pvLastTypeIds，避免后续重复重建
+
+    // 渲染当前工作表内容（含类型表）
+    pvRerenderCurrentSheet();
 
     // 顶部元信息
     const docCount = documents.length;
@@ -696,6 +827,7 @@ function pvSetupColumnBinding() {
             return;
         }
         addColumnBinding(name, field);
+        addLog('添加列绑定: ' + name + ' → ' + field);
         pvCloseBindDialog();
         pvRerenderCurrentSheet();
         showToast('已添加列「' + name + '」');
@@ -720,7 +852,10 @@ function pvSetupColumnBinding() {
             if (delBtn) {
                 const id = delBtn.dataset.bindingId;
                 if (id) {
+                    const bindings = getColumnBindings();
+                    const b = bindings.find(x => x.id === id);
                     removeColumnBinding(id);
+                    addLog('删除列绑定: ' + (b ? b.name : id));
                     pvRerenderCurrentSheet();
                     pvRenderManageList();
                     showToast('已删除绑定列');
@@ -757,6 +892,7 @@ function pvPopulateBindFields() {
  * 打开列绑定对话框
  */
 function pvOpenBindDialog() {
+    addLog('打开列绑定对话框');
     pvPopulateBindFields();
     const backdrop = document.getElementById('cfBindBackdrop');
     const nameInput = document.getElementById('cfBindName');
@@ -770,6 +906,7 @@ function pvOpenBindDialog() {
  * 关闭列绑定对话框
  */
 function pvCloseBindDialog() {
+    addLog('关闭列绑定对话框');
     const backdrop = document.getElementById('cfBindBackdrop');
     if (backdrop) backdrop.hidden = true;
 }
@@ -809,6 +946,7 @@ function pvRenderManageList() {
  * 打开管理对话框
  */
 function pvOpenManageDialog() {
+    addLog('打开列绑定管理');
     pvRenderManageList();
     const backdrop = document.getElementById('cfBindManageBackdrop');
     if (backdrop) backdrop.hidden = false;
@@ -818,6 +956,7 @@ function pvOpenManageDialog() {
  * 关闭管理对话框
  */
 function pvCloseManageDialog() {
+    addLog('关闭列绑定管理');
     const backdrop = document.getElementById('cfBindManageBackdrop');
     if (backdrop) backdrop.hidden = true;
 }
@@ -841,6 +980,7 @@ async function pvRenameBinding(id, currentName) {
     pvRerenderCurrentSheet();
     pvRenderManageList();
     showToast('已重命名为「' + trimmed + '」');
+    addLog('重命名绑定列: ' + currentName + ' → ' + trimmed);
 }
 
 /**
@@ -849,6 +989,25 @@ async function pvRenameBinding(id, currentName) {
 function pvRefreshPreview() {
     const overlay = document.getElementById('previewOverlay');
     if (!overlay || overlay.hidden) return;
+    addLog('刷新预览');
+    // 标记全部删除时显示空状态
+    if (markers.length === 0) {
+        renderPreview();
+        return;
+    }
+    // 类型列表变化时重建标签页和面板
+    if (pvTypeIdsChanged()) {
+        pvRenderTypeTabs();
+        pvRenderTypeSheets();
+        // 如果当前标签对应的类型已不存在，回退到 detail
+        if (_pvBatchCurrentSheet.startsWith('type_')) {
+            const typeId = _pvBatchCurrentSheet.slice(5);
+            if (!markers.some(m => m.typeId === typeId)) {
+                _pvBatchCurrentSheet = 'detail';
+                pvSwitchToTab('detail');
+            }
+        }
+    }
     pvRerenderCurrentSheet();
 }
 

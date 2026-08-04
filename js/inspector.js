@@ -66,6 +66,7 @@ function closeInspector() {
     if (inspectorDirty && inspectorTarget) {
         saveInspector();
     }
+    addLog('关闭属性面板');
     inspectorPanel.classList.remove('visible');
     inspectorTarget = null;
     inspectorDirty = false;
@@ -76,8 +77,10 @@ function closeInspector() {
  */
 function toggleInspector() {
     if (inspectorPanel.classList.contains('visible')) {
+        addLog('关闭属性面板');
         closeInspector();
     } else if (inspectorTarget) {
+        addLog('打开属性面板: ' + formatMarkerLabel(inspectorTarget));
         inspectorPanel.classList.add('visible');
         renderInspector();
     }
@@ -95,6 +98,7 @@ function renderInspector() {
         return;
     }
 
+    console.log('[INSPECTOR] 渲染面板: ' + formatMarkerLabel(inspectorTarget));
     const m = inspectorTarget;
     const t = getTypeById(m.typeId);
 
@@ -184,6 +188,14 @@ function renderInspector() {
 
     html += '</div>';
 
+    // 添加自定义属性输入区
+    html += '<div class="inspector-add-custom">';
+    html += '<div class="inspector-add-row">';
+    html += '<input type="text" class="inspector-input" id="inspectorAddCustomLabel" placeholder="输入新属性名…" maxlength="20" />';
+    html += '<button class="inspector-add-row-btn" id="inspectorAddCustomBtn" title="添加自定义属性">+</button>';
+    html += '</div>';
+    html += '</div>';
+
     html += '</div>';
 
     inspectorFields.innerHTML = html;
@@ -264,6 +276,16 @@ function bindInspectorEvents() {
             if (action === 'delete') deleteInspectorCustomAttr(key);
         });
     });
+
+    // 添加自定义属性按钮
+    const addBtn = document.getElementById('inspectorAddCustomBtn');
+    const addInput = document.getElementById('inspectorAddCustomLabel');
+    if (addBtn) addBtn.addEventListener('click', addInspectorCustomAttr);
+    if (addInput) {
+        addInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addInspectorCustomAttr(); }
+        });
+    }
 }
 
 // 全局点击关闭菜单
@@ -272,6 +294,36 @@ document.addEventListener('click', () => {
         inspectorFields.querySelectorAll('.inspector-custom-menu.visible').forEach(m => m.classList.remove('visible'));
     }
 });
+
+/**
+ * 从 Inspector 面板添加自定义属性
+ */
+function addInspectorCustomAttr() {
+    const input = document.getElementById('inspectorAddCustomLabel');
+    if (!input) return;
+    const label = input.value.trim();
+    if (!label) { showToast('请输入属性名'); return; }
+    // 重名校验
+    if (ALL_MARKER_ATTRIBUTES && ALL_MARKER_ATTRIBUTES.some(a => a.label === label)) {
+        showToast('与内置属性重名，请使用其他名称');
+        return;
+    }
+    const defs = getCustomAttrDefs();
+    if (defs.some(d => d.label === label)) {
+        showToast('属性名已存在');
+        return;
+    }
+    // 保存当前未保存的修改
+    if (inspectorDirty && inspectorTarget) saveInspector();
+    addCustomAttrDef(label, '');
+    input.value = '';
+    addLog('添加自定义属性: ' + label);
+    showToast('已添加自定义属性「' + label + '」');
+    renderInspector();
+    scheduleAutosave();
+    // 若预览已打开，刷新预览表
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
+}
 
 /**
  * 重命名自定义属性
@@ -294,10 +346,15 @@ async function renameInspectorCustomAttr(key) {
         showToast('属性名已存在');
         return;
     }
+    // 保存当前未保存的修改
+    if (inspectorDirty && inspectorTarget) saveInspector();
     updateCustomAttrDef(key, { label: trimmed });
+    addLog('重命名自定义属性: ' + d.label + ' → ' + trimmed);
     showToast('已重命名为「' + trimmed + '」');
     renderInspector();
     scheduleAutosave();
+    // 若预览已打开，刷新预览表（列头可能需要更新）
+    if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
 }
 
 /**
@@ -308,8 +365,10 @@ function deleteInspectorCustomAttr(key) {
     const defs = getCustomAttrDefs();
     const d = defs.find(x => x.key === key);
     if (!d) return;
-    if (!confirm('确定删除属性「' + d.label + '」？已填入的值将保留在数据中。')) return;
+    // 保存当前未保存的修改
+    if (inspectorDirty && inspectorTarget) saveInspector();
     removeCustomAttrDef(key);
+    addLog('删除自定义属性: ' + d.label);
     showToast('已删除属性「' + d.label + '」');
     renderInspector();
     scheduleAutosave();
@@ -357,16 +416,16 @@ function saveInspector() {
         const oldVal = getCustomAttrValue(m, attrKey);
         const newVal = input.value.trim();
         if (oldVal !== newVal) {
-            updates.push({ field: 'custom:' + attrKey, oldValue: oldVal, newValue: newVal });
-            changes['custom:' + attrKey] = oldVal;
-            after['custom:' + attrKey] = newVal;
+            updates.push({ field: attrKey, oldValue: oldVal, newValue: newVal });
+            changes[attrKey] = oldVal;
+            after[attrKey] = newVal;
             setCustomAttrValue(m, attrKey, newVal || undefined);
         }
     });
 
     if (updates.length > 0) {
         pushHistory({ type: 'bulkUpdate', marker: m, changes, after });
-        addLog('Inspector: 修改 ' + updates.length + ' 个字段');
+        addLog('Inspector保存: ' + updates.length + '个字段');
         requestRender();
         scheduleAutosave();
         // 若预览已打开，刷新预览表
@@ -402,6 +461,7 @@ function inspectorNavigateTo(delta) {
         // 切换前保存当前修改
         if (inspectorDirty && inspectorTarget) saveInspector();
         inspectorActiveTab = tabName;
+        addLog('切换Inspector标签: ' + tabName);
         renderInspector();
     });
 

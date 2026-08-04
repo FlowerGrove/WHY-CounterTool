@@ -40,6 +40,7 @@ function insertMarkerToArray(marker) {
  * @param {Object} entry - 历史记录条目（包含 type、marker 等字段）
  */
 function pushHistory(entry) {
+    console.log('[HISTORY] 记录操作: ' + entry.type + ' | 历史栈深度=' + (history.length + 1));
     history.push(entry);
     redoStack.length = 0;
     updateUndoButtonState();
@@ -94,6 +95,7 @@ function applyHistoryBulkUpdate(marker, entry, toOld) {
 function undo() {
     if (history.length === 0) return;
     const last = history.pop();
+    console.log('[HISTORY] 撤销: ' + last.type + ' | 剩余历史=' + history.length + ' | 重做栈=' + (redoStack.length + 1));
     if (last.type === 'add') {
         removeMarkerFromArray(last.marker);
     } else if (last.type === 'delete') {
@@ -122,6 +124,13 @@ function undo() {
     scheduleAutosave();
     // 若预览已打开，刷新预览表
     if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
+    // 同步刷新 Inspector（若当前打开，先保存未保存修改再刷新）
+    if (typeof inspectorTarget !== 'undefined' && inspectorTarget && typeof renderInspector === 'function') {
+        if (typeof inspectorDirty !== 'undefined' && inspectorDirty && typeof saveInspector === 'function') {
+            saveInspector();
+        }
+        renderInspector();
+    }
 }
 
 /**
@@ -131,6 +140,7 @@ function undo() {
 function redo() {
     if (redoStack.length === 0) return;
     const entry = redoStack.pop();
+    console.log('[HISTORY] 重做: ' + entry.type + ' | 历史栈=' + (history.length + 1) + ' | 剩余重做=' + redoStack.length);
     if (entry.type === 'add') {
         insertMarkerToArray(entry.marker);
     } else if (entry.type === 'delete') {
@@ -158,6 +168,13 @@ function redo() {
     scheduleAutosave();
     // 若预览已打开，刷新预览表
     if (typeof pvRefreshPreview === 'function') pvRefreshPreview();
+    // 同步刷新 Inspector（若当前打开，先保存未保存修改再刷新）
+    if (typeof inspectorTarget !== 'undefined' && inspectorTarget && typeof renderInspector === 'function') {
+        if (typeof inspectorDirty !== 'undefined' && inspectorDirty && typeof saveInspector === 'function') {
+            saveInspector();
+        }
+        renderInspector();
+    }
 }
 
 /**

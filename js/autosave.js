@@ -120,6 +120,7 @@ function checkPendingRestore() {
 }
 
 document.getElementById('sessionBannerRestore').addEventListener('click', () => {
+    addLog('恢复上次会话');
     document.getElementById('sessionBanner').classList.remove('visible');
     if (pendingRestore) {
         restoreSession(pendingRestore);
@@ -147,6 +148,7 @@ function restoreSession(data) {
 }
 
 document.getElementById('sessionBannerDismiss').addEventListener('click', () => {
+    addLog('关闭恢复提示');
     document.getElementById('sessionBanner').classList.remove('visible');
 });
 

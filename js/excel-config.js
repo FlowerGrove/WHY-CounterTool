@@ -199,7 +199,7 @@ function addCustomAttrDef(label, description) {
   const key = 'ca_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   defs.push({ key, label, description: description || '', enabled: true });
   saveCustomAttrDefs(defs);
-  addLog('添加自定义属性: ' + label);
+  console.log('[EXCEL-CONFIG] 添加自定义属性定义: ' + label + ' (key=' + key + ')');
   return key;
 }
 
@@ -214,6 +214,7 @@ function updateCustomAttrDef(key, updates) {
   if (idx === -1) return;
   Object.assign(defs[idx], updates);
   saveCustomAttrDefs(defs);
+  console.log('[EXCEL-CONFIG] 更新自定义属性: ' + key + ' → ' + JSON.stringify(updates));
 }
 
 /**
@@ -223,6 +224,7 @@ function updateCustomAttrDef(key, updates) {
 function removeCustomAttrDef(key) {
   const defs = getCustomAttrDefs().filter(d => d.key !== key);
   saveCustomAttrDefs(defs);
+  console.log('[EXCEL-CONFIG] 删除自定义属性: ' + key);
   // 清理引用该属性的列绑定
   const bindings = getColumnBindings().filter(b => b.bindField !== key);
   if (bindings.length !== getColumnBindings().length) {
@@ -495,6 +497,7 @@ function addColumnBinding(name, bindField) {
     bindings.push({ id, name, bindField });
     saveColumnBindings(bindings);
     addLog('添加列绑定: ' + name + ' → ' + bindField);
+    console.log('[EXCEL-CONFIG] 添加列绑定: ' + name + ' → ' + bindField + ' (id=' + id + ')');
     return id;
 }
 
@@ -506,6 +509,7 @@ function removeColumnBinding(id) {
     const bindings = getColumnBindings().filter(b => b.id !== id);
     saveColumnBindings(bindings);
     addLog('删除列绑定: ' + id);
+    console.log('[EXCEL-CONFIG] 删除列绑定: ' + id);
 }
 
 /**
@@ -519,6 +523,8 @@ function updateColumnBinding(id, updates) {
     if (idx === -1) return;
     Object.assign(bindings[idx], updates);
     saveColumnBindings(bindings);
+    addLog('更新列绑定: ' + id + ' → ' + JSON.stringify(updates));
+    console.log('[EXCEL-CONFIG] 更新列绑定: ' + id + ' → ' + JSON.stringify(updates));
 }
 
 /**

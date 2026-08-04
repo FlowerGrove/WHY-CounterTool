@@ -172,7 +172,7 @@ function normalizeQuotes(s) {
  * 支持中文引号自动转英文、代码去重
  */
 async function addCustomType() {
-    const name = await showPromptDialog('输入新仪表类型代号', '', '如：PSH、AI、HCV');
+    let name = await showPromptDialog('输入新仪表类型代号', '', '如：PSH、AI、HCV');
     if (!name) return;
     // 自定义类型强制英文符号：中文双引号/单引号 → 英文
     name = normalizeQuotes(name);
