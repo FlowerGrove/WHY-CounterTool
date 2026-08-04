@@ -16,8 +16,6 @@ const inspectorTitle = document.getElementById('inspectorTitle');
 const inspectorBody = document.getElementById('inspectorBody');
 const inspectorEmpty = document.getElementById('inspectorEmpty');
 const inspectorFields = document.getElementById('inspectorFields');
-const inspectorFooter = document.getElementById('inspectorFooter');
-const inspectorNavInfo = document.getElementById('inspectorNavInfo');
 
 // ===== 内置属性定义（与 excel-config 的字段对应） =====
 const INSPECTOR_BUILTIN_FIELDS = [
@@ -93,7 +91,6 @@ function renderInspector() {
     if (!inspectorTarget) {
         inspectorEmpty.hidden = false;
         inspectorFields.hidden = true;
-        inspectorFooter.hidden = true;
         document.getElementById('inspectorTabs').hidden = true;
         return;
     }
@@ -192,11 +189,6 @@ function renderInspector() {
     inspectorFields.innerHTML = html;
     inspectorEmpty.hidden = true;
     inspectorFields.hidden = false;
-    inspectorFooter.hidden = false;
-
-    // 导航信息
-    const idx = markers.indexOf(m);
-    inspectorNavInfo.textContent = (idx + 1) + ' / ' + markers.length;
 
     // 绑定事件
     bindInspectorEvents();
@@ -396,26 +388,10 @@ function inspectorNavigateTo(delta) {
     openInspector(markers[newIdx]);
 }
 
-/**
- * 删除当前 Inspector 中的标记
- */
-function inspectorDeleteCurrent() {
-    if (!inspectorTarget) return;
-    const m = inspectorTarget;
-    const label = formatMarkerLabel(m);
-    if (!confirm('确定删除标记「' + label + '」？')) return;
-    closeInspector();
-    deleteMarker(m);
-    showToast('已删除标记「' + label + '」');
-}
-
 // ===== 事件绑定 =====
 (function initInspector() {
     // 关闭按钮
     document.getElementById('inspectorCloseBtn').addEventListener('click', closeInspector);
-
-    // 删除按钮
-    document.getElementById('inspectorDeleteBtn').addEventListener('click', inspectorDeleteCurrent);
 
     // 标签切换
     document.getElementById('inspectorTabs').addEventListener('click', (e) => {
