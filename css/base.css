@@ -37,13 +37,13 @@ canvas.grabbing {
 /* ===== 操作日志面板 ===== */
 #opLogWrap {
     position: fixed;
-    right: 8px;
+    left: 8px;
     bottom: 8px;
     z-index: 100;
     pointer-events: none;
     display: flex;
     flex-direction: column-reverse;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 2px;
 }
 #opLogToggle {

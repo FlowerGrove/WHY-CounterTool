@@ -166,6 +166,18 @@ function deleteMarker(marker) {
     addLog('删除标记 #' + marker.number + ' (' + marker.typeName + ')');
     nextMarkerNumber = findNextNumber();
     syncNumberInput();
+
+    // 清理选中状态和 Inspector
+    if (typeof selectedMarker !== 'undefined' && selectedMarker === marker) {
+        selectedMarker = null;
+    }
+    if (typeof inspectorTarget !== 'undefined' && inspectorTarget === marker) {
+        closeInspector();
+    }
+    if (typeof contextMenuTargetMarker !== 'undefined' && contextMenuTargetMarker === marker) {
+        hideMarkerContextMenu();
+    }
+
     requestRender();
     updateUI();
     scheduleAutosave();

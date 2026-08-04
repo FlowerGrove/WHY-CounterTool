@@ -1,0 +1,311 @@
+/* ===== Inspector 属性面板（右侧停靠，类似 Unity/Godot Inspector） ===== */
+
+.inspector-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100vh;
+    z-index: 9999;
+    background: #fff;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.2s cubic-bezier(0.33, 1, 0.68, 1);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12), -1px 0 4px rgba(0,0,0,0.04);
+    border-left: 1px solid #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 12px;
+    user-select: none;
+}
+.inspector-panel.visible {
+    transform: translateX(0);
+}
+
+/* 拖拽调整宽度的手柄 */
+.inspector-panel::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 10;
+}
+.inspector-panel::before:hover {
+    background: rgba(26,115,232,0.2);
+}
+
+/* ---- Header ---- */
+.inspector-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+    min-height: 36px;
+}
+.inspector-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.inspector-header-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+}
+.inspector-header-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.inspector-header-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.inspector-btn-icon {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 12px;
+    transition: all 0.12s;
+    flex-shrink: 0;
+}
+.inspector-btn-icon:hover {
+    background: #eee;
+    color: #333;
+}
+.inspector-btn-icon.danger:hover {
+    background: #fde8e8;
+    color: #c62828;
+}
+
+/* ---- Body (scrollable) ---- */
+.inspector-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+    background: #fff;
+}
+.inspector-body::-webkit-scrollbar {
+    width: 6px;
+}
+.inspector-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.inspector-body::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+}
+.inspector-body::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+}
+
+/* ---- Section ---- */
+.inspector-section {
+    border-bottom: 1px solid #f0f0f0;
+}
+.inspector-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: #fafafa;
+    transition: background 0.1s;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.inspector-section-header:hover {
+    background: #f0f0f0;
+}
+.inspector-section-arrow {
+    font-size: 8px;
+    color: #aaa;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+.inspector-section.collapsed .inspector-section-arrow {
+    transform: rotate(-90deg);
+}
+.inspector-section-body {
+    padding: 6px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.inspector-section.collapsed .inspector-section-body {
+    display: none;
+}
+
+/* ---- Field ---- */
+.inspector-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.inspector-label {
+    font-size: 10.5px;
+    color: #888;
+    font-weight: 500;
+    padding-left: 1px;
+}
+.inspector-input,
+.inspector-select {
+    width: 100%;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    font-size: 11.5px;
+    color: #333;
+    background: #fff;
+    outline: none;
+    transition: all 0.12s;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.inspector-input::placeholder {
+    color: #bbb;
+}
+.inspector-input:focus,
+.inspector-select:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
+}
+.inspector-input:disabled,
+.inspector-select:disabled {
+    opacity: 0.5;
+    background: #f9f9f9;
+    cursor: not-allowed;
+}
+.inspector-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px;
+}
+
+/* ---- Footer / Navigation ---- */
+.inspector-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+    flex-shrink: 0;
+    gap: 6px;
+}
+.inspector-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.inspector-nav-info {
+    font-size: 10px;
+    color: #999;
+    min-width: 48px;
+    text-align: center;
+}
+.inspector-btn {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #fff;
+    color: #555;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+.inspector-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+.inspector-btn:active {
+    background: #eee;
+}
+.inspector-btn.danger {
+    border-color: #fcc;
+    color: #c62828;
+}
+.inspector-btn.danger:hover {
+    background: #fde8e8;
+    border-color: #e57373;
+}
+
+/* ---- Empty State ---- */
+.inspector-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #bbb;
+    gap: 10px;
+    padding: 24px;
+    text-align: center;
+}
+.inspector-empty[hidden] {
+    display: none !important;
+}
+.inspector-empty i {
+    font-size: 32px;
+    opacity: 0.25;
+}
+.inspector-empty p {
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0;
+    color: #aaa;
+}
+.inspector-empty kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 10px;
+    color: #888;
+    font-family: inherit;
+}
+
+/* ---- 响应式：小屏幕 ---- */
+@media (max-width: 768px) {
+    .inspector-panel {
+        width: 100vw;
+    }
+}

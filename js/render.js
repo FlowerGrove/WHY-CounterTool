@@ -92,6 +92,17 @@ function render() {
         }
     }
 
+    // 选中标记高亮（左键点击选中，用于 Ctrl+1 打开 Inspector）
+    if (typeof selectedMarker !== 'undefined' && selectedMarker && markers.includes(selectedMarker)) {
+        ctx.beginPath();
+        ctx.arc(selectedMarker.vx, selectedMarker.vy, markerRadius + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(26, 115, 232, 0.7)';
+        ctx.lineWidth = 2.5 / Math.max(zoom, 0.01);
+        ctx.setLineDash([6 / zoom, 3 / zoom]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
     ctx.restore();
 }
 

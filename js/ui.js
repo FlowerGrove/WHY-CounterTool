@@ -112,6 +112,14 @@ function clearAll() {
     if (typeof _customTables !== 'undefined') _customTables = null;
     // 重置批量编辑状态
     if (typeof _pvBatchSelected !== 'undefined') _pvBatchSelected = new Set();
+    // 清理选中状态和 Inspector
+    if (typeof selectedMarker !== 'undefined') selectedMarker = null;
+    if (typeof inspectorPanel !== 'undefined' && inspectorPanel.classList.contains('visible')) {
+        closeInspector();
+    }
+    if (typeof contextMenuTargetMarker !== 'undefined') {
+        hideMarkerContextMenu();
+    }
     syncNumberInput();
     updateUI();
     requestRender();

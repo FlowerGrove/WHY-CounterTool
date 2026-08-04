@@ -14,6 +14,7 @@ let dragPanStartX = 0,
 
 const markerContextMenu = document.getElementById('markerContextMenu');
 let contextMenuTargetMarker = null;
+let selectedMarker = null;  // 左键点击选中的标记（用于 Ctrl+1 打开 Inspector）
 
 /**
  * 填充右键菜单表单字段（不处理定位和显示逻辑）
@@ -170,7 +171,23 @@ document.addEventListener('mouseup', (e) => {
         const dy = upPos.y - mouseDownPos.y;
         if (Math.hypot(dx, dy) < 5) {
             const v = screenToVirtual(upPos.x, upPos.y);
-            handleCanvasTap(v.x, v.y);
+
+            // 检查是否点击了已有标记（用于选中）
+            const hit = findMarkerAtVirtual(v.x, v.y);
+            if (hit && !eraseMode) {
+                // 左键点击标记 → 选中并打开 Inspector
+                selectedMarker = hit;
+                openInspector(hit);
+                requestRender();
+            } else if (inspectorPanel.classList.contains('visible') && !eraseMode) {
+                // 点击空白区域 → 退出 Inspector 属性状态
+                selectedMarker = null;
+                closeInspector();
+                requestRender();
+            } else {
+                selectedMarker = null;
+                handleCanvasTap(v.x, v.y);
+            }
         }
     }
     mouseDownPos = null;
@@ -246,6 +263,14 @@ function saveMarkerContextMenu() {
         const m = contextMenuTargetMarker;
         hideMarkerContextMenu();
         if (m) deleteMarker(m);
+    });
+    // 打开 Inspector 属性面板按钮
+    document.getElementById('mcmInspectorBtn').addEventListener('click', () => {
+        const m = contextMenuTargetMarker;
+        if (m) {
+            hideMarkerContextMenu();
+            openInspector(m);
+        }
     });
     // 保存按钮（仅保存，不关闭）
     document.getElementById('mcmSaveBtn').addEventListener('click', () => {
@@ -384,7 +409,19 @@ canvas.addEventListener('touchend', (e) => {
         const dy = Math.abs((e.changedTouches[0].clientY - canvas.getBoundingClientRect().top) * (canvas.height / canvas.getBoundingClientRect().height) - touchStartPos.y);
         if (dx < 8 && dy < 8) {
             const v = screenToVirtual(touchStartPos.x, touchStartPos.y);
-            handleCanvasTap(v.x, v.y);
+            const hit = findMarkerAtVirtual(v.x, v.y);
+            if (hit && !eraseMode) {
+                selectedMarker = hit;
+                openInspector(hit);
+                requestRender();
+            } else if (inspectorPanel.classList.contains('visible') && !eraseMode) {
+                selectedMarker = null;
+                closeInspector();
+                requestRender();
+            } else {
+                selectedMarker = null;
+                handleCanvasTap(v.x, v.y);
+            }
         }
     }
     isTouchDragging = false;
@@ -438,6 +475,25 @@ document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
         e.preventDefault();
         redo();
+    }
+    // Ctrl+1：打开 Inspector 属性面板
+    if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+        e.preventDefault();
+        if (selectedMarker && markers.includes(selectedMarker)) {
+            openInspector(selectedMarker);
+        } else if (contextMenuTargetMarker && markers.includes(contextMenuTargetMarker)) {
+            openInspector(contextMenuTargetMarker);
+        } else {
+            showToast('请先点击选择一个标记，或右键标记');
+        }
+    }
+    // Escape 关闭 Inspector
+    if (e.key === 'Escape') {
+        if (inspectorPanel.classList.contains('visible')) {
+            e.preventDefault();
+            closeInspector();
+            return;
+        }
     }
 });
 

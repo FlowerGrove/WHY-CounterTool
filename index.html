@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="css/responsive.css" />
     <link rel="stylesheet" href="css/preview.css" />
     <link rel="stylesheet" href="css/context-menu.css" />
+    <link rel="stylesheet" href="css/inspector.css" />
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -207,6 +208,9 @@
                 <button class="mcm-btn-icon mcm-btn-danger" id="mcmDeleteBtn" title="删除标记">
                     <i class="fa-solid fa-trash"></i>
                 </button>
+                <button class="mcm-btn-icon" id="mcmInspectorBtn" title="打开属性面板 (Ctrl+1)">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
             </div>
             <span class="mcm-title" id="mcmTitle">标记属性</span>
             <div class="mcm-header-right"></div>
@@ -224,6 +228,36 @@
         <div class="mcm-footer">
             <button class="mcm-btn" id="mcmCloseBtn2">关闭</button>
             <button class="mcm-btn mcm-btn-primary" id="mcmSaveBtn">保存</button>
+        </div>
+    </div>
+
+    <!-- Inspector 属性面板（右侧停靠，类似 Unity/Godot Inspector） -->
+    <div class="inspector-panel" id="inspectorPanel">
+        <div class="inspector-header">
+            <div class="inspector-header-left">
+                <div class="inspector-header-icon" id="inspectorIcon"></div>
+                <span class="inspector-header-title" id="inspectorTitle">Inspector</span>
+            </div>
+            <div class="inspector-header-actions">
+                <button class="inspector-btn-icon" id="inspectorPrevBtn" title="上一个标记"><i class="fa-solid fa-chevron-up"></i></button>
+                <button class="inspector-btn-icon" id="inspectorNextBtn" title="下一个标记"><i class="fa-solid fa-chevron-down"></i></button>
+                <button class="inspector-btn-icon" id="inspectorCloseBtn" title="关闭 (Esc)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="inspector-body" id="inspectorBody">
+            <div class="inspector-empty" id="inspectorEmpty">
+                <i class="fa-solid fa-cube"></i>
+                <p>选择一个标记查看属性<br>左键点击标记或右键选择属性</p>
+            </div>
+            <div id="inspectorFields" hidden></div>
+        </div>
+        <div class="inspector-footer" id="inspectorFooter" hidden>
+            <div class="inspector-nav">
+                <button class="inspector-btn" id="inspectorFooterPrev" title="上一个标记"><i class="fa-solid fa-chevron-left"></i></button>
+                <span class="inspector-nav-info" id="inspectorNavInfo"></span>
+                <button class="inspector-btn" id="inspectorFooterNext" title="下一个标记"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <button class="inspector-btn danger" id="inspectorDeleteBtn" title="删除此标记"><i class="fa-solid fa-trash"></i> 删除</button>
         </div>
     </div>
 
@@ -261,6 +295,7 @@
     <script src="js/export-excel.js"></script>
     <script src="js/preview.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/inspector.js"></script>
     <script src="js/events.js"></script>
 <div id="opLogWrap">
     <div id="opLog"></div>
