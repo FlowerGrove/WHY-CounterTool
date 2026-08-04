@@ -813,8 +813,6 @@ function addCustomAttrFromDialog() {
 }
 
 // 属性管理对话框事件
-const attrsBtn = document.getElementById('previewManageAttrsBtn');
-if (attrsBtn) attrsBtn.addEventListener('click', openCustomAttrManage);
 document.getElementById('cfAttrClose').addEventListener('click', closeCustomAttrManage);
 document.getElementById('cfAttrCancel').addEventListener('click', closeCustomAttrManage);
 document.getElementById('cfAttrAdd').addEventListener('click', addCustomAttrFromDialog);

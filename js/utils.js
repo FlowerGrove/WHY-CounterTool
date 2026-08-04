@@ -73,7 +73,7 @@ function getMarkerTagNumber(m) {
 function formatMarkerLabel(m) {
     const abbr = m.typeAbbr || getTypeById(m.typeId).abbr;
     const tn = getMarkerTagNumber(m);
-    return tn ? `${abbr}${tn}` : abbr;
+    return tn ? `${abbr}-${tn}` : abbr;
 }
 
 // 口径显示格式化：存储为 '2' 或 '2x3'，输出为 '2"' 或 '2"x3"'
