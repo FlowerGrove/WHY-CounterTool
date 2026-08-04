@@ -149,10 +149,8 @@ function handleCanvasTap(vx, vy) {
     if (eraseMode) {
         const hit = findMarkerAtVirtual(vx, vy);
         if (hit) {
-            if (confirm(`确定删除标记「${hit.typeName || '?'} #${hit.number}」？`)) {
-                addLog('删除标记');
-                deleteMarker(hit);
-            }
+            addLog('删除标记');
+            deleteMarker(hit);
         }
     } else {
         addLog('添加标记');
