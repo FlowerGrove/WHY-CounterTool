@@ -74,11 +74,6 @@
 .settings-row:last-of-type {
     border-bottom: none;
 }
-.settings-divider {
-    height: 1px;
-    background: rgba(0, 0, 0, 0.08);
-    margin: 8px 0 4px;
-}
 .settings-row input[type="range"] {
     flex: 0 0 120px;
 }
@@ -137,28 +132,6 @@
     color: #444;
 }
 
-/* 折叠分组 */
-.setting-section {
-    margin-top: 4px;
-}
-.setting-section-hdr {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-weight: 600;
-    font-size: 14px;
-    color: #1976D2;
-    cursor: pointer;
-    user-select: none;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-.setting-section-hdr:hover { color: #1565C0; }
-.setting-section-arrow {
-    font-size: 12px;
-    transition: transform 0.2s;
-}
-
 /* 子设置项（页脚子选项等） */
 .setting-sub {
     padding-left: 12px;
@@ -166,69 +139,3 @@
     display: none;
 }
 .setting-sub.visible { display: flex; }
-
-/* 列选择 UI */
-.col-sel-tabs {
-    display: flex;
-    gap: 2px;
-    margin: 6px 0;
-    background: #f0f0f0;
-    border-radius: 8px;
-    padding: 2px;
-}
-.col-sel-tab {
-    flex: 1;
-    padding: 5px 4px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: #666;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.col-sel-tab.active {
-    background: #fff;
-    color: #1a73e8;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-.col-sel-list {
-    max-height: 360px;
-    overflow-y: auto;
-    margin: 4px 0 8px;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 4px 0;
-}
-.col-sel-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: #444;
-    cursor: pointer;
-    transition: background 0.1s;
-}
-.col-sel-item:hover {
-    background: #f5f7fa;
-}
-.col-sel-item input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    accent-color: #1a73e8;
-    margin: 0;
-    flex-shrink: 0;
-}
-.col-sel-item .col-sel-label {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.col-sel-item .col-sel-desc {
-    font-size: 11px;
-    color: #999;
-    flex-shrink: 0;
-}

@@ -578,30 +578,6 @@ settingsBackdrop.addEventListener('click', (e) => {
     }
 });
 
-// ===== 设置面板折叠分组 & 子设置联动 =====
-/**
- * 确保设置面板中的指定分组处于折叠状态
- * @param {string} hdrId - 分组标题元素 ID
- * @param {string} bodyId - 分组内容元素 ID（未使用，保留兼容性）
- */
-function ensureSectionCollapsed(hdrId, bodyId) {
-    const hdr = document.getElementById(hdrId);
-    if (!hdr) return;
-    const section = hdr.closest('.setting-section');
-    if (!section) return;
-    section.classList.add('collapsed');
-}
-
-/**
- * 切换设置面板中分组的折叠/展开状态
- * @param {HTMLElement} hdr - 分组标题元素
- */
-function toggleSection(hdr) {
-    const section = hdr.closest('.setting-section');
-    if (!section) return;
-    section.classList.toggle('collapsed');
-}
-
 /**
  * 根据"显示页脚"开关状态，更新页脚子设置项的显隐
  */

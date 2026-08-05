@@ -33,13 +33,6 @@
     border-radius: 0 0 8px 0;
     pointer-events: none;
 }
-.marker-context-menu.menu-io {
-    min-width: 380px;
-}
-.marker-context-menu.menu-ins {
-    min-width: 340px;
-}
-
 /* Header */
 .mcm-header {
     display: flex;
@@ -109,59 +102,12 @@
     min-width: 0;
 }
 
-/* Section */
-.mcm-section {
-    border: 1px solid rgba(0,0,0,0.04);
-    border-radius: 6px;
-    overflow: hidden;
-}
-.mcm-section-hdr {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 8px;
-    cursor: pointer;
-    user-select: none;
-    background: #fafafa;
-    transition: background 0.12s;
-}
-.mcm-section-hdr:hover {
-    background: #f0f0f0;
-}
-.mcm-section-arrow {
-    font-size: 9px;
-    color: #999;
-    transition: transform 0.15s;
-    flex-shrink: 0;
-}
-.mcm-section-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: #555;
-    line-height: 1;
-}
-.mcm-section-body {
-    padding: 6px 8px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px 8px;
-}
-.mcm-section.collapsed .mcm-section-body {
-    display: none;
-}
-.mcm-section.collapsed .mcm-section-arrow {
-    transform: rotate(-90deg);
-}
-
-/* Field (keep existing styles) */
+/* Field */
 .mcm-field {
     display: flex;
     flex-direction: column;
     gap: 3px;
     min-width: 0;
-}
-.mcm-field--wide {
-    grid-column: 1 / -1;
 }
 .mcm-label {
     font-size: 10.5px;
@@ -170,8 +116,7 @@
     line-height: 1;
     padding-left: 1px;
 }
-.mcm-input,
-.mcm-select {
+.mcm-input {
     height: 26px;
     padding: 0 7px;
     border: 1px solid #e0e0e0;
@@ -188,105 +133,7 @@
 .mcm-input::placeholder {
     color: #bbb;
 }
-.mcm-input:focus,
-.mcm-select:focus {
-    border-color: #1a73e8;
-    box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
-}
-.mcm-input-wrap {
-    display: flex;
-    gap: 5px;
-    width: 100%;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-}
-.mcm-select--full {
-    width: 100%;
-    cursor: pointer;
-}
-.mcm-input-inline {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-}
-
-/* Size custom row */
-#mcmSizeField .mcm-input-wrap {
-    flex-direction: column;
-    align-items: stretch;
-}
-.mcm-size-custom-row {
-    display: none;
-    width: 100%;
-    gap: 5px;
-    align-items: center;
-    margin-top: 4px;
-}
-.mcm-field--custom-size .mcm-size-custom-row {
-    display: flex;
-}
-.mcm-size-custom-row #mcmSizeCustom {
-    flex: 1;
-    min-width: 0;
-}
-.mcm-size-custom-row .mcm-size-sec {
-    max-width: 60px;
-}
-.mcm-size-custom-row .mcm-size-x {
-    flex-shrink: 0;
-    color: #888;
-    font-size: 12px;
-    line-height: 1;
-}
-
-/* Range custom row */
-#mcmRangeField .mcm-input-wrap {
-    flex-direction: column;
-    align-items: stretch;
-}
-.mcm-range-custom-row {
-    display: none;
-    width: 100%;
-    margin-top: 4px;
-}
-.mcm-field--custom-range .mcm-range-custom-row {
-    display: flex;
-}
-
-/* Alarm Setting grid */
-.mcm-alarm-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-}
-.mcm-alarm-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-.mcm-alarm-item span {
-    font-size: 9px;
-    color: #999;
-    text-align: center;
-    line-height: 1;
-}
-.mcm-alarm-item input {
-    height: 22px;
-    padding: 0 4px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 11px;
-    text-align: center;
-    width: 100%;
-    box-sizing: border-box;
-    outline: none;
-    transition: all 0.12s;
-    font-family: inherit;
-    color: #333;
-}
-.mcm-alarm-item input:focus {
+.mcm-input:focus {
     border-color: #1a73e8;
     box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
 }

@@ -367,8 +367,3 @@
 .type-chip:active {
     transform: scale(0.97);
 }
-
-/* --- Hidden footer (unused) --- */
-.type-dock__footer {
-    display: none;
-}
